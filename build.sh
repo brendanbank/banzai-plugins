@@ -104,6 +104,7 @@ done
 
 # ── 2. Build each plugin ────────────────────────────────────────────
 
+rm -rf "${LOCAL_DIST}"
 mkdir -p "${LOCAL_DIST}"
 BUILT_PKGS=""
 

@@ -4,10 +4,15 @@ Runs a daemon that collects OPNsense-specific metrics (gateways, pf firewall,
 Unbound DNS) and writes them in Prometheus format to the node_exporter
 textfile collector directory.
 
-WWW: https://github.com/brendanbank/opnsense-metrics-exporter
+WWW: https://brendanbank.github.io/banzai-plugins/releases/26.1/metrics_exporter.html
 
 Changelog
 ---------
+
+1.4.1
+
+* Moved to banzai-plugins repository
+* Updated package URL to banzai-plugins documentation
 
 1.4
 

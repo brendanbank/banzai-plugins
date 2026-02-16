@@ -37,8 +37,9 @@ After building, commit and push `docs/` to update the GitHub Pages pkg repo. Plu
 1. Create `<category>/<plugin>/` with standard layout (Makefile, pkg-descr, src/, hook scripts)
 2. Copy hook scripts from `misc/hello_world/` as a starting point
 3. Replace `hello_world` references with new plugin name in hook scripts
-4. `+POST_INSTALL.post` detects the OPNsense series and writes a per-release repo URL
-5. Add the plugin to the table in README.md
+4. Set `PLUGIN_WWW` to the plugin's documentation page: `https://brendanbank.github.io/banzai-plugins/releases/<series>/<plugin>.html`
+5. `+POST_INSTALL.post` detects the OPNsense series and writes a per-release repo URL
+6. Add the plugin to the table in README.md
 
 ## Key Conventions
 
