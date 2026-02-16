@@ -8,11 +8,3 @@ if [ -f "$REGISTER" ] && [ -f "$VERSION_INFO" ]; then
     fi
 fi
 
-# Remove banzai-plugins repo config if no other banzai plugins are installed
-REPO_CONF="/usr/local/etc/pkg/repos/banzai-plugins.conf"
-if [ -f "$REPO_CONF" ]; then
-    OTHER_BANZAI=$(pkg query -e '%R == banzai-plugins' '%n' 2>/dev/null | grep -cv '^os-%%PLUGIN_NAME%%$' || true)
-    if [ "$OTHER_BANZAI" -eq 0 ] 2>/dev/null; then
-        rm -f "$REPO_CONF"
-    fi
-fi
