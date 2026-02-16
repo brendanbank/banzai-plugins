@@ -119,17 +119,21 @@ if [ -d "${PAGES_REPO}" ]; then
         scp -q "${pkg}" "${FIREWALL}:${REMOTE_REPO_DIR}/"
     done
 
-    # Fetch signing key from 1Password
+    # Fetch signing key from 1Password and convert PKCS#8 to PKCS#1 for pkg(8)
     echo "    Fetching signing key from 1Password..."
     SIGNING_KEY=$(mktemp)
-    trap 'rm -f "${SIGNING_KEY}"' EXIT
-    op item get "${OP_ITEM}" --fields notesPlain > "${SIGNING_KEY}" \
+    SIGNING_KEY_RSA=$(mktemp)
+    trap 'rm -f "${SIGNING_KEY}" "${SIGNING_KEY_RSA}"' EXIT
+    op item get "${OP_ITEM}" --fields notesPlain --format json \
+        | jq -r '.value' > "${SIGNING_KEY}" \
         || die "Failed to fetch signing key from 1Password"
-    scp -q "${SIGNING_KEY}" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.key"
-    rm -f "${SIGNING_KEY}"
+    openssl rsa -in "${SIGNING_KEY}" -out "${SIGNING_KEY_RSA}" -traditional 2>/dev/null \
+        || die "Failed to convert signing key to PKCS#1 format"
+    scp -q "${SIGNING_KEY_RSA}" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.key"
+    rm -f "${SIGNING_KEY}" "${SIGNING_KEY_RSA}"
 
     echo "    Signing repo..."
-    remote "pkg repo ${REMOTE_REPO_DIR}/ ${REMOTE_REPO_DIR}/repo.key"
+    remote "pkg repo ${REMOTE_REPO_DIR}/ rsa:${REMOTE_REPO_DIR}/repo.key"
     remote "rm -f ${REMOTE_REPO_DIR}/repo.key"
 
     rm -f "${PAGES_REPO}"/*.pkg
