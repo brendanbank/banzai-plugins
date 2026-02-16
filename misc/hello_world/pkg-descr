@@ -1,0 +1,14 @@
+Hello World example plugin for OPNsense.
+
+A minimal MVC plugin with a settings page demonstrating the OPNsense plugin
+framework. Provides an enabled toggle and a configurable greeting message.
+
+WWW: https://github.com/brendanbank/banzai-plugins
+
+Changelog
+---------
+
+1.0
+
+* Initial release
+* Settings page with enabled toggle and greeting message

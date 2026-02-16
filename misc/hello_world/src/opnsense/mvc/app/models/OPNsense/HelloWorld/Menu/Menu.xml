@@ -1,0 +1,7 @@
+<menu>
+    <Services>
+        <HelloWorld VisibleName="Hello World" cssClass="fa fa-smile-o">
+            <Settings order="10" url="/ui/helloworld/general/index"/>
+        </HelloWorld>
+    </Services>
+</menu>

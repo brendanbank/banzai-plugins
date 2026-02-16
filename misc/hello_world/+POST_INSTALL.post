@@ -1,0 +1,21 @@
+# Register plugin with firmware (needed for pkg install outside of the UI)
+REGISTER="/usr/local/opnsense/scripts/firmware/register.php"
+VERSION_INFO="/usr/local/opnsense/version/hello_world"
+if [ -f "$REGISTER" ] && [ -f "$VERSION_INFO" ]; then
+    PLUGIN_ID=$(sed -n 's/.*"product_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$VERSION_INFO")
+    if [ -n "$PLUGIN_ID" ]; then
+        $REGISTER install "$PLUGIN_ID"
+    fi
+fi
+
+# Add banzai-plugins pkg repo for UI plugin discovery
+REPO_CONF="/usr/local/etc/pkg/repos/banzai-plugins.conf"
+if [ ! -f "$REPO_CONF" ]; then
+    cat > "$REPO_CONF" <<REPOEOF
+banzai-plugins: {
+  url: "https://brendanbank.github.io/banzai-plugins/repo",
+  enabled: yes
+}
+REPOEOF
+    pkg update -f -r banzai-plugins || true
+fi

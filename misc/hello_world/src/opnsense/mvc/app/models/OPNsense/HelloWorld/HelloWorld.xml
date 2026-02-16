@@ -1,0 +1,17 @@
+<model>
+    <mount>//OPNsense/HelloWorld</mount>
+    <description>Hello World configuration</description>
+    <version>1.0.0</version>
+    <items>
+        <enabled type="BooleanField">
+            <Default>0</Default>
+            <Required>Y</Required>
+        </enabled>
+        <greeting type="TextField">
+            <Default>Hello, World!</Default>
+            <Required>Y</Required>
+            <Mask>/^.{1,255}$/</Mask>
+            <ValidationMessage>Greeting must be between 1 and 255 characters.</ValidationMessage>
+        </greeting>
+    </items>
+</model>
