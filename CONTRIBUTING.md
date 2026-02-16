@@ -1,5 +1,11 @@
 # Contributing to banzai-plugins
 
+Suggestions and contributions are very welcome! There are several ways to contribute:
+
+- **Report a bug or request a feature** — [open an issue](https://github.com/brendanbank/banzai-plugins/issues)
+- **Submit a fix or improvement** — [open a pull request](https://github.com/brendanbank/banzai-plugins/pulls)
+- **Contribute a new plugin** — see the guide below
+
 ## Prerequisites
 
 - An OPNsense or FreeBSD host accessible via SSH (for building packages)

@@ -177,9 +177,16 @@ rm -f "${PAGES_REPO}"/*.pkg
 rm -f "${PAGES_REPO}"/{meta.conf,packagesite.*,data.*,filesite.*}
 scp -q "${FIREWALL}:${REMOTE_REPO_DIR}/*" "${PAGES_REPO}/"
 remote "rm -rf ${REMOTE_REPO_DIR}"
+
+# ── 4. Build documentation ───────────────────────────────────────────
+
+echo ""
+echo "==> Building documentation"
+make -C "${REPO_ROOT}/docs/sphinx" html
 echo "    Commit and push docs/ to update GitHub Pages."
 
 echo ""
 echo "==> Done"
 echo "    Built packages:${BUILT_PKGS}"
 echo "    Repo: docs/${FREEBSD_ABI}/${SERIES}/repo/"
+echo "    Docs: docs/releases/"

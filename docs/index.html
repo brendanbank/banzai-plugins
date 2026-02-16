@@ -1,0 +1,184 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>banzai-plugins &mdash; banzai-plugins  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=7f41d439"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="OPNsense 26.1" href="releases/26.1/index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            banzai-plugins
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Plugin Releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releases/26.1/index.html">OPNsense 26.1</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">banzai-plugins</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">banzai-plugins</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="banzai-plugins">
+<h1>banzai-plugins<a class="headerlink" href="#banzai-plugins" title="Link to this heading"></a></h1>
+<p>Over the last four years of running OPNsense I’ve built various scripts and
+tools to manage and monitor my firewalls and the networks they serve. With each
+new release I do a clean install to avoid maintenance issues, which meant
+reinstalling all of these tools by hand every time.</p>
+<p>Some of them have become essential to my workflow. The Prometheus metrics
+exporter, for example, feeds dpinger output into Prometheus and on to Grafana
+alerting, giving me visibility into my VPN overlay network so I know the moment
+something breaks.</p>
+<p>This repository collects those tools and packages them as proper OPNsense
+plugins so they survive upgrades. Packages are signed and served from a
+per-release pkg repository via GitHub Pages, so installation is just a
+<code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">install</span></code> or a click in the Firmware UI.</p>
+<p><strong>Why a separate repo?</strong> These plugins sometimes involve a fair amount of code
+that would be difficult for the OPNsense team to validate and maintain,
+especially when adoption is likely to be limited. The OPNsense developers are
+focused on building a great product and shouldn’t be distracted by niche tools
+that serve a small audience. This is not criticism – it’s simply the reality
+that you can’t do it all. If a plugin here matures to the point where it
+belongs in the official <a class="reference external" href="https://github.com/opnsense/plugins">opnsense/plugins</a>
+repository, great – it will follow the standards and requirements set by the
+OPNsense project. Until then, contributions are welcome here.</p>
+<p>I’m an <a class="reference external" href="https://winningmindtraining.com/remaining-an-amateur-a-lover-of-the-work/">amateur</a>
+Python developer – a lover of the work rather than a professional software
+engineer. I do have a long history with FreeBSD from my days as a sysadmin
+(DevOps before it had a name), when I built and ran products like imap4all.com.
+These plugins lean heavily on LLM-assisted development – particularly
+<a class="reference external" href="https://claude.ai/claude-code">Claude Code</a> – for the MVC boilerplate,
+build infrastructure, and FreeBSD packaging. The code works, but it may not
+always follow every OPNsense convention to the letter. Suggestions and
+contributions are very welcome – feel free to open an issue or pull request
+on <a class="reference external" href="https://github.com/brendanbank/banzai-plugins">GitHub</a>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>These plugins are provided as-is. <strong>Use at your own risk.</strong></p>
+</div>
+<section id="plugins">
+<h2>Plugins<a class="headerlink" href="#plugins" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Plugin</p></th>
+<th class="head"><p>Package</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Hello World</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">os-hello_world</span></code></p></td>
+<td><p>Hello World example plugin</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="links">
+<h2>Links<a class="headerlink" href="#links" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/brendanbank/banzai-plugins">GitHub repository</a></p></li>
+<li><p><a class="reference external" href="https://github.com/brendanbank/banzai-plugins/blob/main/LICENSE">License (BSD 2-Clause)</a></p></li>
+</ul>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Plugin Releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releases/26.1/index.html">OPNsense 26.1</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="releases/26.1/hello_world.html">Hello World</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="releases/26.1/hello_world.html#settings">Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="releases/26.1/hello_world.html#api-endpoints">API Endpoints</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="releases/26.1/index.html#installation">Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="releases/26.1/index.html#trust-the-repository-signing-key">1. Trust the repository signing key</a></li>
+<li class="toctree-l3"><a class="reference internal" href="releases/26.1/index.html#add-the-repository">2. Add the repository</a></li>
+<li class="toctree-l3"><a class="reference internal" href="releases/26.1/index.html#install-a-plugin">3. Install a plugin</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="releases/26.1/index.html" class="btn btn-neutral float-right" title="OPNsense 26.1" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Brendan Bank. Licensed under the BSD 2-Clause License.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
