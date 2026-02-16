@@ -10,23 +10,43 @@ OPNsense plugin collection. Each plugin lives in a `<category>/<plugin>/` subdir
 
 ## Installation
 
-On your OPNsense firewall, add the banzai-plugins pkg repo and install a plugin:
+### 1. Trust the repository signing key
+
+All packages are signed. Before installing, set up the signing fingerprint on your firewall:
 
 ```sh
-# Add the repo
+mkdir -p /usr/local/etc/pkg/fingerprints/banzai-plugins/trusted
+mkdir -p /usr/local/etc/pkg/fingerprints/banzai-plugins/revoked
+
+cat > /usr/local/etc/pkg/fingerprints/banzai-plugins/trusted/repo.fingerprint <<'EOF'
+function: sha256
+fingerprint: c7d009bc3d9bd80d4327a8b9a9eb7884ac5411c24d0163a2b551479aa1710ec1
+EOF
+```
+
+You can verify the fingerprint matches the public key in [`Keys/repo.pub`](Keys/repo.pub) in this repository.
+
+### 2. Add the repository
+
+```sh
 cat > /usr/local/etc/pkg/repos/banzai-plugins.conf <<'EOF'
 banzai-plugins: {
   url: "https://brendanbank.github.io/banzai-plugins/repo",
+  signature_type: "fingerprints",
+  fingerprints: "/usr/local/etc/pkg/fingerprints/banzai-plugins",
   enabled: yes
 }
 EOF
 pkg update -f -r banzai-plugins
+```
 
-# Install a plugin
+### 3. Install a plugin
+
+```sh
 pkg install os-hello_world
 ```
 
-After installing any plugin from this repo, the repo config is automatically maintained by the package hook scripts. Plugins appear in **System > Firmware > Plugins** for UI-based management.
+After installing the first plugin, the repo config is automatically maintained by the package hook scripts. Plugins also appear in **System > Firmware > Plugins** for UI-based management.
 
 ## Building
 
