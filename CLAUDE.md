@@ -35,7 +35,7 @@ After building, commit and push `docs/` to update the GitHub Pages pkg repo. Plu
 
 - BSD 2-Clause license header in all PHP/inc files
 - `+POST_INSTALL.post` registers plugin + adds shared banzai-plugins pkg repo config with per-release URL
-- `+PRE_DEINSTALL.pre` deregisters plugin (only removes repo config if no other banzai plugins remain)
+- `+PRE_DEINSTALL.pre` deregisters plugin from firmware (repo config is left in place)
 - Model XML: don't set empty `<Default></Default>` or `<Required>N</Required>` — they're implicit
 - `$internalModelName` in API controllers must match the `<id>` prefix in `forms/*.xml`
 - Model fields go at root of `<items>` (no wrapper element)
