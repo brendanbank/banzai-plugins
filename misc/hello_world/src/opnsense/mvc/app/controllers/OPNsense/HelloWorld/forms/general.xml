@@ -1,0 +1,14 @@
+<form>
+    <field>
+        <id>general.enabled</id>
+        <label>Enabled</label>
+        <type>checkbox</type>
+        <help>Enable the Hello World plugin.</help>
+    </field>
+    <field>
+        <id>general.greeting</id>
+        <label>Greeting Message</label>
+        <type>text</type>
+        <help>A greeting message to display.</help>
+    </field>
+</form>
