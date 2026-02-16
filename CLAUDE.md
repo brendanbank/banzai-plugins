@@ -23,14 +23,23 @@ make setup                          # first time: init submodule + create symlin
 
 After building, commit and push `docs/` to update the GitHub Pages pkg repo. Plugins are installable via the OPNsense UI at **System > Firmware > Plugins** or via `pkg install`.
 
+## Repo Versioning
+
+The repo itself is tagged with semver-style versions:
+
+- **Major** — repo infrastructure changes (build system, signing, submodule updates)
+- **Minor** — new plugins added
+- **Patch** — plugin version bumps
+
+Individual plugins have their own `PLUGIN_VERSION` in their Makefile.
+
 ## Releasing
 
 1. Bump `PLUGIN_VERSION` in `<category>/<plugin>/Makefile`
 2. Update changelog in `<category>/<plugin>/pkg-descr`
 3. `./build.sh <firewall>`
-4. Commit source changes, tag `v<version>`, push with tags
-5. Commit and push `docs/` to update GitHub Pages
-6. `gh release create v<version> dist/<pkg>.pkg`
+4. Commit source + docs changes, tag `v<version>`, push with tags
+5. `gh release create v<version> dist/*.pkg`
 
 ## Adding a New Plugin
 
