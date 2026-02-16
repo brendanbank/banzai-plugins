@@ -36,4 +36,11 @@ clean:
 	@cd ${.CURDIR}/${_DIR} && make clean
 .endfor
 
-.PHONY: list lint style clean
+setup:
+	@git submodule update --init
+	@for dir in Mk Keywords Templates Scripts; do \
+		ln -sfn opnsense-plugins/$$dir $$dir; \
+	done
+	@echo "Symlinks created. Build infrastructure ready."
+
+.PHONY: list lint style clean setup

@@ -11,9 +11,10 @@ fi
 # Add banzai-plugins pkg repo with signature verification
 REPO_CONF="/usr/local/etc/pkg/repos/banzai-plugins.conf"
 if [ ! -f "$REPO_CONF" ]; then
+    SERIES=$(opnsense-version -a 2>/dev/null || echo "26.1")
     cat > "$REPO_CONF" <<REPOEOF
 banzai-plugins: {
-  url: "https://brendanbank.github.io/banzai-plugins/repo",
+  url: "https://brendanbank.github.io/banzai-plugins/\${ABI}/${SERIES}/repo",
   signature_type: "fingerprints",
   fingerprints: "/usr/local/etc/pkg/fingerprints/banzai-plugins",
   enabled: yes
