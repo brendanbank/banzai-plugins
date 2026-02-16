@@ -2,24 +2,21 @@
 #
 # Build all OPNsense plugin packages in banzai-plugins.
 #
-# Usage: ./Scripts/build.sh <hostname>
+# Usage: ./build.sh <hostname>
 #
 # The build happens on a FreeBSD/OPNsense host via SSH. Build infrastructure
-# (Mk/, Keywords/, etc.) is included in the repo and synced to the remote.
+# comes from the opnsense-plugins/ submodule and is synced to the remote.
 #
 # After building, packages are downloaded to dist/ and the GitHub Pages pkg
-# repo in docs/repo/ is updated. Plugins are NOT installed on the firewall;
-# they are installed via the OPNsense UI (System > Firmware > Plugins).
+# repo in docs/${ABI}/${SERIES}/repo/ is updated with signed packages.
 #
 
 set -e
 
-FIREWALL="${1:-${FIREWALL:?Usage: ./Scripts/build.sh <hostname>}}"
+FIREWALL="${1:-${FIREWALL:?Usage: ./build.sh <hostname>}}"
 REMOTE_REPO="/home/brendan/src/banzai-plugins"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 LOCAL_DIST="${REPO_ROOT}/dist"
-PAGES_REPO="${REPO_ROOT}/docs/repo"
 OP_ITEM="banzai-plugins pkg repo signing key"
 
 # ── helpers ──────────────────────────────────────────────────────────
@@ -46,6 +43,24 @@ done
 [ -n "${PLUGIN_DIRS}" ] || die "No plugins found"
 echo "    Plugins:${PLUGIN_DIRS}"
 
+# ── 0b. Detect ABI and series from remote ────────────────────────────
+
+echo "==> Detecting ABI and OPNsense series"
+
+UNAME_INFO=$(remote "uname -sm")
+OS_NAME=$(echo "${UNAME_INFO}" | awk '{print $1}')
+OS_ARCH=$(echo "${UNAME_INFO}" | awk '{print $2}')
+OS_MAJOR=$(remote "uname -r" | cut -d. -f1)
+FREEBSD_ABI="${OS_NAME}:${OS_MAJOR}:${OS_ARCH}"
+echo "    ABI: ${FREEBSD_ABI}"
+
+SERIES=$(remote "opnsense-version -a")
+[ -n "${SERIES}" ] || die "Failed to detect OPNsense series"
+echo "    Series: ${SERIES}"
+
+PAGES_REPO="${REPO_ROOT}/docs/${FREEBSD_ABI}/${SERIES}/repo"
+echo "    Pages repo: docs/${FREEBSD_ABI}/${SERIES}/repo/"
+
 # ── 1. Sync source to remote ────────────────────────────────────────
 
 echo "==> Syncing to ${FIREWALL}"
@@ -57,12 +72,18 @@ remote "
     fi
 "
 
-# Sync build infrastructure
+# Sync build infrastructure from submodule
+SUBMODULE_DIR="${REPO_ROOT}/opnsense-plugins"
+[ -d "${SUBMODULE_DIR}/Mk" ] || die "Submodule not initialized. Run: make setup"
+
 for infra_dir in Mk Keywords Templates Scripts; do
     echo "    Syncing ${infra_dir}/"
     remote "rm -rf ${REMOTE_REPO}/${infra_dir}"
-    scp -rq "${REPO_ROOT}/${infra_dir}" "${FIREWALL}:${REMOTE_REPO}/"
+    scp -rq "${SUBMODULE_DIR}/${infra_dir}" "${FIREWALL}:${REMOTE_REPO}/"
 done
+
+# Override devel.mk to prevent -devel package suffix
+remote ": > ${REMOTE_REPO}/Mk/devel.mk"
 
 # Sync each plugin
 for plugin_dir in ${PLUGIN_DIRS}; do
@@ -74,7 +95,7 @@ for plugin_dir in ${PLUGIN_DIRS}; do
     scp -q "${LOCAL_PLUGIN_DIR}/Makefile" "${FIREWALL}:${REMOTE_PLUGIN_DIR}/"
     scp -q "${LOCAL_PLUGIN_DIR}/pkg-descr" "${FIREWALL}:${REMOTE_PLUGIN_DIR}/"
     scp -rq "${LOCAL_PLUGIN_DIR}/src" "${FIREWALL}:${REMOTE_PLUGIN_DIR}/"
-    for hook in +POST_INSTALL.post +PRE_DEINSTALL.pre +PRE_INSTALL.pre; do
+    for hook in +POST_INSTALL.post +PRE_DEINSTALL.pre +PRE_INSTALL.pre +POST_DEINSTALL.post; do
         if [ -f "${LOCAL_PLUGIN_DIR}/${hook}" ]; then
             scp -q "${LOCAL_PLUGIN_DIR}/${hook}" "${FIREWALL}:${REMOTE_PLUGIN_DIR}/"
         fi
@@ -108,33 +129,34 @@ done
 
 # ── 3. Update GitHub Pages repo ─────────────────────────────────────
 
-if [ -d "${PAGES_REPO}" ]; then
-    echo ""
-    echo "==> Updating GitHub Pages pkg repo"
-    REMOTE_REPO_DIR="/tmp/banzai_plugins_repo"
-    remote "rm -rf ${REMOTE_REPO_DIR} && mkdir -p ${REMOTE_REPO_DIR}"
+echo ""
+echo "==> Updating GitHub Pages pkg repo (${FREEBSD_ABI}/${SERIES})"
+mkdir -p "${PAGES_REPO}"
 
-    for pkg in "${LOCAL_DIST}"/*.pkg; do
-        [ -f "${pkg}" ] || continue
-        scp -q "${pkg}" "${FIREWALL}:${REMOTE_REPO_DIR}/"
-    done
+REMOTE_REPO_DIR="/tmp/banzai_plugins_repo"
+remote "rm -rf ${REMOTE_REPO_DIR} && mkdir -p ${REMOTE_REPO_DIR}"
 
-    # Fetch signing key from 1Password for fingerprint-based signing
-    echo "    Fetching signing key from 1Password..."
-    SIGNING_KEY=$(mktemp)
-    SIGNING_KEY_RSA=$(mktemp)
-    trap 'rm -f "${SIGNING_KEY}" "${SIGNING_KEY_RSA}"' EXIT
-    op item get "${OP_ITEM}" --fields notesPlain --format json \
-        | jq -r '.value' > "${SIGNING_KEY}" \
-        || die "Failed to fetch signing key from 1Password"
-    openssl rsa -in "${SIGNING_KEY}" -out "${SIGNING_KEY_RSA}" -traditional 2>/dev/null \
-        || die "Failed to convert signing key to PKCS#1 format"
-    scp -q "${SIGNING_KEY_RSA}" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.key"
-    scp -q "${REPO_ROOT}/Keys/repo.pub" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.pub"
-    rm -f "${SIGNING_KEY}" "${SIGNING_KEY_RSA}"
+for pkg in "${LOCAL_DIST}"/*.pkg; do
+    [ -f "${pkg}" ] || continue
+    scp -q "${pkg}" "${FIREWALL}:${REMOTE_REPO_DIR}/"
+done
 
-    # Create signing command for fingerprint-based verification
-    remote "cat > ${REMOTE_REPO_DIR}/sign.sh << 'SIGNEOF'
+# Fetch signing key from 1Password for fingerprint-based signing
+echo "    Fetching signing key from 1Password..."
+SIGNING_KEY=$(mktemp)
+SIGNING_KEY_RSA=$(mktemp)
+trap 'rm -f "${SIGNING_KEY}" "${SIGNING_KEY_RSA}"' EXIT
+op item get "${OP_ITEM}" --fields notesPlain --format json \
+    | jq -r '.value' > "${SIGNING_KEY}" \
+    || die "Failed to fetch signing key from 1Password"
+openssl rsa -in "${SIGNING_KEY}" -out "${SIGNING_KEY_RSA}" -traditional 2>/dev/null \
+    || die "Failed to convert signing key to PKCS#1 format"
+scp -q "${SIGNING_KEY_RSA}" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.key"
+scp -q "${REPO_ROOT}/Keys/repo.pub" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.pub"
+rm -f "${SIGNING_KEY}" "${SIGNING_KEY_RSA}"
+
+# Create signing command for fingerprint-based verification
+remote "cat > ${REMOTE_REPO_DIR}/sign.sh << 'SIGNEOF'
 #!/bin/sh
 read -t 2 sum
 [ -z \"\$sum\" ] && exit 1
@@ -147,17 +169,17 @@ echo END
 SIGNEOF
 chmod +x ${REMOTE_REPO_DIR}/sign.sh"
 
-    echo "    Signing repo..."
-    remote "pkg repo ${REMOTE_REPO_DIR}/ signing_command: ${REMOTE_REPO_DIR}/sign.sh"
-    remote "rm -f ${REMOTE_REPO_DIR}/repo.key ${REMOTE_REPO_DIR}/repo.pub ${REMOTE_REPO_DIR}/sign.sh"
+echo "    Signing repo..."
+remote "pkg repo ${REMOTE_REPO_DIR}/ signing_command: ${REMOTE_REPO_DIR}/sign.sh"
+remote "rm -f ${REMOTE_REPO_DIR}/repo.key ${REMOTE_REPO_DIR}/repo.pub ${REMOTE_REPO_DIR}/sign.sh"
 
-    rm -f "${PAGES_REPO}"/*.pkg
-    rm -f "${PAGES_REPO}"/{meta.conf,packagesite.*,data.*,filesite.*}
-    scp -q "${FIREWALL}:${REMOTE_REPO_DIR}/*" "${PAGES_REPO}/"
-    remote "rm -rf ${REMOTE_REPO_DIR}"
-    echo "    Commit and push docs/ to update GitHub Pages."
-fi
+rm -f "${PAGES_REPO}"/*.pkg
+rm -f "${PAGES_REPO}"/{meta.conf,packagesite.*,data.*,filesite.*}
+scp -q "${FIREWALL}:${REMOTE_REPO_DIR}/*" "${PAGES_REPO}/"
+remote "rm -rf ${REMOTE_REPO_DIR}"
+echo "    Commit and push docs/ to update GitHub Pages."
 
 echo ""
 echo "==> Done"
 echo "    Built packages:${BUILT_PKGS}"
+echo "    Repo: docs/${FREEBSD_ABI}/${SERIES}/repo/"
