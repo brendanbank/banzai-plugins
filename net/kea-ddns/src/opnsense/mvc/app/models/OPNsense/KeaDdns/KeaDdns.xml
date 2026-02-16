@@ -1,0 +1,220 @@
+<model>
+    <mount>//OPNsense/KeaDdns</mount>
+    <version>1.2.0</version>
+    <description>Kea DHCP-DDNS Configuration</description>
+    <items>
+        <general>
+            <enabled type="BooleanField">
+                <Default>0</Default>
+                <Required>Y</Required>
+            </enabled>
+            <manual_config type="BooleanField"/>
+        </general>
+        <tsig_keys>
+            <tsig_key type="ArrayField">
+                <name type="TextField">
+                    <Required>Y</Required>
+                    <Mask>/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,252}\.?$/u</Mask>
+                    <ValidationMessage>Enter a valid TSIG key name.</ValidationMessage>
+                    <Constraints>
+                        <check001>
+                            <type>UniqueConstraint</type>
+                            <ValidationMessage>TSIG key name must be unique.</ValidationMessage>
+                        </check001>
+                    </Constraints>
+                </name>
+                <algorithm type="OptionField">
+                    <Default>HMAC-SHA256</Default>
+                    <Required>Y</Required>
+                    <OptionValues>
+                        <HMAC-MD5>HMAC-MD5</HMAC-MD5>
+                        <HMAC-SHA1>HMAC-SHA1</HMAC-SHA1>
+                        <HMAC-SHA224>HMAC-SHA224</HMAC-SHA224>
+                        <HMAC-SHA256>HMAC-SHA256</HMAC-SHA256>
+                        <HMAC-SHA384>HMAC-SHA384</HMAC-SHA384>
+                        <HMAC-SHA512>HMAC-SHA512</HMAC-SHA512>
+                    </OptionValues>
+                </algorithm>
+                <secret type="TextField">
+                    <Required>Y</Required>
+                    <Mask>/^[A-Za-z0-9+\/=]+$/u</Mask>
+                    <ValidationMessage>Enter a valid base64-encoded secret.</ValidationMessage>
+                </secret>
+            </tsig_key>
+        </tsig_keys>
+        <forward_zones>
+            <zone type="ArrayField">
+                <name type="HostnameField">
+                    <Required>Y</Required>
+                    <IpAllowed>N</IpAllowed>
+                    <ValidationMessage>Enter a valid domain name.</ValidationMessage>
+                    <Constraints>
+                        <check001>
+                            <type>UniqueConstraint</type>
+                            <ValidationMessage>Forward zone name must be unique.</ValidationMessage>
+                        </check001>
+                    </Constraints>
+                </name>
+                <server type="NetworkField">
+                    <NetMaskAllowed>N</NetMaskAllowed>
+                    <Required>Y</Required>
+                    <ValidationMessage>Enter a valid IP address for the DNS server.</ValidationMessage>
+                </server>
+                <port type="PortField">
+                    <Default>53</Default>
+                    <Required>Y</Required>
+                </port>
+                <tsig_key type="ModelRelationField">
+                    <Model>
+                        <tsig_keys>
+                            <source>OPNsense.KeaDdns.KeaDdns</source>
+                            <items>tsig_keys.tsig_key</items>
+                            <display>name</display>
+                        </tsig_keys>
+                    </Model>
+                    <BlankDesc>None (unsecured)</BlankDesc>
+                </tsig_key>
+            </zone>
+        </forward_zones>
+        <reverse_zones>
+            <zone type="ArrayField">
+                <name type="HostnameField">
+                    <Required>Y</Required>
+                    <IpAllowed>N</IpAllowed>
+                    <ValidationMessage>Enter a valid reverse zone name.</ValidationMessage>
+                    <Constraints>
+                        <check001>
+                            <type>UniqueConstraint</type>
+                            <ValidationMessage>Reverse zone name must be unique.</ValidationMessage>
+                        </check001>
+                    </Constraints>
+                </name>
+                <server type="NetworkField">
+                    <NetMaskAllowed>N</NetMaskAllowed>
+                    <Required>Y</Required>
+                    <ValidationMessage>Enter a valid IP address for the DNS server.</ValidationMessage>
+                </server>
+                <port type="PortField">
+                    <Default>53</Default>
+                    <Required>Y</Required>
+                </port>
+                <tsig_key type="ModelRelationField">
+                    <Model>
+                        <tsig_keys>
+                            <source>OPNsense.KeaDdns.KeaDdns</source>
+                            <items>tsig_keys.tsig_key</items>
+                            <display>name</display>
+                        </tsig_keys>
+                    </Model>
+                    <BlankDesc>None (unsecured)</BlankDesc>
+                </tsig_key>
+            </zone>
+        </reverse_zones>
+        <subnet_ddns>
+            <assignment type="ArrayField">
+                <subnet type="ModelRelationField">
+                    <Required>Y</Required>
+                    <Model>
+                        <subnets>
+                            <source>OPNsense.Kea.KeaDhcpv4</source>
+                            <items>subnets.subnet4</items>
+                            <display>subnet</display>
+                        </subnets>
+                    </Model>
+                    <ValidationMessage>Select a Kea DHCPv4 subnet.</ValidationMessage>
+                </subnet>
+                <forward_zone type="ModelRelationField">
+                    <Model>
+                        <forward_zones>
+                            <source>OPNsense.KeaDdns.KeaDdns</source>
+                            <items>forward_zones.zone</items>
+                            <display>name</display>
+                        </forward_zones>
+                    </Model>
+                </forward_zone>
+                <qualifying_suffix type="TextField">
+                    <Mask>/^([a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.)?$/u</Mask>
+                    <ValidationMessage>Enter a valid FQDN ending with a dot, or leave empty.</ValidationMessage>
+                </qualifying_suffix>
+                <send_updates type="BooleanField">
+                    <Default>1</Default>
+                    <Required>Y</Required>
+                </send_updates>
+                <update_on_renew type="BooleanField"/>
+                <replace_client_name type="OptionField">
+                    <Default>never</Default>
+                    <Required>Y</Required>
+                    <OptionValues>
+                        <never>Never</never>
+                        <always>Always</always>
+                        <when-present>When present</when-present>
+                        <when-not-present>When not present</when-not-present>
+                    </OptionValues>
+                </replace_client_name>
+                <conflict_resolution type="OptionField">
+                    <Default>check-with-dhcid</Default>
+                    <Required>Y</Required>
+                    <OptionValues>
+                        <check-with-dhcid>Check with DHCID (RFC 4703)</check-with-dhcid>
+                        <no-check-with-dhcid>No check, store DHCID</no-check-with-dhcid>
+                        <check-exists-with-dhcid>Check exists with DHCID</check-exists-with-dhcid>
+                        <no-check-without-dhcid>No check, no DHCID</no-check-without-dhcid>
+                    </OptionValues>
+                </conflict_resolution>
+            </assignment>
+        </subnet_ddns>
+        <subnet6_ddns>
+            <assignment type="ArrayField">
+                <subnet type="ModelRelationField">
+                    <Required>Y</Required>
+                    <Model>
+                        <subnets>
+                            <source>OPNsense.Kea.KeaDhcpv6</source>
+                            <items>subnets.subnet6</items>
+                            <display>subnet</display>
+                        </subnets>
+                    </Model>
+                    <ValidationMessage>Select a Kea DHCPv6 subnet.</ValidationMessage>
+                </subnet>
+                <forward_zone type="ModelRelationField">
+                    <Model>
+                        <forward_zones>
+                            <source>OPNsense.KeaDdns.KeaDdns</source>
+                            <items>forward_zones.zone</items>
+                            <display>name</display>
+                        </forward_zones>
+                    </Model>
+                </forward_zone>
+                <qualifying_suffix type="TextField">
+                    <Mask>/^([a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.)?$/u</Mask>
+                    <ValidationMessage>Enter a valid FQDN ending with a dot, or leave empty.</ValidationMessage>
+                </qualifying_suffix>
+                <send_updates type="BooleanField">
+                    <Default>1</Default>
+                    <Required>Y</Required>
+                </send_updates>
+                <update_on_renew type="BooleanField"/>
+                <replace_client_name type="OptionField">
+                    <Default>never</Default>
+                    <Required>Y</Required>
+                    <OptionValues>
+                        <never>Never</never>
+                        <always>Always</always>
+                        <when-present>When present</when-present>
+                        <when-not-present>When not present</when-not-present>
+                    </OptionValues>
+                </replace_client_name>
+                <conflict_resolution type="OptionField">
+                    <Default>check-with-dhcid</Default>
+                    <Required>Y</Required>
+                    <OptionValues>
+                        <check-with-dhcid>Check with DHCID (RFC 4703)</check-with-dhcid>
+                        <no-check-with-dhcid>No check, store DHCID</no-check-with-dhcid>
+                        <check-exists-with-dhcid>Check exists with DHCID</check-exists-with-dhcid>
+                        <no-check-without-dhcid>No check, no DHCID</no-check-without-dhcid>
+                    </OptionValues>
+                </conflict_resolution>
+            </assignment>
+        </subnet6_ddns>
+    </items>
+</model>

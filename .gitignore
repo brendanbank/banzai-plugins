@@ -1,8 +1,8 @@
 dist/
 .claude/
 .DS_Store
-Mk
-Keywords
-Templates
-Scripts
+/Mk
+/Keywords
+/Templates
+/Scripts
 docs/sphinx/_build/

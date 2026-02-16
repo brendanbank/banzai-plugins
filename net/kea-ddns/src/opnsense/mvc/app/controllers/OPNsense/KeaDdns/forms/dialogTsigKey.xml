@@ -1,0 +1,29 @@
+<form>
+    <field>
+        <id>tsig_key.name</id>
+        <label>Name</label>
+        <type>text</type>
+        <help>TSIG key name (must match the key name on the DNS server).</help>
+        <grid_view>
+            <sequence>1</sequence>
+        </grid_view>
+    </field>
+    <field>
+        <id>tsig_key.algorithm</id>
+        <label>Algorithm</label>
+        <type>dropdown</type>
+        <help>TSIG hash algorithm.</help>
+        <grid_view>
+            <sequence>2</sequence>
+        </grid_view>
+    </field>
+    <field>
+        <id>tsig_key.secret</id>
+        <label>Secret</label>
+        <type>text</type>
+        <help>Base64-encoded shared secret.</help>
+        <grid_view>
+            <visible>false</visible>
+        </grid_view>
+    </field>
+</form>

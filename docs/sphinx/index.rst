@@ -54,6 +54,9 @@ Plugins
    * - Hello World
      - ``os-hello_world``
      - Hello World example plugin
+   * - Kea DDNS
+     - ``os-kea-ddns``
+     - Kea DHCP Dynamic DNS support
    * - Metrics Exporter
      - ``os-metrics_exporter``
      - Prometheus exporter for OPNsense metrics

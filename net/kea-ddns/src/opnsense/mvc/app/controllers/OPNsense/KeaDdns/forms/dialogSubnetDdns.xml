@@ -1,0 +1,65 @@
+<form>
+    <field>
+        <id>assignment.subnet</id>
+        <label>Subnet</label>
+        <type>dropdown</type>
+        <help>Kea DHCPv4 subnet to enable DDNS for.</help>
+        <grid_view>
+            <sequence>1</sequence>
+        </grid_view>
+    </field>
+    <field>
+        <id>assignment.forward_zone</id>
+        <label>Forward zone</label>
+        <type>dropdown</type>
+        <help>Forward DNS zone for this subnet.</help>
+        <grid_view>
+            <visible>false</visible>
+        </grid_view>
+    </field>
+    <field>
+        <id>assignment.qualifying_suffix</id>
+        <label>Qualifying suffix</label>
+        <type>text</type>
+        <help>FQDN suffix appended to hostnames (e.g. casa.dyn.example.com.). Must end with a dot.</help>
+        <grid_view>
+            <sequence>2</sequence>
+        </grid_view>
+    </field>
+    <field>
+        <id>assignment.send_updates</id>
+        <label>Send updates</label>
+        <type>checkbox</type>
+        <help>Enable sending DDNS updates for this subnet.</help>
+        <grid_view>
+            <sequence>3</sequence>
+        </grid_view>
+    </field>
+    <field>
+        <id>assignment.update_on_renew</id>
+        <label>Update on renew</label>
+        <type>checkbox</type>
+        <help>Send DNS updates when leases are renewed.</help>
+        <grid_view>
+            <visible>false</visible>
+        </grid_view>
+    </field>
+    <field>
+        <id>assignment.replace_client_name</id>
+        <label>Replace client name</label>
+        <type>dropdown</type>
+        <help>Controls whether Kea replaces the client-sent hostname. 'Always' forces use of the qualifying suffix.</help>
+        <grid_view>
+            <visible>false</visible>
+        </grid_view>
+    </field>
+    <field>
+        <id>assignment.conflict_resolution</id>
+        <label>Conflict resolution</label>
+        <type>dropdown</type>
+        <help>How to resolve DNS conflicts using DHCID records.</help>
+        <grid_view>
+            <visible>false</visible>
+        </grid_view>
+    </field>
+</form>

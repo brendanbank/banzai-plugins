@@ -1,0 +1,69 @@
+# Register plugin with firmware (needed for pkg install outside of the UI)
+REGISTER="/usr/local/opnsense/scripts/firmware/register.php"
+VERSION_INFO="/usr/local/opnsense/version/kea-ddns"
+if [ -f "$REGISTER" ] && [ -f "$VERSION_INFO" ]; then
+    PLUGIN_ID=$(sed -n 's/.*"product_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$VERSION_INFO")
+    if [ -n "$PLUGIN_ID" ]; then
+        $REGISTER install "$PLUGIN_ID"
+    fi
+fi
+
+# Add banzai-plugins pkg repo with signature verification
+REPO_CONF="/usr/local/etc/pkg/repos/banzai-plugins.conf"
+if [ ! -f "$REPO_CONF" ]; then
+    SERIES=$(opnsense-version -a 2>/dev/null || echo "26.1")
+    cat > "$REPO_CONF" <<REPOEOF
+banzai-plugins: {
+  url: "https://brendanbank.github.io/banzai-plugins/\${ABI}/${SERIES}/repo",
+  signature_type: "fingerprints",
+  fingerprints: "/usr/local/etc/pkg/fingerprints/banzai-plugins",
+  enabled: yes
+}
+REPOEOF
+    pkg update -f -r banzai-plugins || true
+fi
+
+KEA_INC="/usr/local/etc/inc/plugins.inc.d/kea.inc"
+VERSION_FILE="/usr/local/opnsense/version/core"
+PATCH_DIR="/usr/local/opnsense/data/kea-ddns/patches"
+
+# detect OPNsense series
+SERIES=""
+if [ -f "$VERSION_FILE" ]; then
+    SERIES=$(sed -n 's/.*"product_series"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$VERSION_FILE")
+fi
+
+if [ -z "$SERIES" ]; then
+    echo "WARNING: Could not detect OPNsense series from $VERSION_FILE"
+    exit 0
+fi
+
+PATCH="$PATCH_DIR/$SERIES.patch"
+
+if [ ! -f "$PATCH" ]; then
+    echo "WARNING: No patch file for OPNsense series $SERIES ($PATCH not found)"
+    exit 0
+fi
+
+if ! grep -q 'kea_ddns_generate' "$KEA_INC" 2>/dev/null; then
+    echo "Testing kea-ddns core hooks patch for OPNsense $SERIES..."
+    if cd /usr/local && patch --dry-run --forward --strip=1 < "$PATCH" >/dev/null 2>&1; then
+        echo "Applying kea-ddns core hooks patch..."
+        patch --forward --strip=1 < "$PATCH" || \
+            echo "WARNING: Core patch failed unexpectedly."
+    else
+        echo "WARNING: Core patch does not apply cleanly to this system."
+        echo "         Apply manually: cd /usr/local && patch -p1 < $PATCH"
+        exit 0
+    fi
+fi
+
+# Only reconfigure Kea if core patches are applied
+if grep -q 'kea_ddns_generate' "$KEA_INC" 2>/dev/null; then
+    # Restart configd to pick up patched kea.inc and new kea_ddns.inc
+    /usr/local/etc/rc.d/configd restart
+
+    # Reconfigure and restart Kea to apply DDNS configuration
+    configctl kea reconfigure >/dev/null 2>&1 || :
+    configctl kea restart >/dev/null 2>&1 || :
+fi

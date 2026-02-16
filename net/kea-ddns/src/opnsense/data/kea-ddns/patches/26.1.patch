@@ -1,0 +1,78 @@
+--- a/etc/inc/plugins.inc.d/kea.inc
++++ b/etc/inc/plugins.inc.d/kea.inc
+@@ -160,6 +160,20 @@ function kea_configure_do($verbose = false)
+             $keaDhcpv6->generateConfig();
+         }
+         (new \OPNsense\Kea\KeaCtrlAgent())->generateConfig();
++        /* let plugins generate supplementary configs (e.g. kea-dhcp-ddns.conf) */
++        $ddnsResults = plugins_run('kea_ddns_generate');
++        $ddnsEnabled = !empty($ddnsResults);
++        /* enable/disable DDNS daemon in keactrl.conf */
++        $keactrl = '/usr/local/etc/kea/keactrl.conf';
++        $keactrlContent = @file_get_contents($keactrl);
++        if ($keactrlContent !== false) {
++            $keactrlContent = preg_replace(
++                '/^dhcp_ddns=.*$/m',
++                'dhcp_ddns=' . ($ddnsEnabled ? 'yes' : 'no'),
++                $keactrlContent
++            );
++            @file_put_contents($keactrl, $keactrlContent);
++        }
+         if ($keaDhcpv6->isEnabled()) {
+             mwexecfb(
+                 '/usr/local/opnsense/scripts/kea/kea_prefix_watcher.py %s',
+@@ -175,7 +189,7 @@ function kea_configure_do($verbose = false)
+ function kea_syslog()
+ {
+     $logfacilities = [];
+-    $logfacilities['kea'] = ['facility' => ['kea-dhcp4', 'kea-dhcp6', 'kea-ctrl-agent']];
++    $logfacilities['kea'] = ['facility' => ['kea-dhcp4', 'kea-dhcp6', 'kea-ctrl-agent', 'kea-dhcp-ddns']];
+     return $logfacilities;
+ }
+
+--- a/opnsense/mvc/app/models/OPNsense/Kea/KeaDhcpv4.php
++++ b/opnsense/mvc/app/models/OPNsense/Kea/KeaDhcpv4.php
+@@ -292,6 +292,20 @@ class KeaDhcpv4 extends BaseModel
+                 $cnf['Dhcp4']['hooks-libraries'][] = $record;
+             }
+         }
++        /* allow plugins to overlay config (e.g. DDNS parameters) */
++        foreach (plugins_run('kea_dhcpv4_config') as $overlay) {
++            if (isset($overlay['global'])) {
++                $cnf['Dhcp4'] = array_merge($cnf['Dhcp4'], $overlay['global']);
++            }
++            if (isset($overlay['subnets'])) {
++                foreach ($cnf['Dhcp4']['subnet4'] as &$subnet) {
++                    if (isset($overlay['subnets'][$subnet['subnet']])) {
++                        $subnet = array_merge($subnet, $overlay['subnets'][$subnet['subnet']]);
++                    }
++                }
++                unset($subnet);
++            }
++        }
+         File::file_put_contents($target, json_encode($cnf, JSON_PRETTY_PRINT), 0600);
+     }
+ }
+--- a/opnsense/mvc/app/models/OPNsense/Kea/KeaDhcpv6.php
++++ b/opnsense/mvc/app/models/OPNsense/Kea/KeaDhcpv6.php
+@@ -323,6 +323,20 @@ class KeaDhcpv6 extends BaseModel
+                 $cnf['Dhcp6']['hooks-libraries'][] = $record;
+             }
+         }
++        /* allow plugins to overlay config (e.g. DDNS parameters) */
++        foreach (plugins_run('kea_dhcpv6_config') as $overlay) {
++            if (isset($overlay['global'])) {
++                $cnf['Dhcp6'] = array_merge($cnf['Dhcp6'], $overlay['global']);
++            }
++            if (isset($overlay['subnets'])) {
++                foreach ($cnf['Dhcp6']['subnet6'] as &$subnet) {
++                    if (isset($overlay['subnets'][$subnet['subnet']])) {
++                        $subnet = array_merge($subnet, $overlay['subnets'][$subnet['subnet']]);
++                    }
++                }
++                unset($subnet);
++            }
++        }
+         File::file_put_contents($target, json_encode($cnf, JSON_PRETTY_PRINT), 0600);
+     }
+ }

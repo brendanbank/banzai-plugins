@@ -8,6 +8,7 @@ Supported release: OPNsense 26.1
    :caption: Plugins
 
    hello_world
+   kea_ddns
    metrics_exporter
 
 Installation

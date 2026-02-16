@@ -1,0 +1,38 @@
+<form>
+    <field>
+        <id>zone.name</id>
+        <label>Zone name</label>
+        <type>text</type>
+        <help>Reverse DNS zone (e.g. 10.in-addr.arpa).</help>
+        <grid_view>
+            <sequence>1</sequence>
+        </grid_view>
+    </field>
+    <field>
+        <id>zone.server</id>
+        <label>DNS server</label>
+        <type>text</type>
+        <help>IP address of the DNS server to send updates to.</help>
+        <grid_view>
+            <sequence>2</sequence>
+        </grid_view>
+    </field>
+    <field>
+        <id>zone.port</id>
+        <label>Port</label>
+        <type>text</type>
+        <help>DNS server port (default: 53).</help>
+        <grid_view>
+            <sequence>3</sequence>
+        </grid_view>
+    </field>
+    <field>
+        <id>zone.tsig_key</id>
+        <label>TSIG key</label>
+        <type>dropdown</type>
+        <help>TSIG key for authenticating DNS updates.</help>
+        <grid_view>
+            <visible>false</visible>
+        </grid_view>
+    </field>
+</form>

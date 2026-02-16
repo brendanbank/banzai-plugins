@@ -1,0 +1,967 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kea DDNS &mdash; banzai-plugins  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/tabs.css?v=a5c4661c" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=7f41d439"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../_static/tabs.js?v=3030b3cb"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Metrics Exporter" href="metrics_exporter.html" />
+    <link rel="prev" title="Hello World" href="hello_world.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            banzai-plugins
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Plugin Releases</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">OPNsense 26.1</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="hello_world.html">Hello World</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Kea DDNS</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#settings">Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#log-file">Log File</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#configuration-examples">Configuration examples</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#dhcpv4-ddns-with-bind">DHCPv4 DDNS with BIND</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dhcpv6-ddns">DHCPv6 DDNS</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#multiple-forward-zones">Multiple forward zones</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ddns-updates-not-appearing">DDNS updates not appearing</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#forward-updates-fail-reverse-never-attempted">Forward updates fail, reverse never attempted</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dhcpv6-clients-send-full-fqdns">DHCPv6 clients send full FQDNs</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#stale-dns-records-after-hostname-changes">Stale DNS records after hostname changes</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#how-it-works">How it works</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#patch-rollback">Patch rollback</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#uninstall">Uninstall</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#manual-rollback">Manual rollback</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#api">API</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="metrics_exporter.html">Metrics Exporter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#installation">Installation</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">banzai-plugins</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">OPNsense 26.1</a></li>
+      <li class="breadcrumb-item active">Kea DDNS</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="kea-ddns">
+<h1>Kea DDNS<a class="headerlink" href="#kea-ddns" title="Link to this heading"></a></h1>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>USE AT YOUR OWN RISK.</strong> This plugin patches core OPNsense Kea files and
+interacts directly with the <code class="docutils literal notranslate"><span class="pre">kea-dhcp-ddns</span></code> daemon. Applying this plugin
+modifies files that may be overwritten by OPNsense firmware updates. See
+<a class="reference internal" href="#kea-ddns-patch-rollback"><span class="std std-ref">Patch rollback</span></a> for instructions on how to manually reverse
+the core patch if needed.</p>
+</div>
+<nav class="contents local" id="index">
+<p class="topic-title">Index</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#prerequisites" id="id1">Prerequisites</a></p></li>
+<li><p><a class="reference internal" href="#settings" id="id2">Settings</a></p></li>
+<li><p><a class="reference internal" href="#log-file" id="id3">Log File</a></p></li>
+<li><p><a class="reference internal" href="#configuration-examples" id="id4">Configuration examples</a></p>
+<ul>
+<li><p><a class="reference internal" href="#dhcpv4-ddns-with-bind" id="id5">DHCPv4 DDNS with BIND</a></p></li>
+<li><p><a class="reference internal" href="#dhcpv6-ddns" id="id6">DHCPv6 DDNS</a></p></li>
+<li><p><a class="reference internal" href="#multiple-forward-zones" id="id7">Multiple forward zones</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#troubleshooting" id="id8">Troubleshooting</a></p>
+<ul>
+<li><p><a class="reference internal" href="#ddns-updates-not-appearing" id="id9">DDNS updates not appearing</a></p></li>
+<li><p><a class="reference internal" href="#forward-updates-fail-reverse-never-attempted" id="id10">Forward updates fail, reverse never attempted</a></p></li>
+<li><p><a class="reference internal" href="#dhcpv6-clients-send-full-fqdns" id="id11">DHCPv6 clients send full FQDNs</a></p></li>
+<li><p><a class="reference internal" href="#stale-dns-records-after-hostname-changes" id="id12">Stale DNS records after hostname changes</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#how-it-works" id="id13">How it works</a></p></li>
+<li><p><a class="reference internal" href="#patch-rollback" id="id14">Patch rollback</a></p>
+<ul>
+<li><p><a class="reference internal" href="#uninstall" id="id15">Uninstall</a></p></li>
+<li><p><a class="reference internal" href="#manual-rollback" id="id16">Manual rollback</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#api" id="id17">API</a></p></li>
+</ul>
+</nav>
+<p>The Kea DDNS plugin adds Dynamic DNS (DDNS) support for the Kea DHCP server in
+OPNsense. It manages the <code class="docutils literal notranslate"><span class="pre">kea-dhcp-ddns</span></code> daemon and injects per-subnet DDNS
+parameters into both <code class="docutils literal notranslate"><span class="pre">kea-dhcp4.conf</span></code> and <code class="docutils literal notranslate"><span class="pre">kea-dhcp6.conf</span></code> using the
+OPNsense <code class="docutils literal notranslate"><span class="pre">plugins_run()</span></code> hook mechanism.</p>
+<p>When enabled, Kea automatically creates forward (A/AAAA) and reverse (PTR) DNS
+records as DHCP leases are assigned, and removes them when leases expire.
+Updates are sent as RFC 2136 DNS UPDATE requests, optionally authenticated with
+TSIG keys (RFC 2845).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Package<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">os-kea-ddns</span></code></p>
+</dd>
+<dt class="field-even">Navigation<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="menuselection">Services ‣ Kea Dynamic DNS ‣ Settings</span></p>
+</dd>
+</dl>
+<p><strong>Key features:</strong></p>
+<ul class="simple">
+<li><p>TSIG key management (HMAC-MD5 through HMAC-SHA512)</p></li>
+<li><p>Forward and reverse DNS zone configuration</p></li>
+<li><p>Per-subnet DDNS policy for both DHCPv4 and DHCPv6</p></li>
+<li><p>Automatic overlay injection into <code class="docutils literal notranslate"><span class="pre">kea-dhcp4.conf</span></code> and <code class="docutils literal notranslate"><span class="pre">kea-dhcp6.conf</span></code></p></li>
+<li><p>DHCID conflict resolution modes (RFC 4703)</p></li>
+<li><p>Log file viewer for <code class="docutils literal notranslate"><span class="pre">kea-dhcp-ddns</span></code></p></li>
+</ul>
+<section id="prerequisites">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">Prerequisites</a><a class="headerlink" href="#prerequisites" title="Link to this heading"></a></h2>
+<p>Before configuring this plugin, ensure:</p>
+<ul>
+<li><p><strong>OPNsense 26.1</strong> (tested on 26.1.2). The plugin includes per-release core
+patches. The package auto-detects the running OPNsense series and applies the
+correct patch.</p></li>
+<li><p><strong>Kea DHCP</strong> is installed and enabled (DHCPv4 and/or DHCPv6) with at least
+one subnet configured.</p></li>
+<li><p>A <strong>DNS server</strong> (e.g. BIND, PowerDNS, Knot) that accepts RFC 2136 dynamic
+updates for your forward and reverse zones.</p></li>
+<li><p>A <strong>TSIG key</strong> shared between the DNS server and OPNsense. Generate one
+with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tsig</span><span class="o">-</span><span class="n">keygen</span> <span class="o">-</span><span class="n">a</span> <span class="n">hmac</span><span class="o">-</span><span class="n">sha256</span> <span class="n">ddns</span><span class="o">-</span><span class="n">key</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span>
+</pre></div>
+</div>
+</li>
+<li><p>For IPv4 reverse DNS: an <code class="docutils literal notranslate"><span class="pre">in-addr.arpa</span></code> zone on the DNS server
+(e.g. <code class="docutils literal notranslate"><span class="pre">168.192.in-addr.arpa</span></code>).</p></li>
+<li><p>For IPv6 reverse DNS: an <code class="docutils literal notranslate"><span class="pre">ip6.arpa</span></code> zone on the DNS server
+(e.g. <code class="docutils literal notranslate"><span class="pre">6.5.4.3.2.1.d.f.ip6.arpa</span></code> for <code class="docutils literal notranslate"><span class="pre">fd12:3456::/32</span></code>).</p></li>
+</ul>
+</section>
+<section id="settings">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">Settings</a><a class="headerlink" href="#settings" title="Link to this heading"></a></h2>
+<p>Navigate to <span class="menuselection">Services ‣ Kea Dynamic DNS ‣ Settings</span>.</p>
+<p>The interface has six tabs: Settings, TSIG Keys, Forward Zones, Reverse Zones,
+Subnet DDNS, and Subnet6 DDNS.</p>
+<div class="sphinx-tabs docutils container">
+<div aria-label="Tabbed content" class="closeable" role="tablist"><button aria-controls="panel-0-0-0" aria-selected="true" class="sphinx-tabs-tab" id="tab-0-0-0" name="0-0" role="tab" tabindex="0">Settings</button><button aria-controls="panel-0-0-1" aria-selected="false" class="sphinx-tabs-tab" id="tab-0-0-1" name="0-1" role="tab" tabindex="-1">TSIG Keys</button><button aria-controls="panel-0-0-2" aria-selected="false" class="sphinx-tabs-tab" id="tab-0-0-2" name="0-2" role="tab" tabindex="-1">Forward Zones</button><button aria-controls="panel-0-0-3" aria-selected="false" class="sphinx-tabs-tab" id="tab-0-0-3" name="0-3" role="tab" tabindex="-1">Reverse Zones</button><button aria-controls="panel-0-0-4" aria-selected="false" class="sphinx-tabs-tab" id="tab-0-0-4" name="0-4" role="tab" tabindex="-1">Subnet DDNS (DHCPv4)</button><button aria-controls="panel-0-0-5" aria-selected="false" class="sphinx-tabs-tab" id="tab-0-0-5" name="0-5" role="tab" tabindex="-1">Subnet6 DDNS (DHCPv6)</button></div><div aria-labelledby="tab-0-0-0" class="sphinx-tabs-panel" id="panel-0-0-0" name="0-0" role="tabpanel" tabindex="0"><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Option</strong></p></th>
+<th class="head"><p><strong>Description</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Enabled</strong></p></td>
+<td><p>Enable the <code class="docutils literal notranslate"><span class="pre">kea-dhcp-ddns</span></code> daemon and activate DDNS overlays for
+Kea DHCPv4 and DHCPv6.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Manual config</strong></p></td>
+<td><p>Disable automatic generation of <code class="docutils literal notranslate"><span class="pre">kea-dhcp-ddns.conf</span></code> and manage the file
+manually at <code class="docutils literal notranslate"><span class="pre">/usr/local/etc/kea/kea-dhcp-ddns.conf</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div><div aria-labelledby="tab-0-0-1" class="sphinx-tabs-panel" hidden="true" id="panel-0-0-1" name="0-1" role="tabpanel" tabindex="0"><p>TSIG keys provide authentication for DNS UPDATE requests (RFC 2845). The key name, algorithm, and
+secret must match the configuration on your DNS server.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Option</strong></p></th>
+<th class="head"><p><strong>Description</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Name</strong></p></td>
+<td><p>TSIG key name. Must match the key name on the DNS server exactly
+(e.g. <code class="docutils literal notranslate"><span class="pre">ddns-key.dyn.example.com</span></code>). May include dots and an optional
+trailing dot.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Algorithm</strong></p></td>
+<td><p>HMAC algorithm. Options: <code class="docutils literal notranslate"><span class="pre">HMAC-MD5</span></code>, <code class="docutils literal notranslate"><span class="pre">HMAC-SHA1</span></code>, <code class="docutils literal notranslate"><span class="pre">HMAC-SHA224</span></code>,
+<code class="docutils literal notranslate"><span class="pre">HMAC-SHA256</span></code> (default), <code class="docutils literal notranslate"><span class="pre">HMAC-SHA384</span></code>, <code class="docutils literal notranslate"><span class="pre">HMAC-SHA512</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Secret</strong></p></td>
+<td><p>Base64-encoded shared secret. Generate with
+<code class="docutils literal notranslate"><span class="pre">tsig-keygen</span> <span class="pre">-a</span> <span class="pre">hmac-sha256</span> <span class="pre">keyname</span></code> on your DNS server.</p></td>
+</tr>
+</tbody>
+</table>
+</div><div aria-labelledby="tab-0-0-2" class="sphinx-tabs-panel" hidden="true" id="panel-0-0-2" name="0-2" role="tabpanel" tabindex="0"><p>Forward zones define where to send DNS UPDATE requests for forward (A/AAAA) records.
+Each zone maps a DNS domain to a server and optional TSIG key.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Option</strong></p></th>
+<th class="head"><p><strong>Description</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Zone name</strong></p></td>
+<td><p>The DNS zone for forward records (e.g. <code class="docutils literal notranslate"><span class="pre">dyn.example.com</span></code>). The <code class="docutils literal notranslate"><span class="pre">kea-dhcp-ddns</span></code> daemon
+matches client FQDNs to zones by longest suffix match.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>DNS server</strong></p></td>
+<td><p>IP address of the authoritative DNS server for this zone.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Port</strong></p></td>
+<td><p>DNS server port (default: <code class="docutils literal notranslate"><span class="pre">53</span></code>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>TSIG key</strong></p></td>
+<td><p>TSIG key for authenticating updates. Select <code class="docutils literal notranslate"><span class="pre">None</span> <span class="pre">(unsecured)</span></code> to send
+unauthenticated updates.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">kea-dhcp-ddns</span></code> daemon matches each client’s FQDN to the configured forward zone by suffix.
+For example, <code class="docutils literal notranslate"><span class="pre">laptop.lan.dyn.example.com</span></code> matches zone <code class="docutils literal notranslate"><span class="pre">dyn.example.com</span></code>. If no zone
+matches, the update is silently dropped with a <code class="docutils literal notranslate"><span class="pre">DHCP_DDNS_NO_MATCH</span></code> warning in the logs.
+Ensure your qualifying suffixes and client FQDNs match a configured forward zone.</p>
+</div>
+</div><div aria-labelledby="tab-0-0-3" class="sphinx-tabs-panel" hidden="true" id="panel-0-0-3" name="0-3" role="tabpanel" tabindex="0"><p>Reverse zones define where to send DNS UPDATE requests for reverse (PTR) records.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Option</strong></p></th>
+<th class="head"><p><strong>Description</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Zone name</strong></p></td>
+<td><p>The reverse DNS zone name. For IPv4, use <code class="docutils literal notranslate"><span class="pre">in-addr.arpa</span></code> format
+(e.g. <code class="docutils literal notranslate"><span class="pre">168.192.in-addr.arpa</span></code>). For IPv6, use <code class="docutils literal notranslate"><span class="pre">ip6.arpa</span></code> nibble format
+(e.g. <code class="docutils literal notranslate"><span class="pre">6.5.4.3.2.1.d.f.ip6.arpa</span></code> for <code class="docutils literal notranslate"><span class="pre">fd12:3456::/32</span></code>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>DNS server</strong></p></td>
+<td><p>IP address of the authoritative DNS server for this zone.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Port</strong></p></td>
+<td><p>DNS server port (default: <code class="docutils literal notranslate"><span class="pre">53</span></code>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>TSIG key</strong></p></td>
+<td><p>TSIG key for authenticating updates.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>IPv6 reverse zone names use nibble format with the hex digits of the prefix reversed.
+For a <code class="docutils literal notranslate"><span class="pre">/48</span></code> prefix <code class="docutils literal notranslate"><span class="pre">fd12:3456:789a::/48</span></code>, the zone is <code class="docutils literal notranslate"><span class="pre">a.9.8.7.6.5.4.3.2.1.d.f.ip6.arpa</span></code>.
+You can compute this with: <code class="docutils literal notranslate"><span class="pre">python3</span> <span class="pre">-c</span> <span class="pre">&quot;import</span> <span class="pre">ipaddress;</span> <span class="pre">print(ipaddress.ip_network('fd12:3456:789a::/48').network_address.reverse_pointer)&quot;</span></code>
+and trim to the appropriate prefix length.</p>
+</div>
+</div><div aria-labelledby="tab-0-0-4" class="sphinx-tabs-panel" hidden="true" id="panel-0-0-4" name="0-4" role="tabpanel" tabindex="0"><p>Per-subnet DDNS assignments control which DHCPv4 subnets get dynamic DNS updates and how
+hostnames are handled.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Option</strong></p></th>
+<th class="head"><p><strong>Description</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Subnet</strong></p></td>
+<td><p>The Kea DHCPv4 subnet to enable DDNS for. Only subnets configured in
+<span class="menuselection">Services ‣ KEA DHCP ‣ KEA DHCPv4 ‣ Subnets</span> appear here.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Forward zone</strong></p></td>
+<td><p>Optional association with a forward zone (informational).</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Qualifying suffix</strong></p></td>
+<td><p>FQDN suffix appended to bare hostnames. For example, if a client sends
+hostname <code class="docutils literal notranslate"><span class="pre">laptop</span></code> and the suffix is <code class="docutils literal notranslate"><span class="pre">lan.dyn.example.com.</span></code>, the resulting
+FQDN is <code class="docutils literal notranslate"><span class="pre">laptop.lan.dyn.example.com.</span></code>. Must end with a dot.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Send updates</strong></p></td>
+<td><p>Enable sending DDNS updates for this subnet. Default: enabled.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Update on renew</strong></p></td>
+<td><p>Send DNS updates when leases are renewed, not just on initial assignment.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Replace client name</strong></p></td>
+<td><p>Controls whether Kea replaces the client-provided hostname.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Never</span></code> (default): use the hostname the client sends.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Always</span></code>: replace with a generated name (prefix + IP). Rarely desired.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">When</span> <span class="pre">present</span></code>: replace only if the client sends a hostname.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">When</span> <span class="pre">not</span> <span class="pre">present</span></code>: generate a name only if the client doesn’t send one.</p></li>
+</ul>
+</td>
+</tr>
+<tr class="row-even"><td><p><strong>Conflict resolution</strong></p></td>
+<td><p>How to handle conflicting DNS records using DHCID (RFC 4703).</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Check</span> <span class="pre">with</span> <span class="pre">DHCID</span></code> (default): strict RFC 4703 — only update if DHCID matches.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">No</span> <span class="pre">check,</span> <span class="pre">store</span> <span class="pre">DHCID</span></code>: update regardless, but still store DHCID.
+Use this when hosts have pre-existing static DNS records without DHCID.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Check</span> <span class="pre">exists</span> <span class="pre">with</span> <span class="pre">DHCID</span></code>: update only if any DHCID record exists.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">No</span> <span class="pre">check,</span> <span class="pre">no</span> <span class="pre">DHCID</span></code>: update without any DHCID handling.</p></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</div><div aria-labelledby="tab-0-0-5" class="sphinx-tabs-panel" hidden="true" id="panel-0-0-5" name="0-5" role="tabpanel" tabindex="0"><p>Per-subnet DDNS assignments for DHCPv6 subnets. The fields are identical to the DHCPv4 tab
+but reference Kea DHCPv6 subnets.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Option</strong></p></th>
+<th class="head"><p><strong>Description</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Subnet</strong></p></td>
+<td><p>The Kea DHCPv6 subnet to enable DDNS for.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Forward zone</strong></p></td>
+<td><p>Optional association with a forward zone.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Qualifying suffix</strong></p></td>
+<td><p>FQDN suffix appended to bare hostnames. Must end with a dot.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Send updates</strong></p></td>
+<td><p>Enable sending DDNS updates for this subnet.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Update on renew</strong></p></td>
+<td><p>Send DNS updates on lease renewals.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Replace client name</strong></p></td>
+<td><p>Controls hostname replacement (see DHCPv4 tab for details).</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Conflict resolution</strong></p></td>
+<td><p>DHCID conflict handling mode (see DHCPv4 tab for details).</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>DHCPv6 clients typically send their full FQDN (e.g. <code class="docutils literal notranslate"><span class="pre">laptop.example.com.</span></code>) via DHCPv6
+Option 39 (Client FQDN), unlike DHCPv4 clients which send bare hostnames. This means the
+qualifying suffix is often not appended for v6 clients. Ensure the FQDN the client sends
+matches a configured forward zone.</p>
+</div>
+<div class="admonition attention">
+<p class="admonition-title">Attention</p>
+<p>If hosts have pre-existing static A records without DHCID records (common in dual-stack
+environments), the default <code class="docutils literal notranslate"><span class="pre">Check</span> <span class="pre">with</span> <span class="pre">DHCID</span></code> conflict resolution will cause forward DDNS
+updates to fail with RCODE 8 (NXRRSET). When the forward update fails, the reverse (PTR)
+update is also aborted. Set conflict resolution to <code class="docutils literal notranslate"><span class="pre">No</span> <span class="pre">check,</span> <span class="pre">store</span> <span class="pre">DHCID</span></code> to resolve this.</p>
+</div>
+</div></div>
+</section>
+<section id="log-file">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Log File</a><a class="headerlink" href="#log-file" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">kea-dhcp-ddns</span></code> daemon logs are available at
+<span class="menuselection">Services ‣ Kea Dynamic DNS ‣ Log File</span>.</p>
+<p>Common log messages:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">DHCP_DDNS_NO_MATCH</span></code>: A client’s FQDN did not match any configured forward
+zone. Check your forward zone configuration and qualifying suffixes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DHCP_DDNS_FORWARD_ADD_OK</span></code>: Forward DNS record successfully added.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DHCP_DDNS_REVERSE_ADD_OK</span></code>: Reverse DNS record successfully added.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DHCP_DDNS_FORWARD_REPLACE_REJECTED</span></code>: DNS server rejected the update
+(check TSIG key, zone permissions, or DHCID conflicts).</p></li>
+</ul>
+</section>
+<section id="configuration-examples">
+<h2><a class="toc-backref" href="#id4" role="doc-backlink">Configuration examples</a><a class="headerlink" href="#configuration-examples" title="Link to this heading"></a></h2>
+<section id="dhcpv4-ddns-with-bind">
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">DHCPv4 DDNS with BIND</a><a class="headerlink" href="#dhcpv4-ddns-with-bind" title="Link to this heading"></a></h3>
+<p>This example configures DDNS for a DHCPv4 subnet <code class="docutils literal notranslate"><span class="pre">192.168.1.0/24</span></code> with
+updates sent to a BIND DNS server at <code class="docutils literal notranslate"><span class="pre">192.168.1.53</span></code> for the forward zone
+<code class="docutils literal notranslate"><span class="pre">dyn.example.com</span></code> and reverse zone <code class="docutils literal notranslate"><span class="pre">1.168.192.in-addr.arpa</span></code>.</p>
+<p><strong>On the DNS server</strong>, create the TSIG key and configure the zones to allow
+dynamic updates:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Generate TSIG key</span>
+<span class="n">tsig</span><span class="o">-</span><span class="n">keygen</span> <span class="o">-</span><span class="n">a</span> <span class="n">hmac</span><span class="o">-</span><span class="n">sha256</span> <span class="n">ddns</span><span class="o">-</span><span class="n">key</span><span class="o">.</span><span class="n">dyn</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span>
+
+<span class="c1"># In named.conf, add the key and allow-update for both zones:</span>
+<span class="n">key</span> <span class="s2">&quot;ddns-key.dyn.example.com&quot;</span> <span class="p">{</span>
+    <span class="n">algorithm</span> <span class="n">hmac</span><span class="o">-</span><span class="n">sha256</span><span class="p">;</span>
+    <span class="n">secret</span> <span class="s2">&quot;&lt;base64-secret&gt;&quot;</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="n">zone</span> <span class="s2">&quot;dyn.example.com&quot;</span> <span class="p">{</span>
+    <span class="nb">type</span> <span class="n">master</span><span class="p">;</span>
+    <span class="n">file</span> <span class="s2">&quot;dyn.example.com.zone&quot;</span><span class="p">;</span>
+    <span class="n">allow</span><span class="o">-</span><span class="n">update</span> <span class="p">{</span> <span class="n">key</span> <span class="n">ddns</span><span class="o">-</span><span class="n">key</span><span class="o">.</span><span class="n">dyn</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">;</span> <span class="p">};</span>
+<span class="p">};</span>
+
+<span class="n">zone</span> <span class="s2">&quot;1.168.192.in-addr.arpa&quot;</span> <span class="p">{</span>
+    <span class="nb">type</span> <span class="n">master</span><span class="p">;</span>
+    <span class="n">file</span> <span class="s2">&quot;1.168.192.in-addr.arpa.zone&quot;</span><span class="p">;</span>
+    <span class="n">allow</span><span class="o">-</span><span class="n">update</span> <span class="p">{</span> <span class="n">key</span> <span class="n">ddns</span><span class="o">-</span><span class="n">key</span><span class="o">.</span><span class="n">dyn</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">;</span> <span class="p">};</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p><strong>On OPNsense</strong>, go to <span class="menuselection">Services ‣ Kea Dynamic DNS ‣ Settings</span>
+and configure:</p>
+<div class="sphinx-tabs docutils container">
+<div aria-label="Tabbed content" class="closeable" role="tablist"><button aria-controls="panel-1-1-0" aria-selected="true" class="sphinx-tabs-tab" id="tab-1-1-0" name="1-0" role="tab" tabindex="0">Settings</button><button aria-controls="panel-1-1-1" aria-selected="false" class="sphinx-tabs-tab" id="tab-1-1-1" name="1-1" role="tab" tabindex="-1">TSIG Keys</button><button aria-controls="panel-1-1-2" aria-selected="false" class="sphinx-tabs-tab" id="tab-1-1-2" name="1-2" role="tab" tabindex="-1">Forward Zones</button><button aria-controls="panel-1-1-3" aria-selected="false" class="sphinx-tabs-tab" id="tab-1-1-3" name="1-3" role="tab" tabindex="-1">Reverse Zones</button><button aria-controls="panel-1-1-4" aria-selected="false" class="sphinx-tabs-tab" id="tab-1-1-4" name="1-4" role="tab" tabindex="-1">Subnet DDNS</button></div><div aria-labelledby="tab-1-1-0" class="sphinx-tabs-panel" id="panel-1-1-0" name="1-0" role="tabpanel" tabindex="0"><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Enabled</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">X</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div><div aria-labelledby="tab-1-1-1" class="sphinx-tabs-panel" hidden="true" id="panel-1-1-1" name="1-1" role="tabpanel" tabindex="0"><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Name</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ddns-key.dyn.example.com</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Algorithm</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">HMAC-SHA256</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Secret</strong></p></td>
+<td><p>(paste the base64 secret from <code class="docutils literal notranslate"><span class="pre">tsig-keygen</span></code> output)</p></td>
+</tr>
+</tbody>
+</table>
+<p>Press <strong>Save</strong>.</p>
+</div><div aria-labelledby="tab-1-1-2" class="sphinx-tabs-panel" hidden="true" id="panel-1-1-2" name="1-2" role="tabpanel" tabindex="0"><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Zone name</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dyn.example.com</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>DNS server</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">192.168.1.53</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Port</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">53</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>TSIG key</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ddns-key.dyn.example.com</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>Press <strong>Save</strong>.</p>
+</div><div aria-labelledby="tab-1-1-3" class="sphinx-tabs-panel" hidden="true" id="panel-1-1-3" name="1-3" role="tabpanel" tabindex="0"><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Zone name</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1.168.192.in-addr.arpa</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>DNS server</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">192.168.1.53</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Port</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">53</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>TSIG key</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ddns-key.dyn.example.com</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>Press <strong>Save</strong>.</p>
+</div><div aria-labelledby="tab-1-1-4" class="sphinx-tabs-panel" hidden="true" id="panel-1-1-4" name="1-4" role="tabpanel" tabindex="0"><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Subnet</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">192.168.1.0/24</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Qualifying suffix</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">lan.dyn.example.com.</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Send updates</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">X</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Conflict resolution</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Check</span> <span class="pre">with</span> <span class="pre">DHCID</span> <span class="pre">(RFC</span> <span class="pre">4703)</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>Press <strong>Save</strong>.</p>
+</div></div>
+<p>Press <strong>Apply</strong> to activate. The <code class="docutils literal notranslate"><span class="pre">kea-dhcp-ddns</span></code> daemon starts and Kea DHCPv4
+begins sending DDNS updates.</p>
+<p>A client named <code class="docutils literal notranslate"><span class="pre">laptop</span></code> obtaining a lease at <code class="docutils literal notranslate"><span class="pre">192.168.1.100</span></code> will get:</p>
+<ul class="simple">
+<li><p>Forward: <code class="docutils literal notranslate"><span class="pre">laptop.lan.dyn.example.com</span></code> → <code class="docutils literal notranslate"><span class="pre">192.168.1.100</span></code> (A record)</p></li>
+<li><p>Reverse: <code class="docutils literal notranslate"><span class="pre">100.1.168.192.in-addr.arpa</span></code> → <code class="docutils literal notranslate"><span class="pre">laptop.lan.dyn.example.com</span></code> (PTR record)</p></li>
+</ul>
+</section>
+<section id="dhcpv6-ddns">
+<h3><a class="toc-backref" href="#id6" role="doc-backlink">DHCPv6 DDNS</a><a class="headerlink" href="#dhcpv6-ddns" title="Link to this heading"></a></h3>
+<p>This example adds DHCPv6 DDNS for a <code class="docutils literal notranslate"><span class="pre">fd12:3456:789a:feed::/64</span></code> subnet,
+reusing the same DNS server, TSIG key, and forward zone from the DHCPv4 example
+above.</p>
+<p><strong>On the DNS server</strong>, add the IPv6 reverse zone:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">zone</span> <span class="s2">&quot;a.9.8.7.6.5.4.3.2.1.d.f.ip6.arpa&quot;</span> <span class="p">{</span>
+    <span class="nb">type</span> <span class="n">master</span><span class="p">;</span>
+    <span class="n">file</span> <span class="s2">&quot;fd12-3456-789a.ip6.arpa.zone&quot;</span><span class="p">;</span>
+    <span class="n">allow</span><span class="o">-</span><span class="n">update</span> <span class="p">{</span> <span class="n">key</span> <span class="n">ddns</span><span class="o">-</span><span class="n">key</span><span class="o">.</span><span class="n">dyn</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">;</span> <span class="p">};</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p><strong>On OPNsense</strong>, add a reverse zone and subnet6 DDNS assignment:</p>
+<div class="sphinx-tabs docutils container">
+<div aria-label="Tabbed content" class="closeable" role="tablist"><button aria-controls="panel-2-2-0" aria-selected="true" class="sphinx-tabs-tab" id="tab-2-2-0" name="2-0" role="tab" tabindex="0">Reverse Zones</button><button aria-controls="panel-2-2-1" aria-selected="false" class="sphinx-tabs-tab" id="tab-2-2-1" name="2-1" role="tab" tabindex="-1">Subnet6 DDNS</button></div><div aria-labelledby="tab-2-2-0" class="sphinx-tabs-panel" id="panel-2-2-0" name="2-0" role="tabpanel" tabindex="0"><p>Add a new reverse zone:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Zone name</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">a.9.8.7.6.5.4.3.2.1.d.f.ip6.arpa</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>DNS server</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">192.168.1.53</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Port</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">53</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>TSIG key</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ddns-key.dyn.example.com</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>Press <strong>Save</strong>.</p>
+</div><div aria-labelledby="tab-2-2-1" class="sphinx-tabs-panel" hidden="true" id="panel-2-2-1" name="2-1" role="tabpanel" tabindex="0"><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Subnet</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fd12:3456:789a:feed::/64</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Qualifying suffix</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">lan.dyn.example.com.</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Send updates</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">X</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Conflict resolution</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">No</span> <span class="pre">check,</span> <span class="pre">store</span> <span class="pre">DHCID</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>Press <strong>Save</strong>.</p>
+</div></div>
+<p>Press <strong>Apply</strong>. DHCPv6 clients on this subnet will now get AAAA and ip6.arpa
+PTR records.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>For dual-stack environments where hosts have both DHCPv4 and DHCPv6 leases,
+use <code class="docutils literal notranslate"><span class="pre">No</span> <span class="pre">check,</span> <span class="pre">store</span> <span class="pre">DHCID</span></code> for the DHCPv6 conflict resolution. DHCPv4 and
+DHCPv6 generate different DHCID records for the same hostname, so the strict
+<code class="docutils literal notranslate"><span class="pre">Check</span> <span class="pre">with</span> <span class="pre">DHCID</span></code> mode will cause v6 updates to fail if v4 already
+created a DHCID for that name.</p>
+</div>
+</section>
+<section id="multiple-forward-zones">
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">Multiple forward zones</a><a class="headerlink" href="#multiple-forward-zones" title="Link to this heading"></a></h3>
+<p>If clients on different subnets use different DNS zones, create multiple forward
+zones and set the appropriate qualifying suffix on each subnet DDNS assignment.</p>
+<p>For example, with subnets for LAN (<code class="docutils literal notranslate"><span class="pre">lan.dyn.example.com</span></code>) and corporate
+(<code class="docutils literal notranslate"><span class="pre">corp.dyn.example.com</span></code>), both under the parent zone <code class="docutils literal notranslate"><span class="pre">dyn.example.com</span></code>:</p>
+<ul class="simple">
+<li><p>Create one forward zone: <code class="docutils literal notranslate"><span class="pre">dyn.example.com</span></code> (the parent zone handles both
+subdomains).</p></li>
+<li><p>On the LAN subnet, set qualifying suffix to <code class="docutils literal notranslate"><span class="pre">lan.dyn.example.com.</span></code></p></li>
+<li><p>On the corporate subnet, set qualifying suffix to <code class="docutils literal notranslate"><span class="pre">corp.dyn.example.com.</span></code></p></li>
+</ul>
+<p>Both <code class="docutils literal notranslate"><span class="pre">laptop.lan.dyn.example.com</span></code> and <code class="docutils literal notranslate"><span class="pre">printer.corp.dyn.example.com</span></code> will
+match the <code class="docutils literal notranslate"><span class="pre">dyn.example.com</span></code> forward zone.</p>
+</section>
+</section>
+<section id="troubleshooting">
+<h2><a class="toc-backref" href="#id8" role="doc-backlink">Troubleshooting</a><a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
+<section id="ddns-updates-not-appearing">
+<h3><a class="toc-backref" href="#id9" role="doc-backlink">DDNS updates not appearing</a><a class="headerlink" href="#ddns-updates-not-appearing" title="Link to this heading"></a></h3>
+<ol class="arabic">
+<li><p>Check the <code class="docutils literal notranslate"><span class="pre">kea-dhcp-ddns</span></code> daemon log at
+<span class="menuselection">Services ‣ Kea Dynamic DNS ‣ Log File</span>.</p></li>
+<li><p>Look for <code class="docutils literal notranslate"><span class="pre">DHCP_DDNS_NO_MATCH</span></code> — this means the client’s FQDN doesn’t
+match any forward zone. Ensure the qualifying suffix produces an FQDN that is
+a subdomain of a configured forward zone.</p></li>
+<li><p>Verify the <code class="docutils literal notranslate"><span class="pre">kea-dhcp-ddns</span></code> daemon is running:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">keactrl</span> <span class="n">status</span>
+</pre></div>
+</div>
+</li>
+<li><p>Check that <code class="docutils literal notranslate"><span class="pre">dhcp_ddns=yes</span></code> in <code class="docutils literal notranslate"><span class="pre">/usr/local/etc/kea/keactrl.conf</span></code>.</p></li>
+</ol>
+</section>
+<section id="forward-updates-fail-reverse-never-attempted">
+<h3><a class="toc-backref" href="#id10" role="doc-backlink">Forward updates fail, reverse never attempted</a><a class="headerlink" href="#forward-updates-fail-reverse-never-attempted" title="Link to this heading"></a></h3>
+<p>When a forward DNS update fails, Kea aborts the entire transaction including the
+reverse update. Check the <code class="docutils literal notranslate"><span class="pre">kea-dhcp-ddns</span></code> log for the RCODE:</p>
+<ul class="simple">
+<li><p><strong>RCODE 8 (NXRRSET)</strong>: The DNS name already exists with a different DHCID or
+no DHCID at all. This happens when static DNS records exist without DHCID
+records. Change the conflict resolution to <code class="docutils literal notranslate"><span class="pre">No</span> <span class="pre">check,</span> <span class="pre">store</span> <span class="pre">DHCID</span></code>.</p></li>
+<li><p><strong>RCODE 9 (NOTAUTH)</strong>: The DNS server is not authoritative for the zone, or
+TSIG authentication failed. Verify the zone name, TSIG key name, algorithm,
+and secret match exactly.</p></li>
+<li><p><strong>RCODE 5 (REFUSED)</strong>: The DNS server refused the update. Check that
+<code class="docutils literal notranslate"><span class="pre">allow-update</span></code> is configured for the zone on the DNS server.</p></li>
+</ul>
+</section>
+<section id="dhcpv6-clients-send-full-fqdns">
+<h3><a class="toc-backref" href="#id11" role="doc-backlink">DHCPv6 clients send full FQDNs</a><a class="headerlink" href="#dhcpv6-clients-send-full-fqdns" title="Link to this heading"></a></h3>
+<p>Unlike DHCPv4 clients which typically send a bare hostname (e.g. <code class="docutils literal notranslate"><span class="pre">laptop</span></code>),
+DHCPv6 clients send their full FQDN via Option 39 (e.g.
+<code class="docutils literal notranslate"><span class="pre">laptop.example.com.</span></code>). This means:</p>
+<ul class="simple">
+<li><p>The qualifying suffix is <strong>not</strong> appended when the client already sends a
+complete FQDN.</p></li>
+<li><p>The FQDN the client sends must match a configured forward zone.</p></li>
+<li><p>If clients send FQDNs in a different domain than your DDNS forward zone, you
+may need to add that domain as an additional forward zone.</p></li>
+</ul>
+</section>
+<section id="stale-dns-records-after-hostname-changes">
+<h3><a class="toc-backref" href="#id12" role="doc-backlink">Stale DNS records after hostname changes</a><a class="headerlink" href="#stale-dns-records-after-hostname-changes" title="Link to this heading"></a></h3>
+<p>When a DHCP reservation hostname is changed, existing leases retain the old
+hostname until the client renews. To force an immediate update:</p>
+<ol class="arabic simple">
+<li><p>Delete the lease via the Kea control socket or the Leases page.</p></li>
+<li><p>Re-add the lease with the new hostname (or wait for the client to renew).</p></li>
+<li><p>Trigger a DDNS resend.</p></li>
+</ol>
+<p>The old DNS records (A/AAAA, PTR, DHCID) are not automatically cleaned up.
+Remove them manually using <code class="docutils literal notranslate"><span class="pre">nsupdate</span></code> or your DNS server’s management
+interface.</p>
+</section>
+</section>
+<section id="how-it-works">
+<h2><a class="toc-backref" href="#id13" role="doc-backlink">How it works</a><a class="headerlink" href="#how-it-works" title="Link to this heading"></a></h2>
+<p>The plugin integrates with the core Kea DHCP plugin through three
+<code class="docutils literal notranslate"><span class="pre">plugins_run()</span></code> hooks:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">kea_ddns_generate</span></code></dt><dd><p>Called during <code class="docutils literal notranslate"><span class="pre">kea_configure_do()</span></code>. Generates
+<code class="docutils literal notranslate"><span class="pre">/usr/local/etc/kea/kea-dhcp-ddns.conf</span></code> with the <code class="docutils literal notranslate"><span class="pre">kea-dhcp-ddns</span></code> daemon
+configuration (TSIG keys, forward/reverse zones, control socket). Also
+enables <code class="docutils literal notranslate"><span class="pre">dhcp_ddns=yes</span></code> in <code class="docutils literal notranslate"><span class="pre">keactrl.conf</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">kea_dhcpv4_config</span></code></dt><dd><p>Called during <code class="docutils literal notranslate"><span class="pre">KeaDhcpv4::generateConfig()</span></code>. Returns an overlay array that
+is merged into <code class="docutils literal notranslate"><span class="pre">kea-dhcp4.conf</span></code>. The overlay adds global DDNS settings
+(<code class="docutils literal notranslate"><span class="pre">dhcp-ddns</span></code> block, hostname character set) and per-subnet parameters
+(<code class="docutils literal notranslate"><span class="pre">ddns-send-updates</span></code>, <code class="docutils literal notranslate"><span class="pre">ddns-qualifying-suffix</span></code>,
+<code class="docutils literal notranslate"><span class="pre">ddns-conflict-resolution-mode</span></code>, etc.).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">kea_dhcpv6_config</span></code></dt><dd><p>Same as above, but for <code class="docutils literal notranslate"><span class="pre">KeaDhcpv6::generateConfig()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">kea-dhcp6.conf</span></code>.</p>
+</dd>
+</dl>
+<p>The <code class="docutils literal notranslate"><span class="pre">kea-dhcp-ddns</span></code> daemon listens on <code class="docutils literal notranslate"><span class="pre">127.0.0.1:53001</span></code> and receives Name
+Change Requests (NCRs) from the DHCPv4 and DHCPv6 daemons over a local
+connection. It then translates these into RFC 2136 DNS UPDATE requests sent to
+the configured DNS servers.</p>
+</section>
+<section id="patch-rollback">
+<span id="kea-ddns-patch-rollback"></span><h2><a class="toc-backref" href="#id14" role="doc-backlink">Patch rollback</a><a class="headerlink" href="#patch-rollback" title="Link to this heading"></a></h2>
+<p>This plugin patches three core OPNsense Kea files to add <code class="docutils literal notranslate"><span class="pre">plugins_run()</span></code>
+hooks. If you need to remove the plugin and restore the original files,
+uninstall the package or follow the manual steps below.</p>
+<section id="uninstall">
+<h3><a class="toc-backref" href="#id15" role="doc-backlink">Uninstall</a><a class="headerlink" href="#uninstall" title="Link to this heading"></a></h3>
+<p>Remove the package using <code class="docutils literal notranslate"><span class="pre">pkg</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pkg</span> <span class="n">remove</span> <span class="n">os</span><span class="o">-</span><span class="n">kea</span><span class="o">-</span><span class="n">ddns</span>
+</pre></div>
+</div>
+<p>This removes all plugin files and reverses the core patch.</p>
+</section>
+<section id="manual-rollback">
+<h3><a class="toc-backref" href="#id16" role="doc-backlink">Manual rollback</a><a class="headerlink" href="#manual-rollback" title="Link to this heading"></a></h3>
+<p>If <code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">remove</span></code> does not cleanly reverse the patch, manually remove the
+patched hooks from these three files:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">/usr/local/etc/inc/plugins.inc.d/kea.inc</span></code> — remove the
+<code class="docutils literal notranslate"><span class="pre">plugins_run('kea_ddns_generate')</span></code> call and the <code class="docutils literal notranslate"><span class="pre">keactrl.conf</span></code> DDNS lines
+added by the patch.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/usr/local/opnsense/mvc/app/models/OPNsense/Kea/KeaDhcpv4.php</span></code> — remove
+the <code class="docutils literal notranslate"><span class="pre">plugins_run('kea_dhcpv4_config')</span></code> overlay block before
+<code class="docutils literal notranslate"><span class="pre">File::file_put_contents()</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/usr/local/opnsense/mvc/app/models/OPNsense/Kea/KeaDhcpv6.php</span></code> — remove
+the <code class="docutils literal notranslate"><span class="pre">plugins_run('kea_dhcpv6_config')</span></code> overlay block before
+<code class="docutils literal notranslate"><span class="pre">File::file_put_contents()</span></code>.</p></li>
+</ol>
+<p>Then remove the plugin files:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rm</span> <span class="o">-</span><span class="n">f</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">inc</span><span class="o">/</span><span class="n">plugins</span><span class="o">.</span><span class="n">inc</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="n">kea_ddns</span><span class="o">.</span><span class="n">inc</span>
+<span class="n">rm</span> <span class="o">-</span><span class="n">rf</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">opnsense</span><span class="o">/</span><span class="n">mvc</span><span class="o">/</span><span class="n">app</span><span class="o">/</span><span class="n">controllers</span><span class="o">/</span><span class="n">OPNsense</span><span class="o">/</span><span class="n">KeaDdns</span>
+<span class="n">rm</span> <span class="o">-</span><span class="n">rf</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">opnsense</span><span class="o">/</span><span class="n">mvc</span><span class="o">/</span><span class="n">app</span><span class="o">/</span><span class="n">models</span><span class="o">/</span><span class="n">OPNsense</span><span class="o">/</span><span class="n">KeaDdns</span>
+<span class="n">rm</span> <span class="o">-</span><span class="n">rf</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">opnsense</span><span class="o">/</span><span class="n">mvc</span><span class="o">/</span><span class="n">app</span><span class="o">/</span><span class="n">views</span><span class="o">/</span><span class="n">OPNsense</span><span class="o">/</span><span class="n">KeaDdns</span>
+<span class="n">rm</span> <span class="o">-</span><span class="n">rf</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">opnsense</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">kea</span><span class="o">-</span><span class="n">ddns</span>
+</pre></div>
+</div>
+<p>Finally, restart Kea:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">configctl</span> <span class="n">kea</span> <span class="n">restart</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>OPNsense firmware updates may overwrite the patched core files, effectively
+reverting the patch. After a firmware update, reinstall the package to
+reapply the hooks.</p>
+</div>
+</section>
+</section>
+<section id="api">
+<h2><a class="toc-backref" href="#id17" role="doc-backlink">API</a><a class="headerlink" href="#api" title="Link to this heading"></a></h2>
+<p>All configuration is available via the REST API under
+<code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/</span></code>.</p>
+<div class="sphinx-tabs docutils container">
+<div aria-label="Tabbed content" class="closeable" role="tablist"><button aria-controls="panel-3-3-0" aria-selected="true" class="sphinx-tabs-tab" id="tab-3-3-0" name="3-0" role="tab" tabindex="0">General</button><button aria-controls="panel-3-3-1" aria-selected="false" class="sphinx-tabs-tab" id="tab-3-3-1" name="3-1" role="tab" tabindex="-1">TSIG Keys</button><button aria-controls="panel-3-3-2" aria-selected="false" class="sphinx-tabs-tab" id="tab-3-3-2" name="3-2" role="tab" tabindex="-1">Zones</button><button aria-controls="panel-3-3-3" aria-selected="false" class="sphinx-tabs-tab" id="tab-3-3-3" name="3-3" role="tab" tabindex="-1">Subnet DDNS</button></div><div aria-labelledby="tab-3-3-0" class="sphinx-tabs-panel" id="panel-3-3-0" name="3-0" role="tabpanel" tabindex="0"><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Endpoint</strong></p></th>
+<th class="head"><p><strong>Method</strong></p></th>
+<th class="head"><p><strong>Description</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/get</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>Get general settings (enabled, manual_config)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/set</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Save general settings</p></td>
+</tr>
+</tbody>
+</table>
+</div><div aria-labelledby="tab-3-3-1" class="sphinx-tabs-panel" hidden="true" id="panel-3-3-1" name="3-1" role="tabpanel" tabindex="0"><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Endpoint</strong></p></th>
+<th class="head"><p><strong>Method</strong></p></th>
+<th class="head"><p><strong>Description</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/searchTsigKey</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>List all TSIG keys</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/getTsigKey/{uuid}</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>Get a single TSIG key</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/addTsigKey</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Create a TSIG key</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/setTsigKey/{uuid}</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Update a TSIG key</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/delTsigKey/{uuid}</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Delete a TSIG key</p></td>
+</tr>
+</tbody>
+</table>
+</div><div aria-labelledby="tab-3-3-2" class="sphinx-tabs-panel" hidden="true" id="panel-3-3-2" name="3-2" role="tabpanel" tabindex="0"><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Endpoint</strong></p></th>
+<th class="head"><p><strong>Method</strong></p></th>
+<th class="head"><p><strong>Description</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/searchForwardZone</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>List forward zones</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/getForwardZone/{uuid}</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>Get a forward zone</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/addForwardZone</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Create a forward zone</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/setForwardZone/{uuid}</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Update a forward zone</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/delForwardZone/{uuid}</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Delete a forward zone</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/searchReverseZone</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>List reverse zones</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/getReverseZone/{uuid}</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>Get a reverse zone</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/addReverseZone</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Create a reverse zone</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/setReverseZone/{uuid}</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Update a reverse zone</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/delReverseZone/{uuid}</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Delete a reverse zone</p></td>
+</tr>
+</tbody>
+</table>
+</div><div aria-labelledby="tab-3-3-3" class="sphinx-tabs-panel" hidden="true" id="panel-3-3-3" name="3-3" role="tabpanel" tabindex="0"><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Endpoint</strong></p></th>
+<th class="head"><p><strong>Method</strong></p></th>
+<th class="head"><p><strong>Description</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/searchSubnetDdns</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>List DHCPv4 subnet DDNS assignments</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/getSubnetDdns/{uuid}</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>Get a DHCPv4 DDNS assignment</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/addSubnetDdns</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Create a DHCPv4 DDNS assignment</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/setSubnetDdns/{uuid}</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Update a DHCPv4 DDNS assignment</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/delSubnetDdns/{uuid}</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Delete a DHCPv4 DDNS assignment</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/searchSubnet6Ddns</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>List DHCPv6 subnet DDNS assignments</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/getSubnet6Ddns/{uuid}</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>Get a DHCPv6 DDNS assignment</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/addSubnet6Ddns</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Create a DHCPv6 DDNS assignment</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/setSubnet6Ddns/{uuid}</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Update a DHCPv6 DDNS assignment</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/api/keaddns/general/delSubnet6Ddns/{uuid}</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Delete a DHCPv6 DDNS assignment</p></td>
+</tr>
+</tbody>
+</table>
+</div></div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="hello_world.html" class="btn btn-neutral float-left" title="Hello World" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="metrics_exporter.html" class="btn btn-neutral float-right" title="Metrics Exporter" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Brendan Bank. Licensed under the BSD 2-Clause License.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

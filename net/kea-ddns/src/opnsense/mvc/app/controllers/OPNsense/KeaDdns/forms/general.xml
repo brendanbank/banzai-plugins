@@ -1,0 +1,19 @@
+<form>
+    <field>
+        <type>header</type>
+        <label>Service</label>
+    </field>
+    <field>
+        <id>keaddns.general.enabled</id>
+        <label>Enabled</label>
+        <type>checkbox</type>
+        <help>Enable the Kea DHCP-DDNS service.</help>
+    </field>
+    <field>
+        <id>keaddns.general.manual_config</id>
+        <label>Manual config</label>
+        <type>checkbox</type>
+        <advanced>true</advanced>
+        <help>Disable kea-dhcp-ddns.conf generation and manage the file manually.</help>
+    </field>
+</form>

@@ -1,0 +1,10 @@
+<acl>
+    <page-services-kea-ddns>
+        <name>Services: Kea DDNS</name>
+        <patterns>
+            <pattern>ui/keaddns/*</pattern>
+            <pattern>api/keaddns/*</pattern>
+            <pattern>ui/diagnostics/log/core/keaddns</pattern>
+        </patterns>
+    </page-services-kea-ddns>
+</acl>

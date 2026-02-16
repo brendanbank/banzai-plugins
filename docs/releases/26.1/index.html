@@ -46,6 +46,7 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">OPNsense 26.1</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="hello_world.html">Hello World</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kea_ddns.html">Kea DDNS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="metrics_exporter.html">Metrics Exporter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#trust-the-repository-signing-key">1. Trust the repository signing key</a></li>
@@ -89,6 +90,32 @@
 <li class="toctree-l1"><a class="reference internal" href="hello_world.html">Hello World</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="hello_world.html#settings">Settings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="hello_world.html#api-endpoints">API Endpoints</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kea_ddns.html">Kea DDNS</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kea_ddns.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kea_ddns.html#settings">Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kea_ddns.html#log-file">Log File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kea_ddns.html#configuration-examples">Configuration examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#dhcpv4-ddns-with-bind">DHCPv4 DDNS with BIND</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#dhcpv6-ddns">DHCPv6 DDNS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#multiple-forward-zones">Multiple forward zones</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kea_ddns.html#troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#ddns-updates-not-appearing">DDNS updates not appearing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#forward-updates-fail-reverse-never-attempted">Forward updates fail, reverse never attempted</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#dhcpv6-clients-send-full-fqdns">DHCPv6 clients send full FQDNs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#stale-dns-records-after-hostname-changes">Stale DNS records after hostname changes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kea_ddns.html#how-it-works">How it works</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kea_ddns.html#patch-rollback">Patch rollback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#uninstall">Uninstall</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#manual-rollback">Manual rollback</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kea_ddns.html#api">API</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="metrics_exporter.html">Metrics Exporter</a><ul>

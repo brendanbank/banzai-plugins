@@ -1,0 +1,8 @@
+<menu>
+    <Services>
+        <KeaDdns VisibleName="Kea Dynamic DNS" cssClass="fa fa-exchange fa-fw">
+            <Settings order="10" VisibleName="Settings" url="/ui/keaddns/general/index"/>
+            <LogFile order="100" VisibleName="Log File" url="/ui/diagnostics/log/core/keaddns"/>
+        </KeaDdns>
+    </Services>
+</menu>
