@@ -1,0 +1,45 @@
+Prometheus exporter for OPNsense-specific metrics.
+
+Runs a daemon that collects OPNsense-specific metrics (gateways, pf firewall,
+Unbound DNS) and writes them in Prometheus format to the node_exporter
+textfile collector directory.
+
+WWW: https://github.com/brendanbank/opnsense-metrics-exporter
+
+Changelog
+---------
+
+1.4
+
+* Remove plugins fork dependency; use sparse checkout for build infrastructure
+* Fix pidfile permissions for service status reporting
+* Add pkg hook scripts for automatic plugin registration
+* Add GitHub Pages pkg repo for firmware plugin info
+
+1.3
+
+* Run daemon as unprivileged nobody user (daemon -u nobody)
+* Rewrite GatewayCollector to use configd Backend instead of PHP gateway API
+* Replace config.inc with minimal autoloader to avoid config.xml dependency
+* Fix .prom file ownership on upgrade from versions that ran as root
+
+1.2
+
+* Build non-devel packages
+* Translate gateway status to human-readable labels
+* Fix stale gateway config in long-running daemon
+
+1.1
+
+* Modular collector architecture with auto-discovery
+* Add PF firewall collector (state table, counters)
+* Add Unbound DNS collector (queries, cache, recursion, DNSSEC)
+* Simplify status page to show raw Prometheus metrics
+* Settings page with per-collector enable/disable toggles
+
+1.0
+
+* Initial release with gateway metrics collector
+* Gateway status, latency, packet loss, RTT standard deviation
+* Configurable polling interval and output directory
+* Web UI with settings, status, and log pages

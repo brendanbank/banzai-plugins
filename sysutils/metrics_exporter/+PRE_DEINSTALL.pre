@@ -1,0 +1,9 @@
+# Deregister plugin from firmware
+REGISTER="/usr/local/opnsense/scripts/firmware/register.php"
+VERSION_INFO="/usr/local/opnsense/version/metrics_exporter"
+if [ -f "$REGISTER" ] && [ -f "$VERSION_INFO" ]; then
+    PLUGIN_ID=$(sed -n 's/.*"product_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$VERSION_INFO")
+    if [ -n "$PLUGIN_ID" ]; then
+        $REGISTER remove "$PLUGIN_ID"
+    fi
+fi

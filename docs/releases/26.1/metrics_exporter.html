@@ -1,0 +1,363 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Metrics Exporter &mdash; banzai-plugins  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=7f41d439"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="prev" title="Hello World" href="hello_world.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            banzai-plugins
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Plugin Releases</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">OPNsense 26.1</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="hello_world.html">Hello World</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Metrics Exporter</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#settings">Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#collectors">Collectors</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#gateway">Gateway</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pf-firewall">PF Firewall</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#unbound-dns">Unbound DNS</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#installation">Installation</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">banzai-plugins</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">OPNsense 26.1</a></li>
+      <li class="breadcrumb-item active">Metrics Exporter</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="metrics-exporter">
+<h1>Metrics Exporter<a class="headerlink" href="#metrics-exporter" title="Link to this heading"></a></h1>
+<p>Prometheus exporter for OPNsense-specific metrics. Runs a daemon that collects
+gateway, firewall, and DNS resolver metrics at a configurable interval and
+writes them in Prometheus exposition format to the <code class="docutils literal notranslate"><span class="pre">node_exporter</span></code> textfile
+collector directory.</p>
+<p>Requires the <code class="docutils literal notranslate"><span class="pre">os-node_exporter</span></code> plugin.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Package<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">os-metrics_exporter</span></code></p>
+</dd>
+<dt class="field-even">Navigation<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="menuselection">Services ‣ Metrics Exporter ‣ Settings</span></p>
+</dd>
+</dl>
+<section id="settings">
+<h2>Settings<a class="headerlink" href="#settings" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 60.0%" />
+<col style="width: 20.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Setting</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Default</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Enabled</p></td>
+<td><p>Enable the Metrics Exporter service.</p></td>
+<td><p>On</p></td>
+</tr>
+<tr class="row-odd"><td><p>Interval</p></td>
+<td><p>Collection interval in seconds (5–300).</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">15</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Output Directory</p></td>
+<td><p>Directory for <code class="docutils literal notranslate"><span class="pre">.prom</span></code> files (must be absolute, ending in <code class="docutils literal notranslate"><span class="pre">/</span></code>).</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/var/tmp/node_exporter/</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Collectors</p></td>
+<td><p>Per-collector enable/disable toggles.</p></td>
+<td><p>All enabled</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="collectors">
+<h2>Collectors<a class="headerlink" href="#collectors" title="Link to this heading"></a></h2>
+<section id="gateway">
+<h3>Gateway<a class="headerlink" href="#gateway" title="Link to this heading"></a></h3>
+<p>Monitors gateway status, latency, and packet loss via the OPNsense configd
+backend.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 40.0%" />
+<col style="width: 10.0%" />
+<col style="width: 50.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Metric</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_gateway_status</span></code></p></td>
+<td><p>gauge</p></td>
+<td><p>Gateway status (0=down, 1=up, 2=loss, 3=delay, 4=delay+loss, 5=unknown).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_gateway_delay_seconds</span></code></p></td>
+<td><p>gauge</p></td>
+<td><p>Gateway round-trip time in seconds.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_gateway_stddev_seconds</span></code></p></td>
+<td><p>gauge</p></td>
+<td><p>Gateway RTT standard deviation in seconds.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_gateway_loss_ratio</span></code></p></td>
+<td><p>gauge</p></td>
+<td><p>Gateway packet loss ratio (0.0–1.0).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_gateway_info</span></code></p></td>
+<td><p>gauge</p></td>
+<td><p>Informational metric with <code class="docutils literal notranslate"><span class="pre">status</span></code> and <code class="docutils literal notranslate"><span class="pre">monitor</span></code> labels.</p></td>
+</tr>
+</tbody>
+</table>
+<p>All gateway metrics carry <code class="docutils literal notranslate"><span class="pre">name</span></code> and <code class="docutils literal notranslate"><span class="pre">description</span></code> labels.</p>
+</section>
+<section id="pf-firewall">
+<h3>PF Firewall<a class="headerlink" href="#pf-firewall" title="Link to this heading"></a></h3>
+<p>Collects PF firewall state table and counter statistics.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 40.0%" />
+<col style="width: 10.0%" />
+<col style="width: 50.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Metric</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_pf_states</span></code></p></td>
+<td><p>gauge</p></td>
+<td><p>Current number of PF state table entries.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_pf_states_limit</span></code></p></td>
+<td><p>gauge</p></td>
+<td><p>Hard limit on PF state table entries.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_pf_state_searches_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>Total PF state table searches.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_pf_state_inserts_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>Total PF state table inserts.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_pf_state_removals_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>Total PF state table removals.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_pf_counter_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>PF counter by type (<code class="docutils literal notranslate"><span class="pre">name</span></code> label).</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="unbound-dns">
+<h3>Unbound DNS<a class="headerlink" href="#unbound-dns" title="Link to this heading"></a></h3>
+<p>Collects Unbound DNS resolver statistics including query counts, cache
+performance, memory usage, and DNSSEC validation.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 45.0%" />
+<col style="width: 10.0%" />
+<col style="width: 45.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Metric</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_queries_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>Total DNS queries received.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_cache_hits_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>Total cache hits.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_cache_misses_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>Total cache misses.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_prefetch_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>Total prefetch actions.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_recursive_replies_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>Total recursive replies.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_answer_rcode_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>DNS answers by <code class="docutils literal notranslate"><span class="pre">rcode</span></code> label.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_query_type_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>DNS queries by <code class="docutils literal notranslate"><span class="pre">type</span></code> label.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_query_opcode_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>DNS queries by <code class="docutils literal notranslate"><span class="pre">opcode</span></code> label.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_memory_bytes</span></code></p></td>
+<td><p>gauge</p></td>
+<td><p>Memory usage in bytes (<code class="docutils literal notranslate"><span class="pre">cache</span></code>, <code class="docutils literal notranslate"><span class="pre">module</span></code>, or <code class="docutils literal notranslate"><span class="pre">type</span></code> label).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_requestlist_avg</span></code></p></td>
+<td><p>gauge</p></td>
+<td><p>Average request list size.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_requestlist_max</span></code></p></td>
+<td><p>gauge</p></td>
+<td><p>Maximum request list size.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_requestlist_overwritten_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>Overwritten request list entries.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_requestlist_exceeded_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>Exceeded request list entries.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_requestlist_current</span></code></p></td>
+<td><p>gauge</p></td>
+<td><p>Current request list size.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_recursion_time_avg_seconds</span></code></p></td>
+<td><p>gauge</p></td>
+<td><p>Average recursion time in seconds.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_recursion_time_median_seconds</span></code></p></td>
+<td><p>gauge</p></td>
+<td><p>Median recursion time in seconds.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_tcp_usage</span></code></p></td>
+<td><p>gauge</p></td>
+<td><p>Current TCP buffer usage.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_answer_secure_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>DNSSEC secure answers.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_answer_bogus_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>DNSSEC bogus answers.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_rrset_bogus_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>DNSSEC bogus RRsets.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_unwanted_queries_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>Total unwanted queries.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opnsense_unbound_unwanted_replies_total</span></code></p></td>
+<td><p>counter</p></td>
+<td><p>Total unwanted replies.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="hello_world.html" class="btn btn-neutral float-left" title="Hello World" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Brendan Bank. Licensed under the BSD 2-Clause License.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

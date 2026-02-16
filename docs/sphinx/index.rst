@@ -54,6 +54,9 @@ Plugins
    * - Hello World
      - ``os-hello_world``
      - Hello World example plugin
+   * - Metrics Exporter
+     - ``os-metrics_exporter``
+     - Prometheus exporter for OPNsense metrics
 
 Links
 -----

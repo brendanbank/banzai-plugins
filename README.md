@@ -19,6 +19,7 @@ Full documentation: [brendanbank.github.io/banzai-plugins](https://brendanbank.g
 | Plugin | Package | Description |
 |--------|---------|-------------|
 | `misc/hello_world` | `os-hello_world` | Hello World example plugin |
+| `sysutils/metrics_exporter` | `os-metrics_exporter` | Prometheus exporter for OPNsense metrics |
 
 ## Installation
 
