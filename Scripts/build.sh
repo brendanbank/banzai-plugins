@@ -119,7 +119,7 @@ if [ -d "${PAGES_REPO}" ]; then
         scp -q "${pkg}" "${FIREWALL}:${REMOTE_REPO_DIR}/"
     done
 
-    # Fetch signing key from 1Password and convert PKCS#8 to PKCS#1 for pkg(8)
+    # Fetch signing key from 1Password for fingerprint-based signing
     echo "    Fetching signing key from 1Password..."
     SIGNING_KEY=$(mktemp)
     SIGNING_KEY_RSA=$(mktemp)
@@ -130,11 +130,26 @@ if [ -d "${PAGES_REPO}" ]; then
     openssl rsa -in "${SIGNING_KEY}" -out "${SIGNING_KEY_RSA}" -traditional 2>/dev/null \
         || die "Failed to convert signing key to PKCS#1 format"
     scp -q "${SIGNING_KEY_RSA}" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.key"
+    scp -q "${REPO_ROOT}/Keys/repo.pub" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.pub"
     rm -f "${SIGNING_KEY}" "${SIGNING_KEY_RSA}"
 
+    # Create signing command for fingerprint-based verification
+    remote "cat > ${REMOTE_REPO_DIR}/sign.sh << 'SIGNEOF'
+#!/bin/sh
+read -t 2 sum
+[ -z \"\$sum\" ] && exit 1
+echo SIGNATURE
+echo -n \$sum | openssl dgst -sign ${REMOTE_REPO_DIR}/repo.key -sha256 -binary
+echo
+echo CERT
+cat ${REMOTE_REPO_DIR}/repo.pub
+echo END
+SIGNEOF
+chmod +x ${REMOTE_REPO_DIR}/sign.sh"
+
     echo "    Signing repo..."
-    remote "pkg repo ${REMOTE_REPO_DIR}/ rsa:${REMOTE_REPO_DIR}/repo.key"
-    remote "rm -f ${REMOTE_REPO_DIR}/repo.key"
+    remote "pkg repo ${REMOTE_REPO_DIR}/ signing_command: ${REMOTE_REPO_DIR}/sign.sh"
+    remote "rm -f ${REMOTE_REPO_DIR}/repo.key ${REMOTE_REPO_DIR}/repo.pub ${REMOTE_REPO_DIR}/sign.sh"
 
     rm -f "${PAGES_REPO}"/*.pkg
     rm -f "${PAGES_REPO}"/{meta.conf,packagesite.*,data.*,filesite.*}
