@@ -8,12 +8,14 @@ if [ -f "$REGISTER" ] && [ -f "$VERSION_INFO" ]; then
     fi
 fi
 
-# Add banzai-plugins pkg repo for UI plugin discovery
+# Add banzai-plugins pkg repo with signature verification
 REPO_CONF="/usr/local/etc/pkg/repos/banzai-plugins.conf"
 if [ ! -f "$REPO_CONF" ]; then
     cat > "$REPO_CONF" <<REPOEOF
 banzai-plugins: {
   url: "https://brendanbank.github.io/banzai-plugins/repo",
+  signature_type: "fingerprints",
+  fingerprints: "/usr/local/etc/pkg/fingerprints/banzai-plugins",
   enabled: yes
 }
 REPOEOF

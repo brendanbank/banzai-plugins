@@ -20,6 +20,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 LOCAL_DIST="${REPO_ROOT}/dist"
 PAGES_REPO="${REPO_ROOT}/docs/repo"
+OP_ITEM="banzai-plugins pkg repo signing key"
 
 # ── helpers ──────────────────────────────────────────────────────────
 
@@ -118,7 +119,18 @@ if [ -d "${PAGES_REPO}" ]; then
         scp -q "${pkg}" "${FIREWALL}:${REMOTE_REPO_DIR}/"
     done
 
-    remote "pkg repo ${REMOTE_REPO_DIR}/"
+    # Fetch signing key from 1Password
+    echo "    Fetching signing key from 1Password..."
+    SIGNING_KEY=$(mktemp)
+    trap 'rm -f "${SIGNING_KEY}"' EXIT
+    op item get "${OP_ITEM}" --fields notesPlain > "${SIGNING_KEY}" \
+        || die "Failed to fetch signing key from 1Password"
+    scp -q "${SIGNING_KEY}" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.key"
+    rm -f "${SIGNING_KEY}"
+
+    echo "    Signing repo..."
+    remote "pkg repo ${REMOTE_REPO_DIR}/ ${REMOTE_REPO_DIR}/repo.key"
+    remote "rm -f ${REMOTE_REPO_DIR}/repo.key"
 
     rm -f "${PAGES_REPO}"/*.pkg
     rm -f "${PAGES_REPO}"/{meta.conf,packagesite.*,data.*,filesite.*}
