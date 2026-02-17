@@ -21,3 +21,6 @@ banzai-plugins: {
 }
 REPOEOF
 fi
+
+# Start the service if enabled in config
+/usr/local/sbin/configctl metrics_exporter start 2>/dev/null || true

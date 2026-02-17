@@ -9,6 +9,10 @@ WWW: https://brendanbank.github.io/banzai-plugins/releases/26.1/metrics_exporter
 Changelog
 ---------
 
+1.4.1_2
+
+* Stop service on deinstall, start service on install
+
 1.4.1_1
 
 * Remove pkg update from post-install hook to avoid fingerprint errors

@@ -1,3 +1,6 @@
+# Stop the service before removing files
+/usr/local/sbin/configctl metrics_exporter stop 2>/dev/null || true
+
 # Deregister plugin from firmware
 REGISTER="/usr/local/opnsense/scripts/firmware/register.php"
 VERSION_INFO="/usr/local/opnsense/version/metrics_exporter"
