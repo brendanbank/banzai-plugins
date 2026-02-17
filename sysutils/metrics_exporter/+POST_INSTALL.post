@@ -20,5 +20,4 @@ banzai-plugins: {
   enabled: yes
 }
 REPOEOF
-    pkg update -f -r banzai-plugins || true
 fi
