@@ -2,7 +2,7 @@
 #
 # Build all OPNsense plugin packages in banzai-plugins.
 #
-# Usage: ./build.sh <hostname>
+# Usage: ./build.sh [--test] <hostname>
 #
 # The build happens on a FreeBSD/OPNsense host via SSH. Build infrastructure
 # comes from the opnsense-plugins/ submodule and is synced to the remote.
@@ -10,10 +10,19 @@
 # After building, packages are downloaded to dist/ and the GitHub Pages pkg
 # repo in docs/${ABI}/${SERIES}/repo/ is updated with signed packages.
 #
+# Options:
+#   --test    Build only; skip repo signing, docs, and GitHub Pages update.
+#
 
 set -e
 
-FIREWALL="${1:-${FIREWALL:?Usage: ./build.sh <hostname>}}"
+TEST_MODE=0
+if [ "$1" = "--test" ]; then
+    TEST_MODE=1
+    shift
+fi
+
+FIREWALL="${1:-${FIREWALL:?Usage: ./build.sh [--test] <hostname>}}"
 REMOTE_REPO="/home/brendan/src/banzai-plugins"
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 LOCAL_DIST="${REPO_ROOT}/dist"
@@ -127,6 +136,16 @@ for plugin_dir in ${PLUGIN_DIRS}; do
 
     remote "sudo rm -rf ${REMOTE_PLUGIN_DIR}/work"
 done
+
+if [ "${TEST_MODE}" -eq 1 ]; then
+    echo ""
+    echo "==> Test mode: skipping repo signing and docs"
+    echo ""
+    echo "==> Done (test build)"
+    echo "    Built packages:${BUILT_PKGS}"
+    echo "    Packages in: dist/"
+    exit 0
+fi
 
 # ── 3. Update GitHub Pages repo ─────────────────────────────────────
 
