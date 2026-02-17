@@ -9,6 +9,12 @@ WWW: https://brendanbank.github.io/banzai-plugins/releases/26.1/metrics_exporter
 Changelog
 ---------
 
+1.5
+
+* Default to disabled on fresh install (enable via UI, then Apply)
+* Stop service on deinstall
+* Remove explicit service start from post-install (follow OPNsense convention)
+
 1.4.1_2
 
 * Stop service on deinstall, start service on install

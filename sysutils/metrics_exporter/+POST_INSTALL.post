@@ -22,5 +22,12 @@ banzai-plugins: {
 REPOEOF
 fi
 
-# Start the service if enabled in config
-/usr/local/sbin/configctl metrics_exporter start 2>/dev/null || true
+# Restart the service if enabled (handles upgrades where service was running).
+# On fresh install enabled defaults to 0 — user enables via UI.
+if /usr/local/bin/php -r "
+    require_once '/usr/local/etc/inc/config.inc';
+    \$mdl = new \OPNsense\MetricsExporter\MetricsExporter();
+    exit(\$mdl->enabled->__toString() == '1' ? 0 : 1);
+" 2>/dev/null; then
+    /usr/local/sbin/configctl metrics_exporter restart 2>/dev/null || true
+fi
