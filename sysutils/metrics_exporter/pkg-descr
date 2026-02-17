@@ -9,6 +9,10 @@ WWW: https://brendanbank.github.io/banzai-plugins/releases/26.1/metrics_exporter
 Changelog
 ---------
 
+1.5_1
+
+* Improve install/deinstall output messages
+
 1.5
 
 * Default to disabled on fresh install (enable via UI, then Apply)
