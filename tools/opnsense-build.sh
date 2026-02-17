@@ -293,8 +293,9 @@ USEREOF
         --import \
         --noautoconsole \
         --serial file,path=${console_log} \
-        --graphics vnc,listen=0.0.0.0"
-    step "VM defined and started"
+        --graphics vnc,listen=0.0.0.0 \
+        --autostart"
+    step "VM defined and started (autostart enabled)"
     step "Console log: ${KVM_HOST}:${console_log}"
 
     # Wait for VM to get an IP
