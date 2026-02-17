@@ -19,6 +19,7 @@ KVM guests — all remotely via SSH from your workstation.
   - [status](#status)
   - [deploy](#deploy)
   - [series](#series)
+- [Device Configuration](#device-configuration)
 - [Workflow Examples](#workflow-examples)
 - [Architecture](#architecture)
 - [Troubleshooting](#troubleshooting)
@@ -429,6 +430,101 @@ Switch all repositories to a different OPNsense release series.
 **Note:** A series is only available when the OPNsense project has published
 the tools config and stable branches for it. For example, 26.7 won't be
 available until its release candidate phase.
+
+## Device Configuration
+
+A device config is a shell script that customizes the OPNsense VM image. It
+defines variables and hook functions that the build system calls during image
+assembly. A sample is provided at `tools/device.conf.sample`.
+
+### Creating a device config
+
+1. Copy the sample:
+   ```sh
+   cp tools/device.conf.sample MYDEVICE.conf
+   ```
+
+2. Edit the file:
+   - Set `PRODUCT_ADDITIONS` to any packages you want pre-installed
+   - Customize the `config.xml` embedded in `vm_hook()`:
+     - **Hostname and domain**
+     - **Users**: add your username, set a bcrypt password, add your SSH public
+       key (base64-encoded)
+     - **Groups**: add your user's UID as a `<member>` element in the admins
+       group
+     - **Network**: adjust interfaces and firewall rules
+     - **SSH**: enable/disable root login, password auth
+
+3. Update `opnsense-build.conf`:
+   ```sh
+   DEVICE_CONF=../../MYDEVICE.conf    # path relative to tools/ directory
+   DEVICE=MYDEVICE                     # must match the .conf filename (without extension)
+   ```
+
+4. Sync to the build server:
+   ```sh
+   ./tools/opnsense-build.sh sync-device
+   ```
+
+### Key settings in config.xml
+
+| Setting | XML path | Notes |
+|---------|----------|-------|
+| Hostname | `system/hostname` | |
+| SSH enabled | `system/ssh/enabled` | Set to `enabled` |
+| Root SSH login | `system/ssh/permitrootlogin` | `1` to allow |
+| Console login required | `system/disableconsolemenu` | `1` = require login at console |
+| Passwordless sudo | `system/sudo_allow_wheel` | `2` = NOPASSWD for wheel group |
+| User SSH key | `user/authorizedkeys` | Base64-encoded: `echo 'ssh-rsa ...' \| base64` |
+| User password | `user/password` | Bcrypt hash (`$2y$` prefix) |
+| Group members | `group/member` | One `<member>` element per UID — **not** comma-separated |
+| LAN interface | `interfaces/lan/if` | `vtnet0` for virtio (KVM/QEMU) |
+| LAN addressing | `interfaces/lan/ipaddr` | `dhcp` or a static IP |
+
+### Generating passwords and keys
+
+```sh
+# Generate a bcrypt password hash (run on any machine with PHP)
+php -r "echo password_hash('your-password', PASSWORD_BCRYPT) . \"\\n\";"
+
+# Base64-encode an SSH public key for config.xml
+cat ~/.ssh/id_ed25519.pub | base64
+
+# On macOS (no -w flag needed):
+cat ~/.ssh/id_ed25519.pub | base64
+
+# On Linux:
+cat ~/.ssh/id_ed25519.pub | base64 -w0
+```
+
+### Adding a user
+
+To add a user named `alice` with UID 2000:
+
+1. Add a `<user>` block in the `<system>` section:
+   ```xml
+   <user>
+     <uid>2000</uid>
+     <name>alice</name>
+     <disabled>0</disabled>
+     <scope>user</scope>
+     <authorizedkeys>BASE64_ENCODED_SSH_KEY</authorizedkeys>
+     <password>BCRYPT_HASH</password>
+     <shell>/bin/sh</shell>
+     <descr>Alice</descr>
+   </user>
+   ```
+
+2. Add the UID to the admins group (each UID is a separate `<member>` element):
+   ```xml
+   <group>
+     <name>admins</name>
+     <member>0</member>
+     <member>2000</member>
+   </group>
+   ```
+
+3. Update `<nextuid>` to be higher than the highest UID used.
 
 ## Workflow Examples
 

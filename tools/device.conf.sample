@@ -1,0 +1,192 @@
+# Sample OPNsense device configuration
+#
+# A device config is a shell script sourced by the OPNsense build system.
+# It customizes VM images by setting variables and defining hook functions.
+#
+# Save as <NAME>.conf in your workspace (e.g., MYDEVICE.conf), then set
+# DEVICE_CONF and DEVICE in opnsense-build.conf to point to it.
+#
+# The build system loads this file from /usr/tools/device/<NAME>.conf on
+# the build server. Use `opnsense-build.sh sync-device` to copy it there.
+#
+# Reference: https://github.com/opnsense/tools (device/ directory)
+
+# ── Variables ────────────────────────────────────────────────────────
+
+# Remove the device name suffix from image filenames.
+# Without this, images would be named OPNsense-...-MYDEVICE-amd64.qcow2
+unset PRODUCT_DEVICE
+
+# Additional packages to pre-install in the image.
+# These are installed via pkg during image assembly.
+export PRODUCT_ADDITIONS="git"
+
+# ── VM hook ──────────────────────────────────────────────────────────
+#
+# vm_hook() is called during VM image assembly. The first argument ($1)
+# is the staging directory (mounted filesystem root). Use it to:
+#   - Embed a config.xml for first-boot configuration
+#   - Write additional files into the image
+#   - Configure boot loader settings
+#
+# Common helpers available inside the hook:
+#   loader_conf_fixup $1   — apply standard loader.conf settings
+#   $CONFIG_XML            — path to config.xml relative to staging dir
+
+vm_hook()
+{
+    # Standard boot loader setup (recommended)
+    loader_conf_fixup ${1}
+
+    # Enable automatic filesystem growth on first boot
+    touch ${1}/.probe.for.growfs
+
+    # Embed config.xml with your desired OPNsense configuration.
+    # This becomes the initial configuration when the VM first boots.
+    #
+    # Tips:
+    #   - Generate a base config.xml by exporting from an existing OPNsense
+    #     install (System > Configuration > Backups > Download)
+    #   - Customize users, SSH, network, firewall rules, etc.
+    #   - User passwords: generate with `opnsense-shell` or `php -r`
+    #     using bcrypt ($2y$ prefix)
+    #   - SSH authorized_keys: base64-encode the public key
+    #     (echo 'ssh-rsa AAAA...' | base64 -w0)
+    #   - Group members: use separate <member> elements per UID
+    #     (NOT comma-separated — that silently fails)
+    #
+    cat > ${1}${CONFIG_XML} << 'XMLEOF'
+<?xml version="1.0"?>
+<opnsense>
+  <theme>opnsense</theme>
+  <sysctl>
+    <item/>
+  </sysctl>
+  <system>
+    <optimization>normal</optimization>
+    <hostname>opnsense</hostname>
+    <domain>localdomain</domain>
+    <dnsallowoverride>1</dnsallowoverride>
+    <group>
+      <gid>1999</gid>
+      <name>admins</name>
+      <scope>system</scope>
+      <description>System Administrators</description>
+      <priv>page-all</priv>
+      <member>0</member>
+      <!-- Add UIDs of additional admin users here, one per <member> tag -->
+    </group>
+    <user>
+      <uid>0</uid>
+      <name>root</name>
+      <disabled>0</disabled>
+      <scope>system</scope>
+      <!-- Base64-encoded SSH public key: echo 'ssh-rsa AAAA...' | base64 -w0 -->
+      <authorizedkeys></authorizedkeys>
+      <!-- Generate: php -r "echo password_hash('your-password', PASSWORD_BCRYPT);" -->
+      <password>$2y$10$YRVoF4SgskIsrXOvOQjGieB9XqHPRra9R7d80B3BZdbY/j21TwBfS</password>
+      <descr>System Administrator</descr>
+    </user>
+    <nextuid>2001</nextuid>
+    <nextgid>2000</nextgid>
+    <timezone>Etc/UTC</timezone>
+    <timeservers>0.opnsense.pool.ntp.org 1.opnsense.pool.ntp.org 2.opnsense.pool.ntp.org 3.opnsense.pool.ntp.org</timeservers>
+    <webgui>
+      <protocol>https</protocol>
+    </webgui>
+    <disablenatreflection>yes</disablenatreflection>
+    <usevirtualterminal>1</usevirtualterminal>
+    <bogons>
+      <interval>monthly</interval>
+    </bogons>
+    <ssh>
+      <enabled>enabled</enabled>
+      <permitrootlogin>1</permitrootlogin>
+      <passwordauth>1</passwordauth>
+      <group>admins</group>
+    </ssh>
+    <!-- Require login at console (no menu without authentication) -->
+    <disableconsolemenu>1</disableconsolemenu>
+    <!-- Passwordless sudo for wheel group (2=NOPASSWD) -->
+    <sudo_allow_wheel>2</sudo_allow_wheel>
+    <rrdbackup>-1</rrdbackup>
+    <netflowbackup>-1</netflowbackup>
+    <firmware>
+      <plugins/>
+    </firmware>
+    <serialspeed>115200</serialspeed>
+    <primaryconsole>video</primaryconsole>
+  </system>
+  <interfaces>
+    <!-- Single LAN interface on virtio NIC, DHCP -->
+    <lan>
+      <enable>1</enable>
+      <if>vtnet0</if>
+      <ipaddr>dhcp</ipaddr>
+      <ipaddrv6>dhcp6</ipaddrv6>
+    </lan>
+    <lo0>
+      <internal_dynamic>1</internal_dynamic>
+      <descr>Loopback</descr>
+      <enable>1</enable>
+      <if>lo0</if>
+      <ipaddr>127.0.0.1</ipaddr>
+      <ipaddrv6>::1</ipaddrv6>
+      <subnet>8</subnet>
+      <subnetv6>128</subnetv6>
+      <type>none</type>
+      <virtual>1</virtual>
+    </lo0>
+  </interfaces>
+  <filter>
+    <!-- Allow all traffic on LAN (dev/test only — restrict for production) -->
+    <rule>
+      <type>pass</type>
+      <ipprotocol>inet</ipprotocol>
+      <descr>Allow all on LAN</descr>
+      <interface>lan</interface>
+      <source><any/></source>
+      <destination><any/></destination>
+    </rule>
+    <rule>
+      <type>pass</type>
+      <ipprotocol>inet6</ipprotocol>
+      <descr>Allow all IPv6 on LAN</descr>
+      <interface>lan</interface>
+      <source><any/></source>
+      <destination><any/></destination>
+    </rule>
+  </filter>
+  <rrd>
+    <enable/>
+  </rrd>
+  <ntpd>
+    <prefer>0.opnsense.pool.ntp.org</prefer>
+  </ntpd>
+  <unbound>
+    <enable>1</enable>
+  </unbound>
+  <syslog>
+    <reverse/>
+  </syslog>
+  <nat>
+    <outbound>
+      <mode>disabled</mode>
+    </outbound>
+  </nat>
+</opnsense>
+XMLEOF
+
+    # Write sudoers drop-in for passwordless sudo.
+    # OPNsense regenerates sudoers from its template on boot, but
+    # sudo_allow_wheel=2 in config.xml ensures the right content.
+    # This file provides sudo access during early boot before
+    # OPNsense's template system runs.
+    mkdir -p ${1}/usr/local/etc/sudoers.d
+    cat > ${1}/usr/local/etc/sudoers.d/20-opnsense << 'SUDOEOF'
+%wheel ALL=(ALL) NOPASSWD: ALL
+%admins ALL=(ALL) NOPASSWD: ALL
+SUDOEOF
+    chmod 440 ${1}/usr/local/etc/sudoers.d/20-opnsense
+
+}
