@@ -60,6 +60,37 @@ Individual plugins have their own `PLUGIN_VERSION` in their Makefile.
 - `$internalModelName` in API controllers must match the `<id>` prefix in `forms/*.xml`
 - Model fields go at root of `<items>` (no wrapper element)
 
+## Build Server Tools (`tools/`)
+
+`tools/opnsense-build.sh` automates the OPNsense VM image build lifecycle on a
+remote FreeBSD build server via SSH. Subcommands:
+
+```sh
+./tools/opnsense-build.sh create-vm     # create FreeBSD VM on KVM host + provision it
+./tools/opnsense-build.sh provision     # provision an existing FreeBSD machine
+./tools/opnsense-build.sh bootstrap     # clone OPNsense repos, checkout branches
+./tools/opnsense-build.sh update        # pull latest code for all repos
+./tools/opnsense-build.sh sync-device   # sync BANZAI.conf to build server
+./tools/opnsense-build.sh build         # full VM image build (or: build base kernel ports ...)
+./tools/opnsense-build.sh status        # show repo state, artifacts, disk/RAM
+./tools/opnsense-build.sh deploy        # deploy image to KVM guest
+./tools/opnsense-build.sh series 26.7   # switch repos to a new release series
+```
+
+Configuration lives in `tools/opnsense-build.conf` (git-ignored, user-local).
+Copy `opnsense-build.conf.sample` to get started. Key settings: `BUILD_HOST`
+(SSH target), `SERIES` (release series), `KVM_HOST` (for VM creation).
+
+`create-vm` creates a FreeBSD VM on the KVM host with configurable resources
+(`BUILD_VM_CPUS`, `BUILD_VM_MEMORY`, `BUILD_VM_DISK`), downloads a FreeBSD
+BASIC-CLOUDINIT image, injects SSH keys and provisions via cloud-init user-data
+script, and installs git/sudo automatically. Requires `virtinst`,
+`qemu-utils`, and `genisoimage` on the KVM host.
+
+Shared helpers are in `tools/lib/common.sh` (SSH wrappers, logging, remote git
+operations). All `/usr` repos on the build server are root-owned, so git/make
+commands go through `sudo`.
+
 ## Plugin Layout
 
 ```

@@ -6,3 +6,4 @@ dist/
 /Templates
 /Scripts
 docs/sphinx/_build/
+tools/opnsense-build.conf

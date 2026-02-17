@@ -1,0 +1,80 @@
+# opnsense-build.conf — Configuration for opnsense-build.sh
+#
+# Copy this file to opnsense-build.conf (same directory) or
+# ~/.config/opnsense-build.conf and edit to match your environment.
+#
+# Override the config file location with OPNSENSE_BUILD_CONF env var.
+# Search order: $OPNSENSE_BUILD_CONF → ./opnsense-build.conf → ~/.config/opnsense-build.conf
+
+# ── Required ─────────────────────────────────────────────────────────
+
+# SSH target for the build server (hostname or user@host)
+BUILD_HOST=fbsd-build
+
+# OPNsense release series to build (e.g., 26.1, 26.7)
+SERIES=26.1
+
+# ── Build VM creation (for create-vm command) ────────────────────────
+# These settings control VM creation on the KVM host.
+
+# KVM host that manages VMs (SSH target)
+#KVM_HOST=vm.bgwlan.nl
+
+# Directory on KVM host where guest disk images live
+#KVM_GUEST_DIR=/var/vms/guests
+
+# VM name in libvirt
+#BUILD_VM_NAME=fbsd-build
+
+# VM resources
+#BUILD_VM_CPUS=4
+#BUILD_VM_MEMORY=16384     # MB
+#BUILD_VM_DISK=100         # GB
+
+# Libvirt network name on the KVM host
+#BUILD_VM_NETWORK=default
+
+# FreeBSD version for the VM image
+#FREEBSD_VERSION=14.3
+
+# SSH public key — either a key string ("ssh-rsa ...") or a file path
+#SSH_PUBKEY=~/.ssh/id_ed25519.pub
+
+# Build user to create during provisioning (added to wheel with NOPASSWD sudo)
+#BUILD_USER=brendan
+
+# ── Paths on build server ────────────────────────────────────────────
+# Defaults match OPNsense tools conventions. Uncomment to override.
+
+#REMOTE_TOOLSDIR=/usr/tools
+#REMOTE_SRCDIR=/usr/src
+#REMOTE_COREDIR=/usr/core
+#REMOTE_PLUGINSDIR=/usr/plugins
+#REMOTE_PORTSDIR=/usr/ports
+
+# ── Git remotes ──────────────────────────────────────────────────────
+# Uncomment to use mirrors or forks.
+
+#GIT_TOOLS=https://github.com/opnsense/tools.git
+#GIT_CORE=https://github.com/opnsense/core.git
+#GIT_PLUGINS=https://github.com/opnsense/plugins.git
+#GIT_SRC=https://git.FreeBSD.org/src.git
+#GIT_PORTS=https://git.FreeBSD.org/ports.git
+
+# ── Device config ────────────────────────────────────────────────────
+
+# Local path to device config (relative to this script's directory)
+#DEVICE_CONF=../../BANZAI.conf
+
+# Device name passed to make (matches the .conf filename)
+#DEVICE=BANZAI
+
+# ── VM deployment (for deploy command) ───────────────────────────────
+
+# Default guest name for deploy command
+#KVM_GUEST_NAME=opn267
+
+# ── Build options ────────────────────────────────────────────────────
+
+# VM image format (qcow2, raw, vmdk, etc.)
+#VM_FORMAT=qcow2
