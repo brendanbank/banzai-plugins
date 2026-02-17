@@ -23,7 +23,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Derive series from tag: 26.1.2 -> 26.1
 SERIES=$(echo "$TAG" | sed 's/^\([0-9]*\.[0-9]*\).*/\1/')
 
-PATCH_DIR="$REPO_ROOT/net/kea-ddns/src/opnsense/data/kea-ddns/patches"
+PATCH_DIR="$REPO_ROOT/src/opnsense/data/kea-ddns/patches"
 PATCH_FILE="$PATCH_DIR/$SERIES.patch"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
@@ -32,8 +32,10 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 
 if [ -z "$CORE_REPO" ]; then
     # Try common locations relative to this repo
-    for candidate in "$REPO_ROOT/../core" "$REPO_ROOT/../opnsense-core"; do
-        if [ -d "$candidate/.git" ]; then
+    for candidate in "$REPO_ROOT/../core" "$REPO_ROOT/../opnsense-core" \
+                     "$REPO_ROOT/../../core" "$REPO_ROOT/../../opnsense-core" \
+                     "$REPO_ROOT/../../../core" "$REPO_ROOT/../../../opnsense-core"; do
+        if [ -e "$candidate/.git" ]; then
             CORE_REPO="$candidate"
             break
         fi
@@ -42,7 +44,7 @@ if [ -z "$CORE_REPO" ]; then
 fi
 
 CORE_REPO="$(cd "$CORE_REPO" 2>/dev/null && pwd)" || die "Core repo not found at $2"
-[ -d "$CORE_REPO/.git" ] || die "$CORE_REPO is not a git repository"
+[ -e "$CORE_REPO/.git" ] || die "$CORE_REPO is not a git repository"
 
 echo "==> Generating patch for OPNsense $TAG (series $SERIES)"
 echo "    Core repo: $CORE_REPO"
