@@ -10,6 +10,10 @@ mechanism to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
 Plugin Changelog
 ================
 
+1.3.3_1
+
+* Remove pkg update from post-install hook to avoid fingerprint errors
+
 1.3.3
 
 Changed:
