@@ -18,8 +18,11 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-REPO_PUB="${REPO_ROOT}/Keys/repo.pub"
+REPO_PUB="${REPO_PUB:-${SCRIPT_DIR}/repo.pub}"
+if [ ! -f "${REPO_PUB}" ]; then
+    # Fall back to Keys/ relative to repo root (when running locally)
+    REPO_PUB="$(cd "${SCRIPT_DIR}/.." && pwd)/Keys/repo.pub"
+fi
 
 # Keygrip of the GPG signing subkey (F60F2EAA7F5ACC52) on the YubiKey
 KEYGRIP="${GPG_SIGN_KEYGRIP:-18F8114597D68C3AC976ADC0B7044E387EEB9B5F}"
@@ -36,7 +39,9 @@ INPUT=$(mktemp)
 SIG=$(mktemp)
 trap 'rm -f "${INPUT}" "${SIG}"' EXIT
 
-cat > "${INPUT}"
+# Read repo digest from stdin (pkg repo doesn't close stdin, so cat would hang)
+read -r DIGEST
+printf '%s' "${DIGEST}" > "${INPUT}"
 
 # SHA256 hash the input (uppercase hex, as gpg-agent expects)
 HASH=$(openssl dgst -sha256 -hex "${INPUT}" 2>/dev/null | awk '{print $NF}' | tr 'a-f' 'A-F')

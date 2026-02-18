@@ -9,8 +9,8 @@
 #
 # After building, packages are downloaded to dist/ and the GitHub Pages pkg
 # repo in docs/${ABI}/${SERIES}/repo/ is updated with signed packages.
-# Signing uses a YubiKey PIV key on this host (tools/sign-repo.sh) via
-# file-based request/response over the existing SSH connection.
+# Signing uses a GPG signing subkey on a YubiKey via GPG agent forwarding
+# (tools/sign-repo.sh runs on the remote, gpg-agent calls reach the local key).
 #
 # Options:
 #   --test    Build only; skip repo signing, docs, and GitHub Pages update.
@@ -28,7 +28,6 @@ FIREWALL="${1:-${FIREWALL:?Usage: ./build.sh [--test] <hostname>}}"
 REMOTE_REPO="/home/brendan/src/banzai-plugins"
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 LOCAL_DIST="${REPO_ROOT}/dist"
-SIGN_DIR="/tmp/banzai_sign"
 
 # ── helpers ──────────────────────────────────────────────────────────
 
@@ -163,56 +162,26 @@ for pkg in "${LOCAL_DIST}"/*.pkg; do
     scp -q "${pkg}" "${FIREWALL}:${REMOTE_REPO_DIR}/"
 done
 
-# Sign with YubiKey on this host: private key never leaves the device.
-# Remote sign.sh writes the hash to a request file and waits; this host
-# polls for it over the existing SSH connection, signs locally, and
-# writes the response back.  No reverse tunnel or sshd needed.
-remote "rm -rf ${SIGN_DIR} && mkdir -p ${SIGN_DIR}"
+# Sign with YubiKey GPG key via agent forwarding: the remote gpg-agent
+# socket is forwarded to the local agent (which has the YubiKey).
+scp -q "${REPO_ROOT}/tools/sign-repo.sh" "${FIREWALL}:${REMOTE_REPO_DIR}/sign-repo.sh"
+scp -q "${REPO_ROOT}/Keys/repo.pub" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.pub"
 
-remote "cat > ${REMOTE_REPO_DIR}/sign.sh << 'SIGNEOF'
-#!/bin/sh
-read -t 2 sum
-[ -z \"\$sum\" ] && exit 1
-echo \"\$sum\" > BANZAI_SIGN_DIR/request.tmp
-mv BANZAI_SIGN_DIR/request.tmp BANZAI_SIGN_DIR/request
-rm -f BANZAI_SIGN_DIR/response
-i=0
-while [ ! -f BANZAI_SIGN_DIR/response ] && [ \$i -lt 240 ]; do
-    sleep 0.5
-    i=\$((i + 1))
-done
-[ -f BANZAI_SIGN_DIR/response ] || exit 1
-cat BANZAI_SIGN_DIR/response
-rm -f BANZAI_SIGN_DIR/request BANZAI_SIGN_DIR/response
-SIGNEOF
-sed -i '' 's|BANZAI_SIGN_DIR|${SIGN_DIR}|g' ${REMOTE_REPO_DIR}/sign.sh
-chmod +x ${REMOTE_REPO_DIR}/sign.sh"
+echo "    Signing repo (GPG key on this host via agent forwarding)..."
+REMOTE_GPG_SOCK=$(remote "gpgconf --list-dirs agent-socket")
+LOCAL_GPG_EXTRA=$(gpgconf --list-dirs agent-extra-socket)
 
-echo "    Signing repo (YubiKey on this host)..."
-remote "pkg repo ${REMOTE_REPO_DIR}/ signing_command: ${REMOTE_REPO_DIR}/sign.sh" &
-PKG_REPO_PID=$!
+# Kill remote gpg-agent and remove stale socket before forwarding,
+# otherwise ssh -R fails because the socket file already exists.
+remote "gpgconf --kill gpg-agent; rm -f ${REMOTE_GPG_SOCK}"
 
-while kill -0 "${PKG_REPO_PID}" 2>/dev/null; do
-    HASH=$(remote "cat ${SIGN_DIR}/request 2>/dev/null && rm -f ${SIGN_DIR}/request" 2>/dev/null)
-    if [ -n "${HASH}" ]; then
-        RESP_FILE=$(mktemp)
-        if printf '%s' "${HASH}" | "${REPO_ROOT}/tools/sign-repo.sh" > "${RESP_FILE}"; then
-            scp -q "${RESP_FILE}" "${FIREWALL}:${SIGN_DIR}/response.tmp"
-            remote "mv ${SIGN_DIR}/response.tmp ${SIGN_DIR}/response"
-        else
-            rm -f "${RESP_FILE}"
-            kill "${PKG_REPO_PID}" 2>/dev/null || true
-            remote "rm -rf ${SIGN_DIR}"
-            die "YubiKey signing failed"
-        fi
-        rm -f "${RESP_FILE}"
-    else
-        sleep 0.5
-    fi
-done
-wait "${PKG_REPO_PID}" || die "pkg repo signing failed"
-remote "rm -rf ${SIGN_DIR} ${REMOTE_REPO_DIR}/sign.sh"
+ssh -R "${REMOTE_GPG_SOCK}:${LOCAL_GPG_EXTRA}" "${FIREWALL}" \
+    "pkg repo ${REMOTE_REPO_DIR}/ signing_command: ${REMOTE_REPO_DIR}/sign-repo.sh"
 
+# pkg repo exits 0 even when signing fails — verify the signature was created
+remote "test -f ${REMOTE_REPO_DIR}/meta.conf" || die "Repo signing failed (no meta.conf)"
+
+remote "rm -f ${REMOTE_REPO_DIR}/sign-repo.sh ${REMOTE_REPO_DIR}/repo.pub"
 rm -f "${PAGES_REPO}"/*.pkg
 rm -f "${PAGES_REPO}"/{meta.conf,packagesite.*,data.*,filesite.*}
 scp -q "${FIREWALL}:${REMOTE_REPO_DIR}/*" "${PAGES_REPO}/"
