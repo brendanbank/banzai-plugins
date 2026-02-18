@@ -2,10 +2,11 @@
 Signing FreeBSD pkg Repositories with a YubiKey
 =====================================================
 
-FreeBSD's ``pkg`` supports cryptographic signing of package repositories. Its
-signing protocol differs from standard RSA-SHA256 in ways that the documentation
-does not cover in detail. This article walks through signing a ``pkg repo`` with
-a GPG key stored on a YubiKey, including GPG agent forwarding for remote builds.
+FreeBSD's ``pkg`` supports cryptographic signing of package repositories.
+It uses its own signing protocol with a double-hash scheme and a specific
+stdin/stdout contract for signing commands. This article walks through signing a
+``pkg repo`` with a GPG key stored on a YubiKey, including GPG agent forwarding
+for remote builds.
 
 Why hardware-backed signing?
 ----------------------------
@@ -13,15 +14,19 @@ Why hardware-backed signing?
 A pkg repository signing key is a high-value target. If the private key is
 compromised, an attacker can push malicious packages to every machine that
 trusts the repo. Storing the signing key on a YubiKey means the private key
-never exists on disk -- signing operations happen on the hardware token, and
-extraction is not possible.
+never exists on disk -- signing operations happen on the hardware token, which
+is designed to prevent extraction of private keys.
 
 How pkg signing actually works
 ------------------------------
 
 Before writing any code, you need to understand what ``pkg repo`` actually does
-when it signs. **pkg uses its own signing protocol**, and the documentation doesn't spell out
-the details.
+when it signs. The
+`pkg-repo(8) <https://man.freebsd.org/cgi/man.cgi?query=pkg-repo&sektion=8>`_
+man page [1]_ documents the output format (``SIGNATURE``/``CERT``/``END``) and
+states that the signing command receives "the SHA256 of the repository catalogue
+on its stdin." However, it does not describe the double-hash verification
+scheme, the fact that stdin remains open, or how fingerprints are computed.
 
 When you run:
 
@@ -39,9 +44,10 @@ this format::
    <PEM public key>
    END
 
-The critical detail: **pkg does not close stdin** after writing the hash. This
-means ``cat`` will hang forever waiting for EOF. You must use ``read -r``
-instead.
+The critical detail: **pkg keeps stdin open** while it waits for the signing
+command's response, only closing it during cleanup [5]_. This means ``cat`` will
+deadlock waiting for EOF. The official example script [3]_ in the pkg repository
+uses ``read -t 2`` (with a 2-second timeout) to handle this.
 
 The double hash
 ~~~~~~~~~~~~~~~
@@ -61,22 +67,19 @@ DigestInfo structure.
 
 If you sign the hex string directly (without hashing it again),
 ``openssl dgst -verify`` will validate your signature -- but ``pkg`` will
-reject it. Note that ``openssl dgst -verify`` is not a valid test for pkg
-signatures -- **even OPNsense's own official repository signatures fail
-openssl dgst -verify**.
+reject it. ``openssl dgst -verify`` tests a single hash, not the double hash
+that pkg expects, so it is not a valid test for pkg signatures.
 
 The correct signature format is::
 
    RSA(PKCS#1 v1.5(DigestInfo(SHA256_OID, SHA256(hex_string))))
 
-This is confirmed by reading ``libpkg/pkgsign_ossl.c`` in the
-`freebsd/pkg <https://github.com/freebsd/pkg>`_ source. The verification
-function ``ossl_verify_cb`` calls ``pkg_checksum_fd()`` to get the hex hash,
+This is confirmed by the verification code in ``libpkg/pkgsign_ossl.c`` [4]_.
+The function ``ossl_verify_cb`` calls ``pkg_checksum_fd()`` to get the hex hash,
 then passes the 64-byte hex string directly to ``EVP_PKEY_verify`` with a
 custom digest ``EVP_md_pkg_sha1()``. This custom digest has the SHA-1 OID but
-an overridden result size of 64. In practice
-with OpenSSL 3.x, signatures using the SHA-256 OID and 32-byte hash also verify
-correctly.
+an overridden result size of 64. In practice with OpenSSL 3.x, signatures using
+the SHA-256 OID and 32-byte hash also verify correctly.
 
 Fingerprints
 ~~~~~~~~~~~~
@@ -94,7 +97,7 @@ pkg identifies trusted signing keys by fingerprint. The fingerprint is
    openssl rsa -pubin -outform DER < repo.pub | shasum -a 256
 
 The fingerprint is not a hash of the DER-encoded public key material. It's a
-hash of the PEM file as-is.
+hash of the PEM file as-is [6]_.
 
 Setting up the GPG signing key
 ------------------------------
@@ -112,16 +115,15 @@ Look for a subkey with ``[S]`` (signing) capability and note its **keygrip** --
 a 40-character hex string. The keygrip identifies the key to ``gpg-agent``
 regardless of the key's OpenPGP metadata.
 
-If you need to generate a new signing subkey:
+If you need to generate a new signing subkey and move it to your YubiKey,
+see one of these guides:
 
-.. code-block:: sh
-
-   gpg --edit-key your@email.com
-   > addkey       # Choose RSA (sign only), 2048 or 4096 bits
-   > save
-   gpg --edit-key your@email.com
-   > keytocard     # Move the subkey to the YubiKey
-   > save
+- `Yubico PGP Walk-Through <https://developers.yubico.com/PGP/PGP_Walk-Through.html>`_
+  -- Yubico's official guide to generating PGP keys and loading them onto a
+  YubiKey.
+- `drduh/YubiKey-Guide <https://github.com/drduh/YubiKey-Guide>`_ -- detailed
+  community guide covering key generation, subkey creation, and transfer to
+  YubiKey with full console output examples.
 
 Export the public key in PEM format
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -212,100 +214,122 @@ This script is called by ``pkg repo`` as the ``signing_command``. It reads the
 hex hash from stdin, performs the double hash, signs via ``gpg-agent``, and
 outputs the result in pkg's expected format.
 
-.. code-block:: sh
+.. code-block:: python
 
-   #!/bin/sh
-   set -e
+   #!/usr/bin/env python3
 
-   SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-   REPO_PUB="${REPO_PUB:-${SCRIPT_DIR}/repo.pub}"
+   import hashlib
+   import os
+   import re
+   import subprocess
+   import sys
 
-   # Keygrip of the GPG signing subkey on the YubiKey
-   KEYGRIP="${GPG_SIGN_KEYGRIP:-<your-keygrip-here>}"
+   DEFAULT_KEYGRIP = "<your-keygrip-here>"
 
-   [ -f "${REPO_PUB}" ] || { echo "ERROR: ${REPO_PUB} not found" >&2; exit 1; }
 
-   for cmd in gpg-connect-agent python3 openssl; do
-       command -v "$cmd" >/dev/null 2>&1 || {
-           echo "ERROR: $cmd not found" >&2; exit 1
-       }
-   done
+   def find_repo_pub():
+       """Locate the public key PEM file."""
+       env_path = os.environ.get("REPO_PUB")
+       if env_path:
+           return env_path
+       script_dir = os.path.dirname(os.path.abspath(__file__))
+       path = os.path.join(script_dir, "repo.pub")
+       if os.path.isfile(path):
+           return path
+       repo_root = os.path.dirname(script_dir)
+       path = os.path.join(repo_root, "Keys", "repo.pub")
+       if os.path.isfile(path):
+           return path
+       return None
 
-   SIG=$(mktemp)
-   trap 'rm -f "${SIG}"' EXIT
 
-   # pkg sends SHA256(data) as hex on stdin (doesn't close stdin -- use read).
-   # pkg verifies against SHA256(hex_string), so hash it again.
-   read -r HEX_HASH
-   HASH=$(printf '%s' "${HEX_HASH}" | openssl dgst -sha256 -hex 2>/dev/null \
-       | awk '{print $NF}' | tr 'a-f' 'A-F')
-
-   # Sign via gpg-agent PKSIGN.
-   # SETHASH --hash=sha256 tells the agent the hash algorithm;
-   # PKSIGN wraps it in DigestInfo(SHA256_OID, hash) and RSA-signs it.
-   python3 -c '
-   import subprocess, re, sys
-
-   keygrip = sys.argv[1]
-   hash_hex = sys.argv[2]
-   output_file = sys.argv[3]
-
-   result = subprocess.run(
-       ["gpg-connect-agent",
-        "SIGKEY " + keygrip,
-        "SETHASH --hash=sha256 " + hash_hex,
-        "PKSIGN", "/bye"],
-       capture_output=True
-   )
-
-   if result.returncode != 0:
-       sys.stderr.write("ERROR: gpg-connect-agent failed\n")
-       sys.exit(1)
-
-   # Decode Assuan protocol D lines (%-encoded binary)
-   data_parts = []
-   for line in result.stdout.split(b"\n"):
-       if line.startswith(b"D "):
+   def decode_assuan_data(stdout):
+       """Decode Assuan protocol D lines (%-encoded binary) and concatenate."""
+       data_parts = []
+       for line in stdout.split(b"\n"):
+           if not line.startswith(b"D "):
+               continue
            part = line[2:]
            decoded = b""
            i = 0
            while i < len(part):
-               if part[i:i+1] == b"%" and i + 2 < len(part):
-                   decoded += bytes([int(part[i+1:i+3], 16)])
+               if part[i:i + 1] == b"%" and i + 2 < len(part):
+                   decoded += bytes([int(part[i + 1:i + 3], 16)])
                    i += 3
                else:
-                   decoded += part[i:i+1]
+                   decoded += part[i:i + 1]
                    i += 1
            data_parts.append(decoded)
+       return b"".join(data_parts)
 
-   sexp = b"".join(data_parts)
 
-   # Parse raw RSA signature from S-expression:
-   # (7:sig-val(3:rsa(1:s<len>:<sig>)))
-   m = re.search(rb"\(1:s(\d+):", sexp)
-   if not m:
-       sys.stderr.write("ERROR: could not parse signature S-expression\n")
+   def extract_rsa_signature(sexp):
+       """Extract raw RSA signature bytes from a gpg-agent S-expression.
+
+       The S-expression has the form: (7:sig-val(3:rsa(1:s<len>:<sig>)))
+       """
+       m = re.search(rb"\(1:s(\d+):", sexp)
+       if not m:
+           die("could not parse signature S-expression")
+       sig_len = int(m.group(1))
+       sig = sexp[m.end():m.end() + sig_len]
+       if len(sig) != sig_len:
+           die(f"expected {sig_len} byte signature, got {len(sig)}")
+       return sig
+
+
+   def die(msg):
+       sys.stderr.write(f"ERROR: {msg}\n")
        sys.exit(1)
 
-   sig_len = int(m.group(1))
-   sig = sexp[m.end():m.end() + sig_len]
-   if len(sig) != sig_len:
-       sys.stderr.write(f"ERROR: expected {sig_len} byte signature, got {len(sig)}\n")
-       sys.exit(1)
 
-   with open(output_file, "wb") as f:
-       f.write(sig)
-   ' "${KEYGRIP}" "${HASH}" "${SIG}" || {
-       echo "ERROR: GPG signing failed" >&2
-       exit 1
-   }
+   def main():
+       keygrip = os.environ.get("GPG_SIGN_KEYGRIP", DEFAULT_KEYGRIP)
 
-   echo "SIGNATURE"
-   cat "${SIG}"
-   echo ""
-   echo "CERT"
-   cat "${REPO_PUB}"
-   echo "END"
+       repo_pub = find_repo_pub()
+       if not repo_pub or not os.path.isfile(repo_pub):
+           die("public key not found (searched REPO_PUB, script dir, Keys/)")
+
+       # pkg repo sends SHA256(data) as a hex string on stdin. It doesn't
+       # close stdin, so read one line only. pkg verifies against
+       # SHA256(hex_string), so hash it again.
+       hex_hash = sys.stdin.readline().strip()
+       if not hex_hash:
+           die("no hash received on stdin")
+
+       double_hash = hashlib.sha256(hex_hash.encode()).hexdigest().upper()
+
+       # Sign via gpg-agent: SIGKEY selects the key, SETHASH sets the
+       # digest, PKSIGN produces the signature. PIN prompting goes
+       # through pinentry.
+       result = subprocess.run(
+           ["gpg-connect-agent",
+            f"SIGKEY {keygrip}",
+            f"SETHASH --hash=sha256 {double_hash}",
+            "PKSIGN", "/bye"],
+           capture_output=True,
+       )
+
+       if result.returncode != 0:
+           die("gpg-connect-agent failed")
+
+       sexp = decode_assuan_data(result.stdout)
+       sig = extract_rsa_signature(sexp)
+
+       # Output in the format pkg expects
+       with open(repo_pub, "rb") as f:
+           pub_pem = f.read()
+
+       sys.stdout.buffer.write(b"SIGNATURE\n")
+       sys.stdout.buffer.write(sig)
+       sys.stdout.buffer.write(b"\nCERT\n")
+       sys.stdout.buffer.write(pub_pem)
+       sys.stdout.buffer.write(b"END\n")
+       sys.stdout.buffer.flush()
+
+
+   if __name__ == "__main__":
+       main()
 
 Why gpg-connect-agent instead of gpg --sign?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -332,20 +356,13 @@ The agent returns the signature on ``D`` lines as an S-expression:
 ``(sig-val(rsa(s<len>:<bytes>)))``. The Python code decodes the percent-encoded
 ``D`` lines and extracts the raw signature bytes.
 
-Why Python?
-~~~~~~~~~~~
-
-The Assuan ``D`` line decoding and S-expression binary parsing are awkward in
-pure shell. Python is available on FreeBSD by default and handles binary data
-cleanly.
-
 GPG agent forwarding for remote builds
 --------------------------------------
 
 In many setups, packages are built on a remote FreeBSD machine but the YubiKey
-is plugged into your local workstation. GPG agent forwarding over SSH solves
-this: the remote machine's ``gpg-connect-agent`` commands are transparently
-forwarded to your local agent, which talks to the YubiKey.
+is plugged into your local workstation. GPG agent forwarding over SSH [8]_
+solves this: the remote machine's ``gpg-connect-agent`` commands are
+transparently forwarded to your local agent, which talks to the YubiKey.
 
 Setup
 ~~~~~
@@ -365,9 +382,9 @@ SSH's ``-R`` flag creates a remote Unix socket that forwards to a local one:
    ssh -R "${REMOTE_GPG_SOCK}:${LOCAL_GPG_EXTRA}" remote-host \
        "pkg repo /path/to/repo/ signing_command: /path/to/sign-repo.py"
 
-The **extra socket** (``agent-extra-socket``) is a restricted socket that GPG
-provides specifically for forwarding -- it limits operations to signing and
-decryption, preventing a compromised remote from modifying your keyring.
+The **extra socket** (``agent-extra-socket``) is a socket that GPG provides
+specifically for forwarding to remote machines [7]_.
+It is more restricted than the standard agent socket.
 
 The stale socket trap
 ~~~~~~~~~~~~~~~~~~~~~
@@ -438,7 +455,7 @@ you need to verify the output explicitly.
 Client-side setup
 -----------------
 
-On each machine that should trust the repo, install the fingerprint:
+On each machine that should trust the repo, install the fingerprint [2]_:
 
 .. code-block:: sh
 
@@ -504,14 +521,14 @@ Summary of pitfalls
      - ``openssl dgst -verify`` passes but ``pkg`` rejects
      - Hash the hex string again with SHA256 before signing
    * - Using ``cat`` to read stdin
-     - Signing command hangs forever
-     - Use ``read -r`` -- pkg doesn't close stdin
+     - Signing command deadlocks
+     - Use ``read -t 2`` or ``readline()`` -- pkg keeps stdin open
    * - Fingerprint from DER key
      - "No trusted public keys found"
      - Fingerprint is ``SHA256(PEM file)``, headers and all
    * - Testing with ``openssl dgst -verify``
-     - False negatives / false positives
-     - This test is invalid for pkg signatures; use manual DigestInfo extraction
+     - Valid signatures appear to fail
+     - Tests single hash, not pkg's double hash; use manual DigestInfo extraction
    * - Stale remote gpg-agent socket
      - "remote port forwarding failed"
      - Kill agent and remove socket in a *separate* SSH call before ``-R``
@@ -521,3 +538,41 @@ Summary of pitfalls
    * - Using ``gpg --sign``
      - Produces OpenPGP format, not PKCS#1
      - Use ``gpg-connect-agent`` with ``PKSIGN`` for raw RSA
+
+References
+----------
+
+.. [1] `pkg-repo(8) man page <https://man.freebsd.org/cgi/man.cgi?query=pkg-repo&sektion=8>`_
+   -- documents the ``signing_command`` output format and states that the SHA256
+   of the catalogue is passed on stdin.
+
+.. [2] `pkg.conf(5) man page <https://man.freebsd.org/cgi/man.cgi?query=pkg.conf&sektion=5>`_
+   -- documents ``SIGNATURE_TYPE``, ``FINGERPRINTS``, and the fingerprint file
+   format (``function: sha256``, ``fingerprint: ...``).
+
+.. [3] `scripts/sign.sh <https://github.com/freebsd/pkg/blob/main/scripts/sign.sh>`_
+   -- the official example signing script in the freebsd/pkg repository. Uses
+   ``read -t 2`` and ``openssl dgst -sign -sha256``.
+
+.. [4] `libpkg/pkgsign_ossl.c <https://github.com/freebsd/pkg/blob/main/libpkg/pkgsign_ossl.c>`_
+   -- OpenSSL signing and verification implementation. Contains
+   ``EVP_md_pkg_sha1()`` (custom digest with SHA-1 OID, result size 64) and
+   ``ossl_verify_cb`` (verification using ``pkg_checksum_fd`` with
+   ``PKG_HASH_TYPE_SHA256_HEX``).
+
+.. [5] `libpkg/pkg_repo_create.c <https://github.com/freebsd/pkg/blob/main/libpkg/pkg_repo_create.c>`_
+   -- repository creation code. Shows the hash written to stdin via
+   ``fprintf``/``fflush``, with ``fclose`` deferred until after reading the
+   response.
+
+.. [6] `libpkg/pkg_repo.c <https://github.com/freebsd/pkg/blob/main/libpkg/pkg_repo.c>`_
+   -- fingerprint verification code. Computes ``pkg_checksum_data(s->cert,
+   s->certlen, PKG_HASH_TYPE_SHA256_HEX)`` where ``cert`` is the PEM data
+   returned by the signing command.
+
+.. [7] `GnuPG Agent Options <https://www.gnupg.org/documentation/manuals/gnupg/Agent-Options.html>`_
+   -- documents the extra socket (``agent-extra-socket``) intended for
+   forwarding to remote machines.
+
+.. [8] `GnuPG Agent Forwarding <https://wiki.gnupg.org/AgentForwarding>`_
+   -- GnuPG wiki page on forwarding gpg-agent to a remote system over SSH.
