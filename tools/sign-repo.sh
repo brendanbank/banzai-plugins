@@ -1,14 +1,18 @@
 #!/bin/sh
 #
 # Sign pkg repo data for FreeBSD pkg repo signing_command.
-# Reads data from stdin (what pkg repo pipes), signs with YubiKey PIV,
-# and outputs the format pkg expects: SIGNATURE, binary sig, CERT, PEM, END.
+# Reads data from stdin (what pkg repo pipes), signs with the GPG signing
+# subkey on the YubiKey via gpg-agent, and outputs the format pkg expects:
+# SIGNATURE, binary sig, CERT, PEM public key, END.
 #
-# The private key stays on the YubiKey; only this host needs the YubiKey
-# and the public key (Keys/repo.pub must match the key in the slot).
+# The private key stays on the YubiKey. PIN entry goes through pinentry
+# (e.g. pinentry-mac), so no PIV_PIN variable or /dev/tty hacks are needed.
 #
-# Requires: yubico-piv-tool (e.g. brew install yubico-piv-tool)
-# Optional: PIV_PIN, YUBICO_PIV_SLOT (default 9c), YUBICO_PIV_ALG (default RSA2048; use RSA4096 for 4096-bit keys)
+# Requires: gpg-agent, python3, openssl
+# Optional: GPG_SIGN_KEYGRIP (override signing key keygrip)
+#
+# Copyright (c) 2025 Brendan Bank
+# SPDX-License-Identifier: BSD-2-Clause
 #
 
 set -e
@@ -16,10 +20,17 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_PUB="${REPO_ROOT}/Keys/repo.pub"
-SLOT="${YUBICO_PIV_SLOT:-9c}"
-ALG="${YUBICO_PIV_ALG:-RSA2048}"
+
+# Keygrip of the GPG signing subkey (F60F2EAA7F5ACC52) on the YubiKey
+KEYGRIP="${GPG_SIGN_KEYGRIP:-18F8114597D68C3AC976ADC0B7044E387EEB9B5F}"
 
 [ -f "${REPO_PUB}" ] || { echo "ERROR: ${REPO_PUB} not found" >&2; exit 1; }
+
+for cmd in gpg-connect-agent python3 openssl; do
+    command -v "$cmd" >/dev/null 2>&1 || {
+        echo "ERROR: $cmd not found" >&2; exit 1
+    }
+done
 
 INPUT=$(mktemp)
 SIG=$(mktemp)
@@ -27,20 +38,64 @@ trap 'rm -f "${INPUT}" "${SIG}"' EXIT
 
 cat > "${INPUT}"
 
-if ! command -v yubico-piv-tool >/dev/null 2>&1; then
-    echo "ERROR: yubico-piv-tool not found (e.g. brew install yubico-piv-tool)" >&2
-    exit 1
-fi
+# SHA256 hash the input (uppercase hex, as gpg-agent expects)
+HASH=$(openssl dgst -sha256 -hex "${INPUT}" 2>/dev/null | awk '{print $NF}' | tr 'a-f' 'A-F')
 
-# PIV slot 9c = Digital Signature; hashes input with SHA256 and signs
-if [ -n "${PIV_PIN}" ]; then
-    yubico-piv-tool -a verify-pin --sign -s "${SLOT}" -H SHA256 -A "${ALG}" \
-        -P "${PIV_PIN}" -i "${INPUT}" -o "${SIG}" 2>/dev/null
-else
-    yubico-piv-tool -a verify-pin --sign -s "${SLOT}" -H SHA256 -A "${ALG}" \
-        -i "${INPUT}" -o "${SIG}" 2>/dev/null
-fi || {
-    echo "ERROR: YubiKey signing failed (check slot ${SLOT}, PIN, and YUBICO_PIV_ALG=${ALG})" >&2
+# Sign via gpg-agent PKSIGN and extract raw RSA signature from S-expression.
+# gpg-agent handles PIN prompting through pinentry (GUI or curses).
+python3 -c '
+import subprocess, re, sys
+
+keygrip = sys.argv[1]
+hash_hex = sys.argv[2]
+output_file = sys.argv[3]
+
+result = subprocess.run(
+    ["gpg-connect-agent",
+     "SIGKEY " + keygrip,
+     "SETHASH --hash=sha256 " + hash_hex,
+     "PKSIGN", "/bye"],
+    capture_output=True
+)
+
+if result.returncode != 0:
+    sys.stderr.write("ERROR: gpg-connect-agent failed\n")
+    sys.exit(1)
+
+# Decode Assuan protocol D lines (%-encoded binary)
+data_parts = []
+for line in result.stdout.split(b"\n"):
+    if line.startswith(b"D "):
+        part = line[2:]
+        decoded = b""
+        i = 0
+        while i < len(part):
+            if part[i:i+1] == b"%" and i + 2 < len(part):
+                decoded += bytes([int(part[i+1:i+3], 16)])
+                i += 3
+            else:
+                decoded += part[i:i+1]
+                i += 1
+        data_parts.append(decoded)
+
+sexp = b"".join(data_parts)
+
+# Parse raw RSA signature from S-expression: (7:sig-val(3:rsa(1:s<len>:<sig>)))
+m = re.search(rb"\(1:s(\d+):", sexp)
+if not m:
+    sys.stderr.write("ERROR: could not parse signature S-expression\n")
+    sys.exit(1)
+
+sig_len = int(m.group(1))
+sig = sexp[m.end():m.end() + sig_len]
+if len(sig) != sig_len:
+    sys.stderr.write(f"ERROR: expected {sig_len} byte signature, got {len(sig)}\n")
+    sys.exit(1)
+
+with open(output_file, "wb") as f:
+    f.write(sig)
+' "${KEYGRIP}" "${HASH}" "${SIG}" || {
+    echo "ERROR: GPG signing failed" >&2
     exit 1
 }
 

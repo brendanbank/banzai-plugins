@@ -10,7 +10,7 @@ Suggestions and contributions are very welcome! There are several ways to contri
 
 - An OPNsense or FreeBSD host accessible via SSH (for building packages)
 - Git with submodule support
-- For maintainers: YubiKey with PIV and `yubico-piv-tool` for package repo signing (see below)
+- For maintainers: YubiKey with GPG signing subkey and `gpg-agent` for package repo signing (see below)
 
 ## Getting Started
 
@@ -93,16 +93,17 @@ This will:
 
 ## Signing (maintainers)
 
-Repo signing uses a key on your **YubiKey PIV** so the private key never leaves the device. During signing, the remote `sign.sh` writes the hash to a file and waits; `build.sh` polls for it over the existing SSH connection, signs locally with `tools/sign-repo.sh`, and writes the response back. No reverse tunnel or sshd on your laptop is needed.
+Repo signing uses the **GPG signing subkey** on your YubiKey so the private key never leaves the device. During signing, the remote `sign.sh` writes the hash to a file and waits; `build.sh` polls for it over the existing SSH connection, signs locally with `tools/sign-repo.sh` via `gpg-agent`, and writes the response back. No reverse tunnel or sshd on your laptop is needed.
+
+PIN entry is handled by `pinentry` (e.g. `pinentry-mac`), so no environment variables or `/dev/tty` hacks are needed.
 
 **Setup:**
 
-1. Install `yubico-piv-tool` (e.g. `brew install yubico-piv-tool`).
-2. Put the repo signing key in PIV slot 9c (Digital Signature), or set `YUBICO_PIV_SLOT`. `Keys/repo.pub` must match that key.
-3. For non-interactive builds, set `PIV_PIN` in the environment (otherwise you'll be prompted).
-4. For a 4096-bit RSA key in PIV, set `YUBICO_PIV_ALG=RSA4096` (default is RSA2048).
+1. Ensure `gpg-agent` is running with a `pinentry` program configured.
+2. The GPG signing subkey must be on the YubiKey. `Keys/repo.pub` must match that key.
+3. The default keygrip is configured in `tools/sign-repo.sh`. To override, set `GPG_SIGN_KEYGRIP`.
 
-**If migrating from 1Password:** Generate a new key in PIV (slot 9c, RSA2048), export its public key to `Keys/repo.pub`, update the fingerprint in `README.md` and in `docs/sphinx` (trusted fingerprint), then re-run the build.
+**Requires:** `gpg-agent`, `python3`, `openssl`.
 
 ## Releasing
 
