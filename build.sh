@@ -9,6 +9,8 @@
 #
 # After building, packages are downloaded to dist/ and the GitHub Pages pkg
 # repo in docs/${ABI}/${SERIES}/repo/ is updated with signed packages.
+# Signing uses a YubiKey PIV key on this host (tools/sign-repo.sh); the
+# private key never leaves the YubiKey or this machine.
 #
 # Options:
 #   --test    Build only; skip repo signing, docs, and GitHub Pages update.
@@ -26,7 +28,8 @@ FIREWALL="${1:-${FIREWALL:?Usage: ./build.sh [--test] <hostname>}}"
 REMOTE_REPO="/home/brendan/src/banzai-plugins"
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 LOCAL_DIST="${REPO_ROOT}/dist"
-OP_ITEM="banzai-plugins pkg repo signing key"
+# Reverse tunnel port: firewall SSHs to this host for YubiKey signing
+SIGN_REVERSE_PORT=2222
 
 # ── helpers ──────────────────────────────────────────────────────────
 
@@ -161,37 +164,28 @@ for pkg in "${LOCAL_DIST}"/*.pkg; do
     scp -q "${pkg}" "${FIREWALL}:${REMOTE_REPO_DIR}/"
 done
 
-# Fetch signing key from 1Password for fingerprint-based signing
-echo "    Fetching signing key from 1Password..."
-SIGNING_KEY=$(mktemp)
-SIGNING_KEY_RSA=$(mktemp)
-trap 'rm -f "${SIGNING_KEY}" "${SIGNING_KEY_RSA}"' EXIT
-op item get "${OP_ITEM}" --fields notesPlain --format json \
-    | jq -r '.value' > "${SIGNING_KEY}" \
-    || die "Failed to fetch signing key from 1Password"
-openssl rsa -in "${SIGNING_KEY}" -out "${SIGNING_KEY_RSA}" -traditional 2>/dev/null \
-    || die "Failed to convert signing key to PKCS#1 format"
-scp -q "${SIGNING_KEY_RSA}" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.key"
-scp -q "${REPO_ROOT}/Keys/repo.pub" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.pub"
-rm -f "${SIGNING_KEY}" "${SIGNING_KEY_RSA}"
+# Sign with YubiKey on this host: private key never leaves the device.
+# Reverse tunnel so the firewall can SSH back to this host to run the signer.
+echo "    Starting reverse SSH tunnel for signing (port ${SIGN_REVERSE_PORT})..."
+ssh -N -R "${SIGN_REVERSE_PORT}:localhost:22" "${FIREWALL}" &
+TUNNEL_PID=$!
+trap 'kill ${TUNNEL_PID} 2>/dev/null || true' EXIT
+sleep 2
+kill -0 "${TUNNEL_PID}" 2>/dev/null || die "Reverse tunnel failed"
 
-# Create signing command for fingerprint-based verification
-remote "cat > ${REMOTE_REPO_DIR}/sign.sh << 'SIGNEOF'
+# Remote sign.sh: forward stdin to the local sign-repo.sh (YubiKey PIV)
+SIGN_REPO_CMD="${REPO_ROOT}/tools/sign-repo.sh"
+remote "cat > ${REMOTE_REPO_DIR}/sign.sh << SIGNEOF
 #!/bin/sh
-read -t 2 sum
-[ -z \"\$sum\" ] && exit 1
-echo SIGNATURE
-echo -n \$sum | openssl dgst -sign ${REMOTE_REPO_DIR}/repo.key -sha256 -binary
-echo
-echo CERT
-cat ${REMOTE_REPO_DIR}/repo.pub
-echo END
+exec ssh -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new -p ${SIGN_REVERSE_PORT} localhost \"${SIGN_REPO_CMD}\"
 SIGNEOF
 chmod +x ${REMOTE_REPO_DIR}/sign.sh"
 
-echo "    Signing repo..."
+echo "    Signing repo (YubiKey on this host)..."
 remote "pkg repo ${REMOTE_REPO_DIR}/ signing_command: ${REMOTE_REPO_DIR}/sign.sh"
-remote "rm -f ${REMOTE_REPO_DIR}/repo.key ${REMOTE_REPO_DIR}/repo.pub ${REMOTE_REPO_DIR}/sign.sh"
+remote "rm -f ${REMOTE_REPO_DIR}/sign.sh"
+kill "${TUNNEL_PID}" 2>/dev/null || true
+trap - EXIT
 
 rm -f "${PAGES_REPO}"/*.pkg
 rm -f "${PAGES_REPO}"/{meta.conf,packagesite.*,data.*,filesite.*}

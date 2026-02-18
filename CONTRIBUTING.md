@@ -10,7 +10,7 @@ Suggestions and contributions are very welcome! There are several ways to contri
 
 - An OPNsense or FreeBSD host accessible via SSH (for building packages)
 - Git with submodule support
-- 1Password CLI (`op`) for package signing (maintainers only)
+- For maintainers: YubiKey with PIV and `yubico-piv-tool` for package repo signing (see below)
 
 ## Getting Started
 
@@ -90,6 +90,20 @@ This will:
 3. Build each plugin with `make package`
 4. Download `.pkg` files to `dist/`
 5. Sign and update the per-release pkg repo in `docs/<ABI>/<series>/repo/`
+
+## Signing (maintainers)
+
+Repo signing uses a key on your **YubiKey PIV** so the private key never leaves the device. The build establishes a reverse SSH tunnel so the remote host can call back to your machine to run `tools/sign-repo.sh`, which signs with the YubiKey.
+
+**Setup:**
+
+1. Install `yubico-piv-tool` (e.g. `brew install yubico-piv-tool`).
+2. Put the repo signing key in PIV slot 9c (Digital Signature), or set `YUBICO_PIV_SLOT`. `Keys/repo.pub` must match that key.
+3. Ensure the build host can SSH back to your laptop: when you run `./build.sh <firewall>`, the firewall will connect to your laptop over the reverse tunnel; your laptop’s `authorized_keys` must allow that SSH key (usually the same key you use to SSH to the firewall).
+4. For non-interactive builds, set `PIV_PIN` in the environment (optional).
+5. For a 4096-bit RSA key in PIV, set `YUBICO_PIV_ALG=RSA4096` (default is RSA2048).
+
+**If migrating from 1Password:** Generate a new key in PIV (slot 9c, RSA2048), export its public key to `Keys/repo.pub`, update the fingerprint in `README.md` and in `docs/sphinx` (trusted fingerprint), then re-run the build.
 
 ## Releasing
 
