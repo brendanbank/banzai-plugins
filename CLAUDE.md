@@ -62,30 +62,38 @@ Individual plugins have their own `PLUGIN_VERSION` in their Makefile.
 
 ## Build Server Tools (`tools/`)
 
-`tools/opnsense-build.sh` automates the OPNsense VM image build lifecycle on a
-remote FreeBSD build server via SSH. Subcommands:
+Three scripts handle the OPNsense VM image build lifecycle:
+
+- **`tools/create-build-vm.sh`** — runs locally on a KVM/libvirt host to
+  create a FreeBSD build server VM. Self-contained, no SSH wrappers.
+- **`tools/opnsense-build.sh`** — workstation-side orchestrator that operates
+  on the build server via SSH.
+- **`tools/opnsense-build-server.sh`** — runs directly on the build server for
+  local builds. Synced to `/usr/local/bin/` by `opnsense-build.sh bootstrap`.
 
 ```sh
-./tools/opnsense-build.sh create-vm     # create FreeBSD VM on KVM host + provision it
-./tools/opnsense-build.sh provision     # provision an existing FreeBSD machine
-./tools/opnsense-build.sh bootstrap     # clone OPNsense repos, checkout branches
+# On the KVM host: create a build VM
+./tools/create-build-vm.sh create --ssh-pubkey ~/.ssh/id_ed25519.pub
+
+# On your workstation: orchestrate remote builds
+./tools/opnsense-build.sh bootstrap     # clone OPNsense repos, sync server script
 ./tools/opnsense-build.sh update        # pull latest code for all repos
 ./tools/opnsense-build.sh sync-device   # sync BANZAI.conf to build server
 ./tools/opnsense-build.sh build         # full VM image build (or: build base kernel ports ...)
 ./tools/opnsense-build.sh status        # show repo state, artifacts, disk/RAM
 ./tools/opnsense-build.sh deploy        # deploy image to KVM guest
 ./tools/opnsense-build.sh series 26.7   # switch repos to a new release series
+
+# On the build server: run builds directly
+opnsense-build-server.sh build          # full build
+opnsense-build-server.sh build core vm  # rebuild specific stages
+opnsense-build-server.sh status         # show local server state
+opnsense-build-server.sh update         # pull latest repos
 ```
 
 Configuration lives in `tools/opnsense-build.conf` (git-ignored, user-local).
 Copy `opnsense-build.conf.sample` to get started. Key settings: `BUILD_HOST`
-(SSH target), `SERIES` (release series), `KVM_HOST` (for VM creation).
-
-`create-vm` creates a FreeBSD VM on the KVM host with configurable resources
-(`BUILD_VM_CPUS`, `BUILD_VM_MEMORY`, `BUILD_VM_DISK`), downloads a FreeBSD
-BASIC-CLOUDINIT image, injects SSH keys and provisions via cloud-init user-data
-script, and installs git/sudo automatically. Requires `virtinst`,
-`qemu-utils`, and `genisoimage` on the KVM host.
+(SSH target), `SERIES` (release series), `KVM_HOST` (for deployment).
 
 Shared helpers are in `tools/lib/common.sh` (SSH wrappers, logging, remote git
 operations). All `/usr` repos on the build server are root-owned, so git/make
