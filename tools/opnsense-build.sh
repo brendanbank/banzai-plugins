@@ -1,9 +1,12 @@
 #!/bin/sh
 #
-# opnsense-build.sh — Build server automation for OPNsense VM images
+# opnsense-build.sh — Build server orchestrator for OPNsense VM images
 #
-# Automates the full lifecycle: create a FreeBSD VM, provision it,
+# Orchestrates builds on a remote FreeBSD build server via SSH:
 # bootstrap OPNsense repos, build VM images, and deploy to KVM guests.
+#
+# For VM creation, see create-build-vm.sh (runs locally on the KVM host).
+# For on-server builds, see opnsense-build-server.sh (runs on the build server).
 #
 # Usage: opnsense-build.sh <command> [args...]
 #
@@ -21,8 +24,6 @@ usage() {
 Usage: $(basename "$0") <command> [args...]
 
 Commands:
-  create-vm           Create a FreeBSD VM on the KVM host and provision it
-  provision           Provision an existing FreeBSD machine as a build server
   bootstrap           Clone OPNsense repos and configure for a release series
   update              Pull latest code for all repos on the build server
   sync-device         Sync device config to the build server
@@ -34,351 +35,15 @@ Commands:
 Configuration:
   Copy opnsense-build.conf.sample to opnsense-build.conf and edit it.
   Override location with OPNSENSE_BUILD_CONF environment variable.
+
+See also:
+  create-build-vm.sh        Create a FreeBSD VM on a KVM host
+  opnsense-build-server.sh  Run builds directly on the build server
 EOF
     exit 1
 }
 
-# ── Provisioning helper ─────────────────────────────────────────────
-# Shared by cmd_provision and cmd_create_vm.
-
-_provision_server() {
-    info "Provisioning ${BUILD_HOST}"
-
-    # Test SSH
-    step "Testing SSH connectivity"
-    remote "echo ok" >/dev/null 2>&1 || die "Cannot SSH to ${BUILD_HOST}"
-    step "Connected"
-
-    # Detect OS
-    local uname_r os_name
-    uname_r=$(remote "uname -r")
-    os_name=$(remote "uname -s")
-    [ "${os_name}" = "FreeBSD" ] || die "Expected FreeBSD, got ${os_name}"
-    step "FreeBSD ${uname_r}"
-
-    # Detect if root or unprivileged
-    local remote_user
-    remote_user=$(remote "whoami")
-
-    # Bootstrap pkg
-    step "Bootstrapping pkg"
-    if [ "${remote_user}" = "root" ]; then
-        remote "env ASSUME_ALWAYS_YES=yes pkg bootstrap -f" 2>/dev/null || true
-    else
-        remote "sudo env ASSUME_ALWAYS_YES=yes pkg bootstrap -f" 2>/dev/null || true
-    fi
-
-    # Install packages
-    step "Installing packages: git sudo"
-    if [ "${remote_user}" = "root" ]; then
-        remote "pkg install -y git sudo" || die "Failed to install packages"
-    else
-        remote "sudo pkg install -y git sudo" || die "Failed to install packages"
-    fi
-
-    # Create build user if connected as root and BUILD_USER is set
-    if [ "${remote_user}" = "root" ] && [ -n "${BUILD_USER}" ]; then
-        if remote "pw user show ${BUILD_USER}" >/dev/null 2>&1; then
-            step "User ${BUILD_USER} already exists"
-        else
-            step "Creating user ${BUILD_USER}"
-            remote "pw useradd ${BUILD_USER} -m -G wheel -s /bin/sh"
-        fi
-
-        # Ensure wheel group membership
-        remote "pw groupmod wheel -m ${BUILD_USER}" 2>/dev/null || true
-
-        # Copy SSH authorized keys to the new user
-        step "Setting up SSH keys for ${BUILD_USER}"
-        remote "mkdir -p /home/${BUILD_USER}/.ssh && \
-            chmod 700 /home/${BUILD_USER}/.ssh && \
-            cp /root/.ssh/authorized_keys /home/${BUILD_USER}/.ssh/authorized_keys && \
-            chown -R ${BUILD_USER}:${BUILD_USER} /home/${BUILD_USER}/.ssh && \
-            chmod 600 /home/${BUILD_USER}/.ssh/authorized_keys"
-        step "SSH keys copied from root to ${BUILD_USER}"
-    fi
-
-    # Configure sudo NOPASSWD for wheel group
-    step "Configuring passwordless sudo for wheel group"
-    if [ "${remote_user}" = "root" ]; then
-        remote "sh -c '
-            if ! grep -q \"^%wheel ALL=(ALL) NOPASSWD: ALL\" /usr/local/etc/sudoers 2>/dev/null; then
-                echo \"%wheel ALL=(ALL) NOPASSWD: ALL\" >> /usr/local/etc/sudoers
-            fi'"
-    else
-        remote "sudo sh -c '
-            if ! grep -q \"^%wheel ALL=(ALL) NOPASSWD: ALL\" /usr/local/etc/sudoers 2>/dev/null; then
-                echo \"%wheel ALL=(ALL) NOPASSWD: ALL\" >> /usr/local/etc/sudoers
-            fi'"
-    fi
-    step "wheel group has NOPASSWD sudo"
-
-    # Check resources
-    local disk_avail mem_gb ncpu
-    disk_avail=$(remote "df -g / | tail -1" | awk '{print $4}')
-    mem_gb=$(remote "sysctl -n hw.physmem" | awk '{printf "%d", $1/1073741824}')
-    ncpu=$(remote "sysctl -n hw.ncpu")
-
-    step "Resources: ${ncpu} CPUs, ${mem_gb}GB RAM, ${disk_avail}GB disk free"
-
-    if [ "${disk_avail}" -lt 40 ] 2>/dev/null; then
-        warn "Only ${disk_avail}GB free — builds need 40GB+ (80GB+ recommended)"
-    fi
-    if [ "${mem_gb}" -lt 7 ] 2>/dev/null; then
-        warn "Only ${mem_gb}GB RAM — builds need 8GB+"
-    fi
-
-    echo ""
-    info "Provisioning complete"
-    if [ -n "${BUILD_USER}" ] && [ "${remote_user}" = "root" ]; then
-        step "User ${BUILD_USER} created with passwordless sudo"
-        step "Set BUILD_HOST to use ${BUILD_USER} for subsequent commands"
-    fi
-}
-
 # ── Subcommands ──────────────────────────────────────────────────────
-
-cmd_create_vm() {
-    validate_kvm_host
-
-    info "Creating build VM: ${BUILD_VM_NAME}"
-    step "${BUILD_VM_CPUS} CPUs, ${BUILD_VM_MEMORY}MB RAM, ${BUILD_VM_DISK}GB disk"
-    step "FreeBSD ${FREEBSD_VERSION}, network: ${BUILD_VM_NETWORK}"
-
-    # Check required tools on KVM host
-    info "Checking KVM host prerequisites"
-    local missing=""
-    for tool in virsh virt-install qemu-img genisoimage wget xz; do
-        if ! kvm_ssh "which ${tool}" >/dev/null 2>&1; then
-            missing="${missing} ${tool}"
-        fi
-    done
-    if [ -n "${missing}" ]; then
-        die "Missing tools on ${KVM_HOST}:${missing}
-Install with: apt install libvirt-daemon-system virtinst qemu-utils genisoimage wget xz-utils"
-    fi
-    step "All required tools available"
-
-    # Check if VM already exists
-    if kvm_sudo "virsh dominfo ${BUILD_VM_NAME}" >/dev/null 2>&1; then
-        die "VM '${BUILD_VM_NAME}' already exists on ${KVM_HOST}. Remove it first or choose a different name."
-    fi
-
-    # SSH public key (required for cloud-init)
-    local pubkey_file
-    pubkey_file=$(find_ssh_pubkey)
-    local ssh_pubkey
-    ssh_pubkey=$(cat "${pubkey_file}")
-    case "${pubkey_file}" in
-        */opnsense-build-pubkey.*) rm -f "${pubkey_file}" ;;
-    esac
-
-    # Download FreeBSD BASIC-CLOUDINIT image
-    # This variant includes nuageinit which processes cloud-init NoCloud data
-    local image_name="FreeBSD-${FREEBSD_VERSION}-RELEASE-amd64-BASIC-CLOUDINIT-ufs.qcow2"
-    local image_url="https://download.freebsd.org/releases/VM-IMAGES/${FREEBSD_VERSION}-RELEASE/amd64/Latest/${image_name}.xz"
-    local cache_dir="/var/cache/freebsd-images"
-
-    info "FreeBSD ${FREEBSD_VERSION} BASIC-CLOUDINIT image"
-    kvm_sudo "mkdir -p ${cache_dir}"
-
-    if kvm_ssh "sudo test -f ${cache_dir}/${image_name}"; then
-        step "Using cached image: ${cache_dir}/${image_name}"
-    else
-        if kvm_ssh "sudo test -f ${cache_dir}/${image_name}.xz"; then
-            step "Using cached compressed image"
-        else
-            step "Downloading ${image_url}"
-            kvm_sudo "wget -q --show-progress -O ${cache_dir}/${image_name}.xz '${image_url}'" \
-                || die "Failed to download FreeBSD image"
-        fi
-        step "Decompressing (this may take a minute)..."
-        kvm_sudo "xz -dk ${cache_dir}/${image_name}.xz"
-    fi
-
-    # Create guest directory and disk
-    local guest_dir="${KVM_GUEST_DIR}/${BUILD_VM_NAME}"
-    local disk_path="${guest_dir}/disk.qcow2"
-    local cidata_path="${guest_dir}/cidata.iso"
-
-    info "Creating VM disk"
-    kvm_sudo "mkdir -p ${guest_dir}"
-    step "Copying base image to ${disk_path}"
-    kvm_sudo "cp ${cache_dir}/${image_name} ${disk_path}"
-    step "Resizing to ${BUILD_VM_DISK}GB"
-    kvm_sudo "qemu-img resize ${disk_path} ${BUILD_VM_DISK}G"
-
-    # Create cloud-init NoCloud ISO
-    # nuageinit on FreeBSD reads from a CD-ROM labeled "cidata"
-    # We use a shell script for user-data (not cloud-config) because
-    # FreeBSD 14.3 nuageinit doesn't support runcmd/write_files/packages.
-    info "Creating cloud-init cidata ISO"
-    local cidata_tmp="/tmp/_cidata_${BUILD_VM_NAME}"
-    kvm_ssh "mkdir -p ${cidata_tmp}"
-
-    # meta-data (required, can be minimal)
-    kvm_ssh "cat > ${cidata_tmp}/meta-data" <<METAEOF
-instance-id: ${BUILD_VM_NAME}
-local-hostname: ${BUILD_VM_NAME}
-METAEOF
-
-    # user-data as a shell script
-    # This runs on first boot and sets up root SSH, build user, sudo, etc.
-    local user_data_build_user=""
-    if [ -n "${BUILD_USER}" ] && [ "${BUILD_USER}" != "root" ]; then
-        user_data_build_user="
-# Create build user
-if ! pw user show ${BUILD_USER} >/dev/null 2>&1; then
-    pw useradd ${BUILD_USER} -m -G wheel -s /bin/sh
-fi
-pw groupmod wheel -m ${BUILD_USER} 2>/dev/null || true
-mkdir -p /home/${BUILD_USER}/.ssh
-chmod 700 /home/${BUILD_USER}/.ssh
-echo '${ssh_pubkey}' > /home/${BUILD_USER}/.ssh/authorized_keys
-chmod 600 /home/${BUILD_USER}/.ssh/authorized_keys
-chown -R ${BUILD_USER}:${BUILD_USER} /home/${BUILD_USER}/.ssh"
-    fi
-
-    kvm_ssh "cat > ${cidata_tmp}/user-data" <<USEREOF
-#!/bin/sh
-# Cloud-init user-data script for build server provisioning
-
-# Set up root SSH access
-mkdir -p /root/.ssh
-chmod 700 /root/.ssh
-echo '${ssh_pubkey}' > /root/.ssh/authorized_keys
-chmod 600 /root/.ssh/authorized_keys
-
-# Enable root SSH login with key only
-sed -i '' 's/^#PermitRootLogin no/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
-service sshd restart
-${user_data_build_user}
-
-# Install sudo and configure NOPASSWD for wheel
-# pkg bootstrap + upgrade first — fresh images have an old pkg that needs
-# to self-upgrade before it can install anything.
-env ASSUME_ALWAYS_YES=yes pkg bootstrap -f
-pkg update -f
-pkg upgrade -y
-pkg install -y git sudo
-echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /usr/local/etc/sudoers
-
-# Grow filesystem to fill disk
-growfs -y /
-USEREOF
-    kvm_ssh "chmod +x ${cidata_tmp}/user-data"
-
-    # Generate the ISO
-    step "Generating cidata ISO"
-    kvm_sudo "genisoimage -output ${cidata_path} -volid cidata -joliet -rock ${cidata_tmp}/meta-data ${cidata_tmp}/user-data" \
-        2>/dev/null
-    kvm_ssh "rm -rf ${cidata_tmp}"
-    step "Created ${cidata_path}"
-
-    # Determine os-variant for virt-install
-    local os_variant="freebsd${FREEBSD_VERSION%%.*}.0"
-
-    # Create and start VM with cloud-init ISO attached
-    # Serial console output is logged to a file for debugging boot issues.
-    local console_log="${guest_dir}/console.log"
-    info "Starting VM"
-    kvm_sudo "virt-install \
-        --name ${BUILD_VM_NAME} \
-        --memory ${BUILD_VM_MEMORY} \
-        --vcpus ${BUILD_VM_CPUS} \
-        --disk path=${disk_path},bus=virtio \
-        --disk path=${cidata_path},device=cdrom \
-        --network network=${BUILD_VM_NETWORK},model=virtio \
-        --os-variant ${os_variant} \
-        --import \
-        --noautoconsole \
-        --serial file,path=${console_log} \
-        --graphics vnc,listen=0.0.0.0 \
-        --autostart"
-    step "VM defined and started (autostart enabled)"
-    step "Console log: ${KVM_HOST}:${console_log}"
-
-    # Wait for VM to get an IP
-    # Detection method: parse the serial console log for the DHCP lease.
-    # Fallback: ARP-based detection (requires host to have communicated with VM).
-    info "Waiting for VM to boot and get an IP (this takes ~60s)"
-    local vm_ip=""
-    local wait_secs=0
-    while [ -z "${vm_ip}" ] && [ ${wait_secs} -lt 180 ]; do
-        sleep 5
-        wait_secs=$((wait_secs + 5))
-        # Try console log first — look for "bound to <ip>" from dhclient
-        vm_ip=$(kvm_ssh "sudo grep -oE 'bound to [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' ${console_log} 2>/dev/null" \
-            | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | tail -1) || true
-        # Fallback: ARP detection (ping broadcast to populate ARP table)
-        if [ -z "${vm_ip}" ]; then
-            vm_ip=$(kvm_sudo "virsh domifaddr ${BUILD_VM_NAME} --source arp" 2>/dev/null \
-                | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -1) || true
-        fi
-        [ -z "${vm_ip}" ] && printf "." >&2
-    done
-    [ -n "${vm_ip}" ] && echo "" >&2
-
-    if [ -z "${vm_ip}" ]; then
-        warn "Could not detect VM IP address automatically."
-        warn "The VM is running. Check manually:"
-        warn "  ssh ${KVM_HOST} 'sudo virsh domifaddr ${BUILD_VM_NAME} --source arp'"
-        warn "Once known, set BUILD_HOST=root@<ip> and run:"
-        warn "  $(basename "$0") provision"
-        return 1
-    fi
-    step "VM IP address: ${vm_ip}"
-
-    # Wait for SSH to become available
-    # The user-data script runs on first boot: installs packages, configures
-    # SSH, creates users. This can take 2-3 minutes.
-    # Clear any stale known_hosts entry (new VM = new host keys).
-    ssh-keygen -R "${vm_ip}" >/dev/null 2>&1 || true
-    info "Waiting for SSH (user-data script is configuring the VM)"
-    local ssh_wait=0
-    while ! ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -o BatchMode=yes \
-            "root@${vm_ip}" "echo ok" >/dev/null 2>&1; do
-        ssh_wait=$((ssh_wait + 5))
-        if [ ${ssh_wait} -ge 300 ]; then
-            warn "SSH to root@${vm_ip} not available after 300s."
-            warn "Debug with: ssh ${KVM_HOST} 'sudo virsh console ${BUILD_VM_NAME}'"
-            warn "Once SSH works, set BUILD_HOST=root@${vm_ip} and run:"
-            warn "  $(basename "$0") provision"
-            return 1
-        fi
-        sleep 5
-        printf "." >&2
-    done
-    echo "" >&2
-    step "SSH accessible as root"
-
-    # Run provisioning for resource checks and any remaining setup
-    echo ""
-    BUILD_HOST="root@${vm_ip}"
-    _provision_server
-
-    echo ""
-    info "Build server ready: ${BUILD_VM_NAME} at ${vm_ip}"
-    step "${BUILD_VM_CPUS} CPUs, ${BUILD_VM_MEMORY}MB RAM, ${BUILD_VM_DISK}GB disk"
-    echo ""
-    step "Add to your opnsense-build.conf:"
-    if [ -n "${BUILD_USER}" ]; then
-        step "  BUILD_HOST=${BUILD_USER}@${vm_ip}"
-    else
-        step "  BUILD_HOST=root@${vm_ip}"
-    fi
-    echo ""
-    step "Next steps:"
-    step "  $(basename "$0") bootstrap"
-    step "  $(basename "$0") build"
-}
-
-cmd_provision() {
-    validate_build_host
-    _provision_server
-
-    step "Next: $(basename "$0") bootstrap"
-}
 
 cmd_bootstrap() {
     validate_build_host
@@ -408,6 +73,9 @@ cmd_bootstrap() {
 
     # Sync device config
     _sync_device_conf
+
+    # Sync build server script and write config
+    _sync_server_script
 
     echo ""
     info "Bootstrap complete for series ${SERIES}"
@@ -454,6 +122,21 @@ _sync_device_conf() {
     remote_sudo "mkdir -p ${REMOTE_TOOLSDIR}/device"
     remote_sudo "mv /tmp/${conf_name} ${REMOTE_TOOLSDIR}/device/${conf_name}"
     remote_sudo "chown root:wheel ${REMOTE_TOOLSDIR}/device/${conf_name}"
+    step "Done"
+}
+
+_sync_server_script() {
+    # Write server-side config
+    step "Writing /etc/opnsense-build-server.conf"
+    remote "cat > /tmp/opnsense-build-server.conf" <<EOF
+# opnsense-build-server.conf — written by opnsense-build.sh bootstrap
+SERIES=${SERIES}
+DEVICE=${DEVICE}
+VM_FORMAT=${VM_FORMAT}
+TOOLSDIR=${REMOTE_TOOLSDIR}
+EOF
+    remote_sudo "mv /tmp/opnsense-build-server.conf /etc/opnsense-build-server.conf"
+    remote_sudo "chown root:wheel /etc/opnsense-build-server.conf"
     step "Done"
 }
 
@@ -643,6 +326,18 @@ cmd_series() {
     info "Updating repositories for series ${new_series}"
     remote_sudo "make -C ${REMOTE_TOOLSDIR} update SETTINGS=${new_series}"
 
+    # Update server-side config with new series
+    step "Updating /etc/opnsense-build-server.conf"
+    remote "cat > /tmp/opnsense-build-server.conf" <<EOF
+# opnsense-build-server.conf — written by opnsense-build.sh series
+SERIES=${new_series}
+DEVICE=${DEVICE}
+VM_FORMAT=${VM_FORMAT}
+TOOLSDIR=${REMOTE_TOOLSDIR}
+EOF
+    remote_sudo "mv /tmp/opnsense-build-server.conf /etc/opnsense-build-server.conf"
+    remote_sudo "chown root:wheel /etc/opnsense-build-server.conf"
+
     echo ""
     info "Switched to series ${new_series}"
     step "Update SERIES=${new_series} in your opnsense-build.conf"
@@ -665,8 +360,6 @@ load_config
 validate_config
 
 case "${COMMAND}" in
-    create-vm)    cmd_create_vm "$@" ;;
-    provision)    cmd_provision "$@" ;;
     bootstrap)    cmd_bootstrap "$@" ;;
     update)       cmd_update "$@" ;;
     sync-device)  cmd_sync_device "$@" ;;

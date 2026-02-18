@@ -2,16 +2,21 @@
 
 Automate the full OPNsense VM image build lifecycle: create a FreeBSD build
 server, bootstrap OPNsense source repos, build VM images, and deploy them to
-KVM guests — all remotely via SSH from your workstation.
+KVM guests.
+
+Three scripts split responsibilities:
+
+- **`create-build-vm.sh`** — runs on the KVM host to create a FreeBSD VM
+- **`opnsense-build.sh`** — runs on your workstation to orchestrate remote builds
+- **`opnsense-build-server.sh`** — runs on the build server for direct builds
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
 - [Prerequisites](#prerequisites)
 - [Configuration](#configuration)
-- [Commands](#commands)
-  - [create-vm](#create-vm)
-  - [provision](#provision)
+- [create-build-vm.sh](#create-build-vmsh)
+- [opnsense-build.sh](#opnsense-buildsh)
   - [bootstrap](#bootstrap)
   - [update](#update)
   - [sync-device](#sync-device)
@@ -19,6 +24,7 @@ KVM guests — all remotely via SSH from your workstation.
   - [status](#status)
   - [deploy](#deploy)
   - [series](#series)
+- [opnsense-build-server.sh](#opnsense-build-serversh)
 - [Device Configuration](#device-configuration)
 - [Workflow Examples](#workflow-examples)
 - [Architecture](#architecture)
@@ -26,21 +32,35 @@ KVM guests — all remotely via SSH from your workstation.
 
 ## Quick Start
 
+### New VM (on a KVM host)
+
+```sh
+# On the KVM host: create a FreeBSD build VM
+./tools/create-build-vm.sh create \
+    --ssh-pubkey ~/.ssh/id_ed25519.pub \
+    --build-user brendan
+
+# Note the IP address from the output
+```
+
+### Existing FreeBSD machine
+
+Ensure `git` and `sudo` are installed, and the build user has NOPASSWD sudo.
+
+### Bootstrap and build (from your workstation)
+
 ```sh
 # 1. Copy and edit the config
 cp tools/opnsense-build.conf.sample tools/opnsense-build.conf
-vi tools/opnsense-build.conf
+# Set BUILD_HOST and SERIES
 
-# 2. Create a build VM (or use an existing FreeBSD machine)
-./tools/opnsense-build.sh create-vm
-
-# 3. Bootstrap OPNsense source repos
+# 2. Bootstrap OPNsense source repos
 ./tools/opnsense-build.sh bootstrap
 
-# 4. Build a VM image
+# 3. Build a VM image
 ./tools/opnsense-build.sh build
 
-# 5. Deploy to a test VM
+# 4. Deploy to a test VM
 ./tools/opnsense-build.sh deploy
 ```
 
@@ -48,10 +68,11 @@ vi tools/opnsense-build.conf
 
 ### On your workstation (macOS or Linux)
 
-- SSH client with key-based authentication to the KVM host and build server
+- SSH client with key-based authentication to the build server (and KVM host
+  for deploy)
 - SSH agent running (needed for `deploy` command's agent forwarding)
 
-### On the KVM host (for `create-vm` and `deploy`)
+### On the KVM host (for `create-build-vm.sh` and `deploy`)
 
 The KVM host is the machine that runs libvirt/QEMU virtual machines. Required
 packages:
@@ -78,12 +99,14 @@ A FreeBSD machine (physical or virtual) with:
 - Minimum 40 GB free disk (80 GB+ recommended for caching build artifacts)
 - Minimum 8 GB RAM
 - Network access to GitHub and FreeBSD package mirrors
-- `git` and `sudo` installed (the `provision` command handles this)
+- `git` and `sudo` installed
 
-The `create-vm` command can create and provision a build server from scratch.
-Alternatively, use `provision` on an existing FreeBSD machine.
+The `create-build-vm.sh` script handles VM creation and provisioning
+automatically.
 
 ## Configuration
+
+### opnsense-build.conf (workstation)
 
 Copy the sample config and edit it:
 
@@ -98,29 +121,14 @@ developer maintains their own. Config file search order:
 2. `tools/opnsense-build.conf` (same directory as the script)
 3. `~/.config/opnsense-build.conf`
 
-### Required settings
+#### Required settings
 
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `BUILD_HOST` | SSH target for the build server | `brendan@10.0.10.138` |
 | `SERIES` | OPNsense release series | `26.1` |
 
-### VM creation settings (for `create-vm`)
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `KVM_HOST` | *(none)* | SSH target for the KVM/libvirt host |
-| `KVM_GUEST_DIR` | `/var/vms/guests` | Guest disk image directory on KVM host |
-| `BUILD_VM_NAME` | `fbsd-build` | VM name in libvirt |
-| `BUILD_VM_CPUS` | `4` | Number of vCPUs |
-| `BUILD_VM_MEMORY` | `16384` | RAM in MB |
-| `BUILD_VM_DISK` | `100` | Disk size in GB |
-| `BUILD_VM_NETWORK` | `default` | Libvirt network name |
-| `FREEBSD_VERSION` | `14.3` | FreeBSD version to install |
-| `SSH_PUBKEY` | *(none)* | SSH public key (string or file path) |
-| `BUILD_USER` | *(none)* | Unprivileged user to create |
-
-### Build settings
+#### Build settings
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -128,7 +136,7 @@ developer maintains their own. Config file search order:
 | `DEVICE` | `BANZAI` | Device name for `make` (matches `.conf` filename) |
 | `VM_FORMAT` | `qcow2` | Image format (`qcow2`, `raw`, `vmdk`) |
 
-### Remote paths
+#### Remote paths
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -138,45 +146,82 @@ developer maintains their own. Config file search order:
 | `REMOTE_PLUGINSDIR` | `/usr/plugins` | OPNsense plugins |
 | `REMOTE_PORTSDIR` | `/usr/ports` | FreeBSD ports |
 
-### Deployment settings (for `deploy`)
+#### Deployment settings
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `KVM_HOST` | *(none)* | SSH target for the KVM/libvirt host |
+| `KVM_GUEST_DIR` | `/var/vms/guests` | Guest disk image directory on KVM host |
 | `KVM_GUEST_NAME` | *(none)* | Default guest VM to deploy to |
 
-### Example configuration
+#### Example configuration
 
 ```sh
 BUILD_HOST=brendan@10.0.10.138
 SERIES=26.1
 
 KVM_HOST=vm.example.com
-KVM_GUEST_DIR=/var/vms/guests
-BUILD_VM_NAME=fbsd-build
-BUILD_VM_CPUS=8
-BUILD_VM_MEMORY=16384
-BUILD_VM_DISK=120
-BUILD_VM_NETWORK=br0
-FREEBSD_VERSION=14.3
-SSH_PUBKEY=~/.ssh/id_ed25519.pub
-BUILD_USER=brendan
-
 KVM_GUEST_NAME=opn-test
 ```
 
-## Commands
+### opnsense-build-server.conf (build server)
 
-### create-vm
+This config is written automatically by `opnsense-build.sh bootstrap` and
+`opnsense-build.sh series`. It lives at `/etc/opnsense-build-server.conf` on
+the build server. Override with `OPNSENSE_BUILD_SERVER_CONF` env var.
 
-Create a new FreeBSD VM on the KVM host and provision it as a build server.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SERIES` | *(required)* | OPNsense release series |
+| `DEVICE` | `BANZAI` | Device name |
+| `VM_FORMAT` | `qcow2` | Image format |
+| `TOOLSDIR` | `/usr/tools` | OPNsense tools repo path |
+
+## create-build-vm.sh
+
+Self-contained script that runs **locally on a KVM/libvirt host**. Creates a
+FreeBSD VM provisioned as an OPNsense build server.
 
 ```sh
-./tools/opnsense-build.sh create-vm
+# Create a VM
+./tools/create-build-vm.sh create --ssh-pubkey ~/.ssh/id_ed25519.pub
+
+# Create with custom resources
+./tools/create-build-vm.sh create \
+    --name fbsd-build \
+    --cpus 8 \
+    --memory 16384 \
+    --disk 120 \
+    --network br0 \
+    --freebsd-version 14.3 \
+    --ssh-pubkey ~/.ssh/id_ed25519.pub \
+    --build-user brendan
+
+# Delete a VM
+./tools/create-build-vm.sh delete --name fbsd-build
 ```
 
-**What it does:**
+### Create options
 
-1. Checks that the KVM host has all required tools installed
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--name` | `fbsd-build` | VM name in libvirt |
+| `--cpus` | `4` | Number of vCPUs |
+| `--memory` | `16384` | RAM in MB |
+| `--disk` | `100` | Disk size in GB |
+| `--network` | `default` | Libvirt network name |
+| `--freebsd-version` | `14.3` | FreeBSD version to install |
+| `--guest-dir` | `/var/vms/guests` | Guest disk image directory |
+| `--ssh-pubkey` | *(required)* | SSH public key (string or file path) |
+| `--build-user` | *(none)* | Unprivileged user to create |
+
+All flags have env var equivalents: `VM_NAME`, `VM_CPUS`, `VM_MEMORY`,
+`VM_DISK`, `VM_NETWORK`, `FREEBSD_VERSION`, `GUEST_DIR`, `SSH_PUBKEY`,
+`BUILD_USER`.
+
+### What create does
+
+1. Checks that all required KVM tools are installed
 2. Verifies no VM with the same name already exists
 3. Downloads the FreeBSD BASIC-CLOUDINIT image (cached for reuse)
 4. Creates a VM disk from the base image and resizes it
@@ -184,67 +229,48 @@ Create a new FreeBSD VM on the KVM host and provision it as a build server.
 6. Boots the VM with the cloud-init ISO attached
 7. Detects the VM's IP address (from DHCP lease in serial console log)
 8. Waits for SSH to become available (2-3 minutes while provisioning runs)
-9. Runs the provisioning steps (package install, sudo config, resource check)
+9. Verifies provisioning completed (resource checks)
 
 **Cloud-init details:**
 
-The `create-vm` command uses FreeBSD's BASIC-CLOUDINIT image variant, which
-includes `nuageinit` for processing NoCloud-style cloud-init data. A cidata
-ISO (volume label `cidata`) is attached as a CD-ROM containing:
+The script uses FreeBSD's BASIC-CLOUDINIT image variant, which includes
+`nuageinit` for processing NoCloud-style cloud-init data. A cidata ISO (volume
+label `cidata`) is attached as a CD-ROM containing:
 
 - `meta-data` — instance ID and hostname
 - `user-data` — a shell script (not cloud-config YAML, because FreeBSD 14.3's
   nuageinit doesn't support `runcmd`, `write_files`, or `packages`)
 
-The user-data script:
+The user-data script runs during first boot via nuageinit (**before networking
+is available**), so it handles only local operations:
 
 - Sets up root SSH access with the configured public key
-- Creates the build user (if `BUILD_USER` is set) with wheel group membership
+- Creates the build user (if `--build-user` is set) with wheel group membership
+- Enables `PermitRootLogin prohibit-password` in sshd_config
+
+After the VM boots and SSH becomes available, the script installs packages and
+configures sudo over SSH:
+
 - Installs `git` and `sudo` via `pkg`
 - Configures NOPASSWD sudo for the wheel group
-- Grows the filesystem to fill the disk
+
+The base image already has `growfs_enable=YES`, so the filesystem is
+automatically grown to fill the disk on first boot.
 
 **After creation:**
 
 The command prints the VM's IP address and instructions for updating your
-config. Add the IP to `BUILD_HOST` in your config, then run `bootstrap`.
+config. Add the IP to `BUILD_HOST` in your `opnsense-build.conf`, then run
+`opnsense-build.sh bootstrap`.
 
 **Serial console:**
 
-Boot output is logged to `${KVM_GUEST_DIR}/${BUILD_VM_NAME}/console.log` on
-the KVM host. Useful for debugging boot or provisioning failures:
+Boot output is logged to `${GUEST_DIR}/${VM_NAME}/console.log`. Useful for
+debugging boot or provisioning failures.
 
-```sh
-ssh your-kvm-host "cat /var/vms/guests/fbsd-build/console.log"
-```
+## opnsense-build.sh
 
-### provision
-
-Provision an existing FreeBSD machine as a build server.
-
-```sh
-./tools/opnsense-build.sh provision
-```
-
-Use this when you already have a FreeBSD machine (not created by `create-vm`)
-that you want to use as a build server. It is idempotent — safe to run
-multiple times.
-
-**What it does:**
-
-1. Tests SSH connectivity to `BUILD_HOST`
-2. Detects the FreeBSD version
-3. Bootstraps `pkg` and installs `git` and `sudo`
-4. Creates the build user (if `BUILD_USER` is set and connected as root)
-5. Configures NOPASSWD sudo for the wheel group
-6. Checks disk space and RAM, warns if below recommended minimums
-
-**Notes:**
-
-- Works whether you connect as root or as an unprivileged user with sudo
-- If connecting as root with `BUILD_USER` set, it creates the user and copies
-  root's SSH authorized keys to the new user
-- After provisioning as root, update `BUILD_HOST` to use the unprivileged user
+Workstation-side orchestrator that runs commands on the build server via SSH.
 
 ### bootstrap
 
@@ -265,6 +291,7 @@ release series.
    (`src`, `core`, `plugins`, `ports`) with the correct git URLs and branch
    names
 5. Syncs the device config (BANZAI.conf) to the build server
+6. Writes `/etc/opnsense-build-server.conf` with the current settings
 
 **Repository layout on the build server:**
 
@@ -423,6 +450,7 @@ Switch all repositories to a different OPNsense release series.
    upstream)
 3. Runs `make update SETTINGS=<series>` to switch all repos to the new series
    branches
+4. Updates `/etc/opnsense-build-server.conf` with the new series
 
 **After switching:** Update `SERIES` in your config file to match. Then run
 `build` to create an image for the new series.
@@ -430,6 +458,60 @@ Switch all repositories to a different OPNsense release series.
 **Note:** A series is only available when the OPNsense project has published
 the tools config and stable branches for it. For example, 26.7 won't be
 available until its release candidate phase.
+
+## opnsense-build-server.sh
+
+Wrapper script for running builds directly on the build server. Useful when you
+SSH into the build server and want to build without the workstation orchestrator.
+
+Lives in `banzai-plugins/tools/` — check out the repo on the build server.
+
+```sh
+# On the build server:
+opnsense-build-server.sh build              # full build
+opnsense-build-server.sh build core vm      # rebuild core + assemble image
+opnsense-build-server.sh status             # show server state
+opnsense-build-server.sh update             # pull latest repos
+```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `build [stage...]` | Build VM image (same stages as opnsense-build.sh) |
+| `status` | Show repos, artifacts, disk/RAM — all local commands |
+| `update` | `sudo make -C /usr/tools update` |
+
+### Configuration
+
+Reads from `/etc/opnsense-build-server.conf` (written by bootstrap/series
+commands) or env vars. Override config path with `OPNSENSE_BUILD_SERVER_CONF`.
+
+## Makefile
+
+Convenience targets for building directly on the build server. If you check out
+the `banzai-plugins` repo on the build server, you can run builds from
+`tools/`:
+
+```sh
+cd banzai-plugins/tools
+make build                    # full VM image build
+make build core vm            # not supported — use individual targets
+make core                     # rebuild OPNsense core
+make vm                       # assemble VM image
+make status                   # show repos, artifacts, resources
+make update                   # pull latest code
+make clean                    # clean build artifacts
+```
+
+Override settings on the command line:
+
+```sh
+make build SERIES=26.7 DEVICE=BANZAI
+```
+
+Reads `/etc/opnsense-build-server.conf` for defaults (same config as
+`opnsense-build-server.sh`).
 
 ## Device Configuration
 
@@ -531,13 +613,15 @@ To add a user named `alice` with UID 2000:
 ### Setting up a new build environment from scratch
 
 ```sh
-# Configure
-cp tools/opnsense-build.conf.sample tools/opnsense-build.conf
-# Edit: set KVM_HOST, SSH_PUBKEY, BUILD_USER, SERIES
+# On the KVM host: create a build VM
+./tools/create-build-vm.sh create \
+    --ssh-pubkey ~/.ssh/id_ed25519.pub \
+    --build-user brendan
+# Note the IP address from the output
 
-# Create the VM and provision it
-./tools/opnsense-build.sh create-vm
-# Note the IP address from the output, update BUILD_HOST in config
+# On your workstation: configure
+cp tools/opnsense-build.conf.sample tools/opnsense-build.conf
+# Set BUILD_HOST=brendan@<ip> and SERIES=26.1
 
 # Clone all OPNsense repos
 ./tools/opnsense-build.sh bootstrap
@@ -561,6 +645,17 @@ cp tools/opnsense-build.conf.sample tools/opnsense-build.conf
 
 # Deploy the new image
 ./tools/opnsense-build.sh deploy
+```
+
+### Building directly on the server
+
+```sh
+# SSH to the build server
+ssh build-host
+
+# Build using the local wrapper
+opnsense-build-server.sh build core vm
+opnsense-build-server.sh status
 ```
 
 ### After editing the device config
@@ -597,37 +692,50 @@ cp tools/opnsense-build.conf.sample tools/opnsense-build.conf
 
 ```
 tools/
-├── opnsense-build.sh              # Main entry point (subcommand dispatch)
+├── create-build-vm.sh             # VM creation (runs on KVM host)
+├── opnsense-build.sh              # Orchestrator (runs on workstation)
+├── opnsense-build-server.sh       # Build wrapper (synced to build server)
+├── Makefile                       # Convenience targets (runs on build server)
 ├── opnsense-build.conf.sample     # Documented sample configuration
 ├── opnsense-build.conf            # User config (git-ignored)
 ├── lib/
-│   └── common.sh                  # Shared helpers
+│   └── common.sh                  # Shared helpers for opnsense-build.sh
 └── README.md                      # This file
 ```
 
 ### How it works
 
-The script operates entirely over SSH. Your workstation is the control plane;
-the build server does the heavy lifting. There is no agent or daemon on the
-build server — everything runs as remote commands.
+Three scripts handle different parts of the workflow:
 
 ```
-┌─────────────┐    SSH     ┌──────────────┐
-│ Workstation  │ ────────→ │ Build Server │  (FreeBSD, /usr/tools)
-│  (macOS)     │           │  (fbsd-build)│
-└──────┬───────┘           └──────────────┘
-       │                          │
-       │ SSH                      │ SCP (agent-forwarded)
-       ▼                          ▼
-┌─────────────┐           ┌──────────────┐
-│  KVM Host   │           │  Guest VM    │
-│(vm.example) │  libvirt  │  (opn-test)  │
-└─────────────┘ ────────→ └──────────────┘
+┌─────────────┐  create-build-vm.sh  ┌──────────────┐
+│  KVM Host   │ ──────────────────→  │  Build VM    │
+│             │   (runs locally)     │  (FreeBSD)   │
+└──────┬──────┘                      └──────┬───────┘
+       │                                    │
+       │ SSH (deploy)                       │ opnsense-build-server.sh
+       │                                    │ (runs locally on server)
+       │                                    │
+┌──────┴──────┐    SSH (orchestrate)        │
+│ Workstation │ ────────────────────────────┘
+│  (macOS)    │  opnsense-build.sh
+└─────────────┘
 ```
+
+- **`create-build-vm.sh`** runs directly on the KVM host. No SSH wrappers —
+  it calls `virsh`, `qemu-img`, etc. locally. Output tells you the VM's IP
+  so you can configure `BUILD_HOST`.
+
+- **`opnsense-build.sh`** runs on your workstation. It SSH's into the build
+  server for all operations (bootstrap, build, status, deploy). The `bootstrap`
+  command writes the server-side config.
+
+- **`opnsense-build-server.sh`** runs directly on the build server. It wraps
+  `make` commands so you can build without needing the workstation orchestrator.
 
 ### Helper library (`lib/common.sh`)
 
-Shared functions used across all commands:
+Shared functions used by `opnsense-build.sh`:
 
 - **Logging:** `die()`, `info()`, `step()`, `warn()` — consistent output
   formatting
@@ -671,33 +779,33 @@ build server.
 
 ## Troubleshooting
 
-### create-vm: VM doesn't get an IP address
+### create-build-vm.sh: VM doesn't get an IP address
 
 The script detects the IP by parsing the serial console log for DHCP lease
 information. If detection fails:
 
 1. Check the console log:
    ```sh
-   ssh your-kvm-host "cat /var/vms/guests/fbsd-build/console.log"
+   cat /var/vms/guests/fbsd-build/console.log
    ```
-2. Try ARP-based detection from the KVM host:
+2. Try ARP-based detection:
    ```sh
-   ssh your-kvm-host "sudo virsh domifaddr fbsd-build --source arp"
+   sudo virsh domifaddr fbsd-build --source arp
    ```
 3. Check that the libvirt network has DHCP enabled.
 
-### create-vm: SSH never becomes available
+### create-build-vm.sh: SSH never becomes available
 
 The user-data provisioning script runs at first boot and takes 2-3 minutes.
 If SSH isn't available after 5 minutes:
 
 1. Connect to the VM console:
    ```sh
-   ssh your-kvm-host "sudo virsh console fbsd-build"
+   sudo virsh console fbsd-build
    ```
 2. Check if the user-data script ran. Look at `/var/log/messages` for nuageinit
    output.
-3. Verify that the SSH public key in your config is correct.
+3. Verify that the SSH public key is correct.
 
 ### bootstrap: "config/<series>/ does not exist"
 
@@ -740,8 +848,8 @@ ssh-keygen -R <guest-ip>
 - Verify the host is reachable: `ping <host>`
 - Verify SSH key authentication works: `ssh -v <host>`
 - For the build server: all commands need key-based auth (no password prompts)
-- For build VMs created by `create-vm`: check that `SSH_PUBKEY` in your config
-  is correct
+- For build VMs created by `create-build-vm.sh`: check that `--ssh-pubkey`
+  was correct
 
 ### General: "Permission denied" on git or make commands
 
@@ -753,4 +861,5 @@ user has NOPASSWD sudo:
 ssh build-host "sudo -n echo ok"
 ```
 
-If this prompts for a password, re-run `provision` to fix sudo configuration.
+If this prompts for a password, ensure the wheel group has NOPASSWD sudo
+configured in `/usr/local/etc/sudoers`.

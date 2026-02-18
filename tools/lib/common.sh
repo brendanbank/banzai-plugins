@@ -51,13 +51,6 @@ load_config() {
     DEVICE="${DEVICE:-BANZAI}"
     VM_FORMAT="${VM_FORMAT:-qcow2}"
 
-    # VM creation defaults
-    BUILD_VM_NAME="${BUILD_VM_NAME:-fbsd-build}"
-    BUILD_VM_CPUS="${BUILD_VM_CPUS:-4}"
-    BUILD_VM_MEMORY="${BUILD_VM_MEMORY:-16384}"
-    BUILD_VM_DISK="${BUILD_VM_DISK:-100}"
-    BUILD_VM_NETWORK="${BUILD_VM_NETWORK:-default}"
-    FREEBSD_VERSION="${FREEBSD_VERSION:-14.3}"
     KVM_GUEST_DIR="${KVM_GUEST_DIR:-/var/vms/guests}"
 }
 
@@ -104,33 +97,6 @@ kvm_ssh() {
 
 kvm_sudo() {
     ssh "${KVM_HOST}" "sudo $*"
-}
-
-# ── SSH key discovery ────────────────────────────────────────────────
-
-# Returns a file path containing the SSH public key.
-# SSH_PUBKEY can be a key string ("ssh-rsa ...") or a file path.
-find_ssh_pubkey() {
-    local key="${SSH_PUBKEY}"
-    [ -n "${key}" ] || die "SSH_PUBKEY not set in config."
-
-    # If it looks like a key string, write to a temp file
-    case "${key}" in
-        ssh-*|ecdsa-*)
-            local tmpkey
-            tmpkey=$(mktemp "${TMPDIR:-/tmp}/opnsense-build-pubkey.XXXXXX")
-            echo "${key}" > "${tmpkey}"
-            echo "${tmpkey}"
-            return
-            ;;
-    esac
-
-    # Otherwise treat as file path
-    case "${key}" in
-        "~/"*) key="${HOME}/${key#\~/}" ;;
-    esac
-    [ -f "${key}" ] || die "SSH_PUBKEY file not found: ${key}"
-    echo "${key}"
 }
 
 # ── Remote git operations ────────────────────────────────────────────
