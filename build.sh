@@ -9,6 +9,8 @@
 #
 # After building, packages are downloaded to dist/ and the GitHub Pages pkg
 # repo in docs/${ABI}/${SERIES}/repo/ is updated with signed packages.
+# Signing uses a GPG signing subkey on a YubiKey via GPG agent forwarding
+# (tools/sign-repo.sh runs on the remote, gpg-agent calls reach the local key).
 #
 # Options:
 #   --test    Build only; skip repo signing, docs, and GitHub Pages update.
@@ -26,7 +28,6 @@ FIREWALL="${1:-${FIREWALL:?Usage: ./build.sh [--test] <hostname>}}"
 REMOTE_REPO="/home/brendan/src/banzai-plugins"
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 LOCAL_DIST="${REPO_ROOT}/dist"
-OP_ITEM="banzai-plugins pkg repo signing key"
 
 # ── helpers ──────────────────────────────────────────────────────────
 
@@ -161,38 +162,26 @@ for pkg in "${LOCAL_DIST}"/*.pkg; do
     scp -q "${pkg}" "${FIREWALL}:${REMOTE_REPO_DIR}/"
 done
 
-# Fetch signing key from 1Password for fingerprint-based signing
-echo "    Fetching signing key from 1Password..."
-SIGNING_KEY=$(mktemp)
-SIGNING_KEY_RSA=$(mktemp)
-trap 'rm -f "${SIGNING_KEY}" "${SIGNING_KEY_RSA}"' EXIT
-op item get "${OP_ITEM}" --fields notesPlain --format json \
-    | jq -r '.value' > "${SIGNING_KEY}" \
-    || die "Failed to fetch signing key from 1Password"
-openssl rsa -in "${SIGNING_KEY}" -out "${SIGNING_KEY_RSA}" -traditional 2>/dev/null \
-    || die "Failed to convert signing key to PKCS#1 format"
-scp -q "${SIGNING_KEY_RSA}" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.key"
+# Sign with YubiKey GPG key via agent forwarding: the remote gpg-agent
+# socket is forwarded to the local agent (which has the YubiKey).
+scp -q "${REPO_ROOT}/tools/sign-repo.sh" "${FIREWALL}:${REMOTE_REPO_DIR}/sign-repo.sh"
 scp -q "${REPO_ROOT}/Keys/repo.pub" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.pub"
-rm -f "${SIGNING_KEY}" "${SIGNING_KEY_RSA}"
 
-# Create signing command for fingerprint-based verification
-remote "cat > ${REMOTE_REPO_DIR}/sign.sh << 'SIGNEOF'
-#!/bin/sh
-read -t 2 sum
-[ -z \"\$sum\" ] && exit 1
-echo SIGNATURE
-echo -n \$sum | openssl dgst -sign ${REMOTE_REPO_DIR}/repo.key -sha256 -binary
-echo
-echo CERT
-cat ${REMOTE_REPO_DIR}/repo.pub
-echo END
-SIGNEOF
-chmod +x ${REMOTE_REPO_DIR}/sign.sh"
+echo "    Signing repo (GPG key on this host via agent forwarding)..."
+REMOTE_GPG_SOCK=$(remote "gpgconf --list-dirs agent-socket")
+LOCAL_GPG_EXTRA=$(gpgconf --list-dirs agent-extra-socket)
 
-echo "    Signing repo..."
-remote "pkg repo ${REMOTE_REPO_DIR}/ signing_command: ${REMOTE_REPO_DIR}/sign.sh"
-remote "rm -f ${REMOTE_REPO_DIR}/repo.key ${REMOTE_REPO_DIR}/repo.pub ${REMOTE_REPO_DIR}/sign.sh"
+# Kill remote gpg-agent and remove stale socket before forwarding,
+# otherwise ssh -R fails because the socket file already exists.
+remote "gpgconf --kill gpg-agent; rm -f ${REMOTE_GPG_SOCK}"
 
+ssh -R "${REMOTE_GPG_SOCK}:${LOCAL_GPG_EXTRA}" "${FIREWALL}" \
+    "pkg repo ${REMOTE_REPO_DIR}/ signing_command: ${REMOTE_REPO_DIR}/sign-repo.sh"
+
+# pkg repo exits 0 even when signing fails — verify the signature was created
+remote "test -f ${REMOTE_REPO_DIR}/meta.conf" || die "Repo signing failed (no meta.conf)"
+
+remote "rm -f ${REMOTE_REPO_DIR}/sign-repo.sh ${REMOTE_REPO_DIR}/repo.pub"
 rm -f "${PAGES_REPO}"/*.pkg
 rm -f "${PAGES_REPO}"/{meta.conf,packagesite.*,data.*,filesite.*}
 scp -q "${FIREWALL}:${REMOTE_REPO_DIR}/*" "${PAGES_REPO}/"

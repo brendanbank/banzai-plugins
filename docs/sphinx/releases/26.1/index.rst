@@ -26,7 +26,7 @@ All packages are signed. Set up the signing fingerprint on your firewall:
 
     cat > /usr/local/etc/pkg/fingerprints/banzai-plugins/trusted/repo.fingerprint <<'EOF'
     function: sha256
-    fingerprint: 5d03d774f3fa2926f9e2156b98d261461478f4f5d1332926fa5c7906b29eab87
+    fingerprint: 972cbedbb091ffff846655a816a1d0ae30ca71887866878973e3ec0f857b4160
     EOF
 
 You can verify the fingerprint matches the public key in

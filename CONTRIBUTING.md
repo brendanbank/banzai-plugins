@@ -10,7 +10,7 @@ Suggestions and contributions are very welcome! There are several ways to contri
 
 - An OPNsense or FreeBSD host accessible via SSH (for building packages)
 - Git with submodule support
-- 1Password CLI (`op`) for package signing (maintainers only)
+- For maintainers: YubiKey with GPG signing subkey and `gpg-agent` for package repo signing (see below)
 
 ## Getting Started
 
@@ -90,6 +90,20 @@ This will:
 3. Build each plugin with `make package`
 4. Download `.pkg` files to `dist/`
 5. Sign and update the per-release pkg repo in `docs/<ABI>/<series>/repo/`
+
+## Signing (maintainers)
+
+Repo signing uses the **GPG signing subkey** on your YubiKey so the private key never leaves the device. During signing, the remote `sign.sh` writes the hash to a file and waits; `build.sh` polls for it over the existing SSH connection, signs locally with `tools/sign-repo.sh` via `gpg-agent`, and writes the response back. No reverse tunnel or sshd on your laptop is needed.
+
+PIN entry is handled by `pinentry` (e.g. `pinentry-mac`), so no environment variables or `/dev/tty` hacks are needed.
+
+**Setup:**
+
+1. Ensure `gpg-agent` is running with a `pinentry` program configured.
+2. The GPG signing subkey must be on the YubiKey. `Keys/repo.pub` must match that key.
+3. The default keygrip is configured in `tools/sign-repo.sh`. To override, set `GPG_SIGN_KEYGRIP`.
+
+**Requires:** `gpg-agent`, `python3`, `openssl`.
 
 ## Releasing
 
