@@ -45,6 +45,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="releases/26.1/index.html">OPNsense 26.1</a></li>
 </ul>
+<p class="caption" role="heading"><span class="caption-text">Articles</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="articles/yubikey-pkg-signing.html">Signing FreeBSD pkg Repositories with a YubiKey</a></li>
+</ul>
 
         </div>
       </div>
@@ -188,6 +192,40 @@ on <a class="reference external" href="https://github.com/brendanbank/banzai-plu
 <li class="toctree-l3"><a class="reference internal" href="releases/26.1/index.html#install-a-plugin">3. Install a plugin</a></li>
 </ul>
 </li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Articles</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="articles/yubikey-pkg-signing.html">Signing FreeBSD pkg Repositories with a YubiKey</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="articles/yubikey-pkg-signing.html#why-hardware-backed-signing">Why hardware-backed signing?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="articles/yubikey-pkg-signing.html#how-pkg-signing-actually-works">How pkg signing actually works</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="articles/yubikey-pkg-signing.html#the-double-hash">The double hash</a></li>
+<li class="toctree-l3"><a class="reference internal" href="articles/yubikey-pkg-signing.html#fingerprints">Fingerprints</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="articles/yubikey-pkg-signing.html#setting-up-the-gpg-signing-key">Setting up the GPG signing key</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="articles/yubikey-pkg-signing.html#generate-or-identify-your-signing-subkey">Generate or identify your signing subkey</a></li>
+<li class="toctree-l3"><a class="reference internal" href="articles/yubikey-pkg-signing.html#export-the-public-key-in-pem-format">Export the public key in PEM format</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="articles/yubikey-pkg-signing.html#the-signing-script">The signing script</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="articles/yubikey-pkg-signing.html#why-gpg-connect-agent-instead-of-gpg-sign">Why gpg-connect-agent instead of gpg –sign?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="articles/yubikey-pkg-signing.html#why-python">Why Python?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="articles/yubikey-pkg-signing.html#gpg-agent-forwarding-for-remote-builds">GPG agent forwarding for remote builds</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="articles/yubikey-pkg-signing.html#setup">Setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="articles/yubikey-pkg-signing.html#the-stale-socket-trap">The stale socket trap</a></li>
+<li class="toctree-l3"><a class="reference internal" href="articles/yubikey-pkg-signing.html#pin-entry">PIN entry</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="articles/yubikey-pkg-signing.html#putting-it-together-the-build-script">Putting it together: the build script</a></li>
+<li class="toctree-l2"><a class="reference internal" href="articles/yubikey-pkg-signing.html#client-side-setup">Client-side setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="articles/yubikey-pkg-signing.html#verifying-signatures-manually">Verifying signatures manually</a></li>
+<li class="toctree-l2"><a class="reference internal" href="articles/yubikey-pkg-signing.html#summary-of-pitfalls">Summary of pitfalls</a></li>
 </ul>
 </li>
 </ul>

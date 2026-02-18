@@ -164,7 +164,7 @@ done
 
 # Sign with YubiKey GPG key via agent forwarding: the remote gpg-agent
 # socket is forwarded to the local agent (which has the YubiKey).
-scp -q "${REPO_ROOT}/tools/sign-repo.sh" "${FIREWALL}:${REMOTE_REPO_DIR}/sign-repo.sh"
+scp -q "${REPO_ROOT}/tools/sign-repo.py" "${FIREWALL}:${REMOTE_REPO_DIR}/sign-repo.py"
 scp -q "${REPO_ROOT}/Keys/repo.pub" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.pub"
 
 echo "    Signing repo (GPG key on this host via agent forwarding)..."
@@ -176,12 +176,12 @@ LOCAL_GPG_EXTRA=$(gpgconf --list-dirs agent-extra-socket)
 remote "gpgconf --kill gpg-agent; rm -f ${REMOTE_GPG_SOCK}"
 
 ssh -R "${REMOTE_GPG_SOCK}:${LOCAL_GPG_EXTRA}" "${FIREWALL}" \
-    "pkg repo ${REMOTE_REPO_DIR}/ signing_command: ${REMOTE_REPO_DIR}/sign-repo.sh"
+    "pkg repo ${REMOTE_REPO_DIR}/ signing_command: ${REMOTE_REPO_DIR}/sign-repo.py"
 
 # pkg repo exits 0 even when signing fails — verify the signature was created
 remote "test -f ${REMOTE_REPO_DIR}/meta.conf" || die "Repo signing failed (no meta.conf)"
 
-remote "rm -f ${REMOTE_REPO_DIR}/sign-repo.sh ${REMOTE_REPO_DIR}/repo.pub"
+remote "rm -f ${REMOTE_REPO_DIR}/sign-repo.py ${REMOTE_REPO_DIR}/repo.pub"
 rm -f "${PAGES_REPO}"/*.pkg
 rm -f "${PAGES_REPO}"/{meta.conf,packagesite.*,data.*,filesite.*}
 scp -q "${FIREWALL}:${REMOTE_REPO_DIR}/*" "${PAGES_REPO}/"

@@ -6,6 +6,7 @@ html:
 	cp _build/html/searchindex.js ../
 	cp _build/html/genindex.html ../
 	cp -r _build/html/releases ../
+	cp -r _build/html/articles ../
 
 clean:
 	rm -rf _build
