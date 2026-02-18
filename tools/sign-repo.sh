@@ -5,11 +5,15 @@
 # the GPG signing subkey on the YubiKey via gpg-agent, and outputs the
 # format pkg expects: SIGNATURE, binary sig, CERT, PEM public key, END.
 #
+# pkg sends SHA256(data) as a hex string, and verifies the signature against
+# SHA256(hex_string) — so we hash the hex string again before signing.
+#
 # The private key stays on the YubiKey. PIN entry goes through pinentry
 # (e.g. pinentry-mac), so no PIV_PIN variable or /dev/tty hacks are needed.
 #
-# Requires: gpg-agent, python3
+# Requires: gpg-agent, python3, openssl
 # Optional: GPG_SIGN_KEYGRIP (override signing key keygrip)
+#           REPO_PUB (path to public key PEM file)
 #
 # Copyright (c) 2025 Brendan Bank
 # SPDX-License-Identifier: BSD-2-Clause
@@ -29,7 +33,7 @@ KEYGRIP="${GPG_SIGN_KEYGRIP:-18F8114597D68C3AC976ADC0B7044E387EEB9B5F}"
 
 [ -f "${REPO_PUB}" ] || { echo "ERROR: ${REPO_PUB} not found" >&2; exit 1; }
 
-for cmd in gpg-connect-agent python3; do
+for cmd in gpg-connect-agent python3 openssl; do
     command -v "$cmd" >/dev/null 2>&1 || {
         echo "ERROR: $cmd not found" >&2; exit 1
     }
@@ -38,9 +42,11 @@ done
 SIG=$(mktemp)
 trap 'rm -f "${SIG}"' EXIT
 
-# pkg repo sends a SHA256 hex hash on stdin (and doesn't close stdin, so use read)
-read -r HASH
-HASH=$(echo "${HASH}" | tr 'a-f' 'A-F')
+# pkg repo sends SHA256(data) as a hex string on stdin (doesn't close stdin,
+# so use read). pkg verifies against SHA256(hex_string), so hash it again.
+read -r HEX_HASH
+HASH=$(printf '%s' "${HEX_HASH}" | openssl dgst -sha256 -hex 2>/dev/null \
+    | awk '{print $NF}' | tr 'a-f' 'A-F')
 
 # Sign via gpg-agent PKSIGN and extract raw RSA signature from S-expression.
 # gpg-agent handles PIN prompting through pinentry (GUI or curses).
