@@ -1,14 +1,14 @@
 #!/bin/sh
 #
 # Sign pkg repo data for FreeBSD pkg repo signing_command.
-# Reads data from stdin (what pkg repo pipes), signs with the GPG signing
-# subkey on the YubiKey via gpg-agent, and outputs the format pkg expects:
-# SIGNATURE, binary sig, CERT, PEM public key, END.
+# Reads a SHA256 hex hash from stdin (what pkg repo pipes), signs it with
+# the GPG signing subkey on the YubiKey via gpg-agent, and outputs the
+# format pkg expects: SIGNATURE, binary sig, CERT, PEM public key, END.
 #
 # The private key stays on the YubiKey. PIN entry goes through pinentry
 # (e.g. pinentry-mac), so no PIV_PIN variable or /dev/tty hacks are needed.
 #
-# Requires: gpg-agent, python3, openssl
+# Requires: gpg-agent, python3
 # Optional: GPG_SIGN_KEYGRIP (override signing key keygrip)
 #
 # Copyright (c) 2025 Brendan Bank
@@ -29,22 +29,18 @@ KEYGRIP="${GPG_SIGN_KEYGRIP:-18F8114597D68C3AC976ADC0B7044E387EEB9B5F}"
 
 [ -f "${REPO_PUB}" ] || { echo "ERROR: ${REPO_PUB} not found" >&2; exit 1; }
 
-for cmd in gpg-connect-agent python3 openssl; do
+for cmd in gpg-connect-agent python3; do
     command -v "$cmd" >/dev/null 2>&1 || {
         echo "ERROR: $cmd not found" >&2; exit 1
     }
 done
 
-INPUT=$(mktemp)
 SIG=$(mktemp)
-trap 'rm -f "${INPUT}" "${SIG}"' EXIT
+trap 'rm -f "${SIG}"' EXIT
 
-# Read repo digest from stdin (pkg repo doesn't close stdin, so cat would hang)
-read -r DIGEST
-printf '%s' "${DIGEST}" > "${INPUT}"
-
-# SHA256 hash the input (uppercase hex, as gpg-agent expects)
-HASH=$(openssl dgst -sha256 -hex "${INPUT}" 2>/dev/null | awk '{print $NF}' | tr 'a-f' 'A-F')
+# pkg repo sends a SHA256 hex hash on stdin (and doesn't close stdin, so use read)
+read -r HASH
+HASH=$(echo "${HASH}" | tr 'a-f' 'A-F')
 
 # Sign via gpg-agent PKSIGN and extract raw RSA signature from S-expression.
 # gpg-agent handles PIN prompting through pinentry (GUI or curses).
