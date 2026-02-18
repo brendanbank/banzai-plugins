@@ -126,16 +126,6 @@ _sync_device_conf() {
 }
 
 _sync_server_script() {
-    # Copy opnsense-build-server.sh to /usr/local/bin/ on the build server
-    local script="${TOOLS_DIR}/opnsense-build-server.sh"
-    if [ -f "${script}" ]; then
-        step "Syncing opnsense-build-server.sh to ${BUILD_HOST}:/usr/local/bin/"
-        scp_to "${script}" "/tmp/opnsense-build-server.sh"
-        remote_sudo "mv /tmp/opnsense-build-server.sh /usr/local/bin/opnsense-build-server.sh"
-        remote_sudo "chmod +x /usr/local/bin/opnsense-build-server.sh"
-        remote_sudo "chown root:wheel /usr/local/bin/opnsense-build-server.sh"
-    fi
-
     # Write server-side config
     step "Writing /etc/opnsense-build-server.conf"
     remote "cat > /tmp/opnsense-build-server.conf" <<EOF

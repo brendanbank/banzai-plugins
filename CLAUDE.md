@@ -69,7 +69,7 @@ Three scripts handle the OPNsense VM image build lifecycle:
 - **`tools/opnsense-build.sh`** — workstation-side orchestrator that operates
   on the build server via SSH.
 - **`tools/opnsense-build-server.sh`** — runs directly on the build server for
-  local builds. Synced to `/usr/local/bin/` by `opnsense-build.sh bootstrap`.
+  local builds. Check out the repo on the build server to use.
 
 ```sh
 # On the KVM host: create a build VM
@@ -89,6 +89,9 @@ opnsense-build-server.sh build          # full build
 opnsense-build-server.sh build core vm  # rebuild specific stages
 opnsense-build-server.sh status         # show local server state
 opnsense-build-server.sh update         # pull latest repos
+
+# Or via Makefile (if banzai-plugins is checked out on the build server)
+cd banzai-plugins/tools && make build
 ```
 
 Configuration lives in `tools/opnsense-build.conf` (git-ignored, user-local).

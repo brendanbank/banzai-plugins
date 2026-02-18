@@ -30,8 +30,8 @@
 # Run this directly on the build server. It wraps common build operations
 # so you don't need the workstation orchestrator for day-to-day builds.
 #
-# Synced to /usr/local/bin/ by: opnsense-build.sh bootstrap
-# Config: /etc/opnsense-build-server.conf (written by bootstrap)
+# Lives in banzai-plugins/tools/ — check out the repo on the build server.
+# Config: /etc/opnsense-build-server.conf (written by opnsense-build.sh bootstrap)
 #
 # Usage: opnsense-build-server.sh <command> [args...]
 #

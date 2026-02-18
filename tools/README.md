@@ -241,13 +241,21 @@ label `cidata`) is attached as a CD-ROM containing:
 - `user-data` — a shell script (not cloud-config YAML, because FreeBSD 14.3's
   nuageinit doesn't support `runcmd`, `write_files`, or `packages`)
 
-The user-data script:
+The user-data script runs during first boot via nuageinit (**before networking
+is available**), so it handles only local operations:
 
 - Sets up root SSH access with the configured public key
 - Creates the build user (if `--build-user` is set) with wheel group membership
+- Enables `PermitRootLogin prohibit-password` in sshd_config
+
+After the VM boots and SSH becomes available, the script installs packages and
+configures sudo over SSH:
+
 - Installs `git` and `sudo` via `pkg`
 - Configures NOPASSWD sudo for the wheel group
-- Grows the filesystem to fill the disk
+
+The base image already has `growfs_enable=YES`, so the filesystem is
+automatically grown to fill the disk on first boot.
 
 **After creation:**
 
@@ -283,8 +291,7 @@ release series.
    (`src`, `core`, `plugins`, `ports`) with the correct git URLs and branch
    names
 5. Syncs the device config (BANZAI.conf) to the build server
-6. Syncs `opnsense-build-server.sh` to `/usr/local/bin/` on the build server
-7. Writes `/etc/opnsense-build-server.conf` with the current settings
+6. Writes `/etc/opnsense-build-server.conf` with the current settings
 
 **Repository layout on the build server:**
 
@@ -457,7 +464,7 @@ available until its release candidate phase.
 Wrapper script for running builds directly on the build server. Useful when you
 SSH into the build server and want to build without the workstation orchestrator.
 
-Synced to `/usr/local/bin/` on the build server by `opnsense-build.sh bootstrap`.
+Lives in `banzai-plugins/tools/` — check out the repo on the build server.
 
 ```sh
 # On the build server:
@@ -479,6 +486,32 @@ opnsense-build-server.sh update             # pull latest repos
 
 Reads from `/etc/opnsense-build-server.conf` (written by bootstrap/series
 commands) or env vars. Override config path with `OPNSENSE_BUILD_SERVER_CONF`.
+
+## Makefile
+
+Convenience targets for building directly on the build server. If you check out
+the `banzai-plugins` repo on the build server, you can run builds from
+`tools/`:
+
+```sh
+cd banzai-plugins/tools
+make build                    # full VM image build
+make build core vm            # not supported — use individual targets
+make core                     # rebuild OPNsense core
+make vm                       # assemble VM image
+make status                   # show repos, artifacts, resources
+make update                   # pull latest code
+make clean                    # clean build artifacts
+```
+
+Override settings on the command line:
+
+```sh
+make build SERIES=26.7 DEVICE=BANZAI
+```
+
+Reads `/etc/opnsense-build-server.conf` for defaults (same config as
+`opnsense-build-server.sh`).
 
 ## Device Configuration
 
@@ -662,6 +695,7 @@ tools/
 ├── create-build-vm.sh             # VM creation (runs on KVM host)
 ├── opnsense-build.sh              # Orchestrator (runs on workstation)
 ├── opnsense-build-server.sh       # Build wrapper (synced to build server)
+├── Makefile                       # Convenience targets (runs on build server)
 ├── opnsense-build.conf.sample     # Documented sample configuration
 ├── opnsense-build.conf            # User config (git-ignored)
 ├── lib/
@@ -694,7 +728,7 @@ Three scripts handle different parts of the workflow:
 
 - **`opnsense-build.sh`** runs on your workstation. It SSH's into the build
   server for all operations (bootstrap, build, status, deploy). The `bootstrap`
-  command syncs `opnsense-build-server.sh` to the build server.
+  command writes the server-side config.
 
 - **`opnsense-build-server.sh`** runs directly on the build server. It wraps
   `make` commands so you can build without needing the workstation orchestrator.
