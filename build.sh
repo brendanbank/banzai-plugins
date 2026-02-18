@@ -9,8 +9,8 @@
 #
 # After building, packages are downloaded to dist/ and the GitHub Pages pkg
 # repo in docs/${ABI}/${SERIES}/repo/ is updated with signed packages.
-# Signing uses a YubiKey PIV key on this host (tools/sign-repo.sh); the
-# private key never leaves the YubiKey or this machine.
+# Signing uses a YubiKey PIV key on this host (tools/sign-repo.sh) via
+# file-based request/response over the existing SSH connection.
 #
 # Options:
 #   --test    Build only; skip repo signing, docs, and GitHub Pages update.
@@ -28,8 +28,7 @@ FIREWALL="${1:-${FIREWALL:?Usage: ./build.sh [--test] <hostname>}}"
 REMOTE_REPO="/home/brendan/src/banzai-plugins"
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 LOCAL_DIST="${REPO_ROOT}/dist"
-# Reverse tunnel port: firewall SSHs to this host for YubiKey signing
-SIGN_REVERSE_PORT=2222
+SIGN_DIR="/tmp/banzai_sign"
 
 # ── helpers ──────────────────────────────────────────────────────────
 
@@ -165,27 +164,54 @@ for pkg in "${LOCAL_DIST}"/*.pkg; do
 done
 
 # Sign with YubiKey on this host: private key never leaves the device.
-# Reverse tunnel so the firewall can SSH back to this host to run the signer.
-echo "    Starting reverse SSH tunnel for signing (port ${SIGN_REVERSE_PORT})..."
-ssh -N -R "${SIGN_REVERSE_PORT}:localhost:22" "${FIREWALL}" &
-TUNNEL_PID=$!
-trap 'kill ${TUNNEL_PID} 2>/dev/null || true' EXIT
-sleep 2
-kill -0 "${TUNNEL_PID}" 2>/dev/null || die "Reverse tunnel failed"
+# Remote sign.sh writes the hash to a request file and waits; this host
+# polls for it over the existing SSH connection, signs locally, and
+# writes the response back.  No reverse tunnel or sshd needed.
+remote "rm -rf ${SIGN_DIR} && mkdir -p ${SIGN_DIR}"
 
-# Remote sign.sh: forward stdin to the local sign-repo.sh (YubiKey PIV)
-SIGN_REPO_CMD="${REPO_ROOT}/tools/sign-repo.sh"
-remote "cat > ${REMOTE_REPO_DIR}/sign.sh << SIGNEOF
+remote "cat > ${REMOTE_REPO_DIR}/sign.sh << 'SIGNEOF'
 #!/bin/sh
-exec ssh -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new -p ${SIGN_REVERSE_PORT} localhost \"${SIGN_REPO_CMD}\"
+read -t 2 sum
+[ -z \"\$sum\" ] && exit 1
+echo \"\$sum\" > BANZAI_SIGN_DIR/request.tmp
+mv BANZAI_SIGN_DIR/request.tmp BANZAI_SIGN_DIR/request
+rm -f BANZAI_SIGN_DIR/response
+i=0
+while [ ! -f BANZAI_SIGN_DIR/response ] && [ \$i -lt 240 ]; do
+    sleep 0.5
+    i=\$((i + 1))
+done
+[ -f BANZAI_SIGN_DIR/response ] || exit 1
+cat BANZAI_SIGN_DIR/response
+rm -f BANZAI_SIGN_DIR/request BANZAI_SIGN_DIR/response
 SIGNEOF
+sed -i '' 's|BANZAI_SIGN_DIR|${SIGN_DIR}|g' ${REMOTE_REPO_DIR}/sign.sh
 chmod +x ${REMOTE_REPO_DIR}/sign.sh"
 
 echo "    Signing repo (YubiKey on this host)..."
-remote "pkg repo ${REMOTE_REPO_DIR}/ signing_command: ${REMOTE_REPO_DIR}/sign.sh"
-remote "rm -f ${REMOTE_REPO_DIR}/sign.sh"
-kill "${TUNNEL_PID}" 2>/dev/null || true
-trap - EXIT
+remote "pkg repo ${REMOTE_REPO_DIR}/ signing_command: ${REMOTE_REPO_DIR}/sign.sh" &
+PKG_REPO_PID=$!
+
+while kill -0 "${PKG_REPO_PID}" 2>/dev/null; do
+    HASH=$(remote "cat ${SIGN_DIR}/request 2>/dev/null && rm -f ${SIGN_DIR}/request" 2>/dev/null)
+    if [ -n "${HASH}" ]; then
+        RESP_FILE=$(mktemp)
+        if printf '%s' "${HASH}" | "${REPO_ROOT}/tools/sign-repo.sh" > "${RESP_FILE}"; then
+            scp -q "${RESP_FILE}" "${FIREWALL}:${SIGN_DIR}/response.tmp"
+            remote "mv ${SIGN_DIR}/response.tmp ${SIGN_DIR}/response"
+        else
+            rm -f "${RESP_FILE}"
+            kill "${PKG_REPO_PID}" 2>/dev/null || true
+            remote "rm -rf ${SIGN_DIR}"
+            die "YubiKey signing failed"
+        fi
+        rm -f "${RESP_FILE}"
+    else
+        sleep 0.5
+    fi
+done
+wait "${PKG_REPO_PID}" || die "pkg repo signing failed"
+remote "rm -rf ${SIGN_DIR} ${REMOTE_REPO_DIR}/sign.sh"
 
 rm -f "${PAGES_REPO}"/*.pkg
 rm -f "${PAGES_REPO}"/{meta.conf,packagesite.*,data.*,filesite.*}
