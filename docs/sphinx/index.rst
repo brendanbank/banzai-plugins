@@ -71,3 +71,8 @@ Links
    :caption: Plugin Releases
 
    releases/26.1/index
+
+.. toctree::
+   :caption: Articles
+
+   articles/yubikey-pkg-signing

@@ -1,0 +1,626 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signing FreeBSD pkg Repositories with a YubiKey &mdash; banzai-plugins  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=7f41d439"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Metrics Exporter" href="../releases/26.1/metrics_exporter.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            banzai-plugins
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Plugin Releases</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases/26.1/index.html">OPNsense 26.1</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Articles</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Signing FreeBSD pkg Repositories with a YubiKey</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#why-hardware-backed-signing">Why hardware-backed signing?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#how-pkg-signing-actually-works">How pkg signing actually works</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#the-double-hash">The double hash</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fingerprints">Fingerprints</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#setting-up-the-gpg-signing-key">Setting up the GPG signing key</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#generate-or-identify-your-signing-subkey">Generate or identify your signing subkey</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#export-the-public-key-in-pem-format">Export the public key in PEM format</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#the-signing-script">The signing script</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#why-gpg-connect-agent-instead-of-gpg-sign">Why gpg-connect-agent instead of gpg –sign?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#why-python">Why Python?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#gpg-agent-forwarding-for-remote-builds">GPG agent forwarding for remote builds</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#setup">Setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-stale-socket-trap">The stale socket trap</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pin-entry">PIN entry</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#putting-it-together-the-build-script">Putting it together: the build script</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#client-side-setup">Client-side setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#verifying-signatures-manually">Verifying signatures manually</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#summary-of-pitfalls">Summary of pitfalls</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">banzai-plugins</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Signing FreeBSD pkg Repositories with a YubiKey</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="signing-freebsd-pkg-repositories-with-a-yubikey">
+<h1>Signing FreeBSD pkg Repositories with a YubiKey<a class="headerlink" href="#signing-freebsd-pkg-repositories-with-a-yubikey" title="Link to this heading"></a></h1>
+<p>FreeBSD’s <code class="docutils literal notranslate"><span class="pre">pkg</span></code> supports cryptographic signing of package repositories. Its
+signing protocol differs from standard RSA-SHA256 in ways that the documentation
+does not cover in detail. This article walks through signing a <code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code> with
+a GPG key stored on a YubiKey, including GPG agent forwarding for remote builds.</p>
+<section id="why-hardware-backed-signing">
+<h2>Why hardware-backed signing?<a class="headerlink" href="#why-hardware-backed-signing" title="Link to this heading"></a></h2>
+<p>A pkg repository signing key is a high-value target. If the private key is
+compromised, an attacker can push malicious packages to every machine that
+trusts the repo. Storing the signing key on a YubiKey means the private key
+never exists on disk – signing operations happen on the hardware token, and
+extraction is not possible.</p>
+</section>
+<section id="how-pkg-signing-actually-works">
+<h2>How pkg signing actually works<a class="headerlink" href="#how-pkg-signing-actually-works" title="Link to this heading"></a></h2>
+<p>Before writing any code, you need to understand what <code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code> actually does
+when it signs. <strong>pkg uses its own signing protocol</strong>, and the documentation doesn’t spell out
+the details.</p>
+<p>When you run:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>pkg<span class="w"> </span>repo<span class="w"> </span>/path/to/repo/<span class="w"> </span>signing_command:<span class="w"> </span>/path/to/sign.sh
+</pre></div>
+</div>
+<p>pkg computes <code class="docutils literal notranslate"><span class="pre">SHA256(data)</span></code> as a <strong>64-character lowercase hex string</strong> and
+pipes it to your signing command’s stdin. Your command must output a response in
+this format:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">SIGNATURE</span>
+<span class="o">&lt;</span><span class="n">binary</span> <span class="n">signature</span> <span class="nb">bytes</span><span class="o">&gt;</span>
+<span class="n">CERT</span>
+<span class="o">&lt;</span><span class="n">PEM</span> <span class="n">public</span> <span class="n">key</span><span class="o">&gt;</span>
+<span class="n">END</span>
+</pre></div>
+</div>
+<p>The critical detail: <strong>pkg does not close stdin</strong> after writing the hash. This
+means <code class="docutils literal notranslate"><span class="pre">cat</span></code> will hang forever waiting for EOF. You must use <code class="docutils literal notranslate"><span class="pre">read</span> <span class="pre">-r</span></code>
+instead.</p>
+<section id="the-double-hash">
+<h3>The double hash<a class="headerlink" href="#the-double-hash" title="Link to this heading"></a></h3>
+<p>pkg sends <code class="docutils literal notranslate"><span class="pre">SHA256_hex(data)</span></code> – a hex string –
+on stdin. But when it <em>verifies</em> the signature, it computes
+<code class="docutils literal notranslate"><span class="pre">SHA256(hex_string)</span></code> and checks the signature against <em>that</em>. The hash that
+gets signed is:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>SHA256(SHA256_hex(data))
+</pre></div>
+</div>
+<p>This is a double hash: SHA256 of the data produces a hex string, then SHA256 of
+that hex string produces the 32-byte digest that ends up in the RSA signature’s
+DigestInfo structure.</p>
+<p>If you sign the hex string directly (without hashing it again),
+<code class="docutils literal notranslate"><span class="pre">openssl</span> <span class="pre">dgst</span> <span class="pre">-verify</span></code> will validate your signature – but <code class="docutils literal notranslate"><span class="pre">pkg</span></code> will
+reject it. Note that <code class="docutils literal notranslate"><span class="pre">openssl</span> <span class="pre">dgst</span> <span class="pre">-verify</span></code> is not a valid test for pkg
+signatures – <strong>even OPNsense’s own official repository signatures fail
+openssl dgst -verify</strong>.</p>
+<p>The correct signature format is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">RSA</span><span class="p">(</span><span class="n">PKCS</span><span class="c1">#1 v1.5(DigestInfo(SHA256_OID, SHA256(hex_string))))</span>
+</pre></div>
+</div>
+<p>This is confirmed by reading <code class="docutils literal notranslate"><span class="pre">libpkg/pkgsign_ossl.c</span></code> in the
+<a class="reference external" href="https://github.com/freebsd/pkg">freebsd/pkg</a> source. The verification
+function <code class="docutils literal notranslate"><span class="pre">ossl_verify_cb</span></code> calls <code class="docutils literal notranslate"><span class="pre">pkg_checksum_fd()</span></code> to get the hex hash,
+then passes the 64-byte hex string directly to <code class="docutils literal notranslate"><span class="pre">EVP_PKEY_verify</span></code> with a
+custom digest <code class="docutils literal notranslate"><span class="pre">EVP_md_pkg_sha1()</span></code>. This custom digest has the SHA-1 OID but
+an overridden result size of 64. In practice
+with OpenSSL 3.x, signatures using the SHA-256 OID and 32-byte hash also verify
+correctly.</p>
+</section>
+<section id="fingerprints">
+<h3>Fingerprints<a class="headerlink" href="#fingerprints" title="Link to this heading"></a></h3>
+<p>pkg identifies trusted signing keys by fingerprint. The fingerprint is
+<code class="docutils literal notranslate"><span class="pre">SHA256</span></code> of the <strong>entire PEM file</strong> – including the
+<code class="docutils literal notranslate"><span class="pre">-----BEGIN/END-----</span></code> headers and trailing newline:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Correct:</span>
+shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>repo.pub
+
+<span class="c1"># WRONG -- gives a different hash:</span>
+openssl<span class="w"> </span>rsa<span class="w"> </span>-pubin<span class="w"> </span>-outform<span class="w"> </span>DER<span class="w"> </span>&lt;<span class="w"> </span>repo.pub<span class="w"> </span><span class="p">|</span><span class="w"> </span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span>
+</pre></div>
+</div>
+<p>The fingerprint is not a hash of the DER-encoded public key material. It’s a
+hash of the PEM file as-is.</p>
+</section>
+</section>
+<section id="setting-up-the-gpg-signing-key">
+<h2>Setting up the GPG signing key<a class="headerlink" href="#setting-up-the-gpg-signing-key" title="Link to this heading"></a></h2>
+<section id="generate-or-identify-your-signing-subkey">
+<h3>Generate or identify your signing subkey<a class="headerlink" href="#generate-or-identify-your-signing-subkey" title="Link to this heading"></a></h3>
+<p>If you already have a GPG key on your YubiKey, identify the signing subkey:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>gpg<span class="w"> </span>--list-keys<span class="w"> </span>--with-keygrip<span class="w"> </span>your@email.com
+</pre></div>
+</div>
+<p>Look for a subkey with <code class="docutils literal notranslate"><span class="pre">[S]</span></code> (signing) capability and note its <strong>keygrip</strong> –
+a 40-character hex string. The keygrip identifies the key to <code class="docutils literal notranslate"><span class="pre">gpg-agent</span></code>
+regardless of the key’s OpenPGP metadata.</p>
+<p>If you need to generate a new signing subkey:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>gpg<span class="w"> </span>--edit-key<span class="w"> </span>your@email.com
+&gt;<span class="w"> </span>addkey<span class="w">       </span><span class="c1"># Choose RSA (sign only), 2048 or 4096 bits</span>
+&gt;<span class="w"> </span>save
+gpg<span class="w"> </span>--edit-key<span class="w"> </span>your@email.com
+&gt;<span class="w"> </span>keytocard<span class="w">     </span><span class="c1"># Move the subkey to the YubiKey</span>
+&gt;<span class="w"> </span>save
+</pre></div>
+</div>
+</section>
+<section id="export-the-public-key-in-pem-format">
+<h3>Export the public key in PEM format<a class="headerlink" href="#export-the-public-key-in-pem-format" title="Link to this heading"></a></h3>
+<p>pkg needs a PKCS#8 PEM public key, not a GPG public key. If the key was created
+outside GPG and imported, you may already have the PEM file. If the key was
+generated on the YubiKey via GPG, you can extract it with <code class="docutils literal notranslate"><span class="pre">gpg-connect-agent</span></code>
+and convert it to PEM. <code class="docutils literal notranslate"><span class="pre">gpg-connect-agent</span></code> returns key material as
+S-expressions – a length-prefixed binary format (e.g. <code class="docutils literal notranslate"><span class="pre">3:rsa</span></code> means “3 bytes:
+rsa”, <code class="docutils literal notranslate"><span class="pre">1:n512:&lt;bytes&gt;</span></code> means “field n, 512 bytes of data”):</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span><span class="s">&lt;&lt; &#39;PYEOF&#39; &gt; repo.pub</span>
+<span class="s">import subprocess, re, base64, sys</span>
+
+<span class="s">KEYGRIP = &quot;&lt;your-keygrip-here&gt;&quot;</span>
+
+<span class="s">result = subprocess.run(</span>
+<span class="s">    [&quot;gpg-connect-agent&quot;, f&quot;READKEY {KEYGRIP}&quot;, &quot;/bye&quot;],</span>
+<span class="s">    capture_output=True</span>
+<span class="s">)</span>
+
+<span class="s"># Decode Assuan protocol D lines (%-encoded binary)</span>
+<span class="s">data_parts = []</span>
+<span class="s">for line in result.stdout.split(b&#39;\n&#39;):</span>
+<span class="s">    if line.startswith(b&#39;D &#39;):</span>
+<span class="s">        part = line[2:]</span>
+<span class="s">        decoded = b&#39;&#39;</span>
+<span class="s">        i = 0</span>
+<span class="s">        while i &lt; len(part):</span>
+<span class="s">            if part[i:i+1] == b&#39;%&#39; and i+2 &lt; len(part):</span>
+<span class="s">                decoded += bytes([int(part[i+1:i+3], 16)])</span>
+<span class="s">                i += 3</span>
+<span class="s">            else:</span>
+<span class="s">                decoded += part[i:i+1]</span>
+<span class="s">                i += 1</span>
+<span class="s">        data_parts.append(decoded)</span>
+<span class="s">sexp = b&#39;&#39;.join(data_parts)</span>
+
+<span class="s"># Parse n and e from S-expression:</span>
+<span class="s"># (10:public-key(3:rsa(1:n&lt;len&gt;:&lt;n&gt;)(1:e&lt;len&gt;:&lt;e&gt;)))</span>
+<span class="s">n_match = re.search(rb&#39;\(1:n(\d+):&#39;, sexp)</span>
+<span class="s">n_len = int(n_match.group(1))</span>
+<span class="s">n_bytes = sexp[n_match.end():n_match.end()+n_len]</span>
+<span class="s">e_start = n_match.end() + n_len</span>
+<span class="s">e_match = re.search(rb&#39;\(1:e(\d+):&#39;, sexp[e_start:])</span>
+<span class="s">e_len = int(e_match.group(1))</span>
+<span class="s">e_bytes = sexp[e_start + e_match.end():e_start + e_match.end() + e_len]</span>
+
+<span class="s">n_int = int.from_bytes(n_bytes, &#39;big&#39;)</span>
+<span class="s">e_int = int.from_bytes(e_bytes, &#39;big&#39;)</span>
+
+<span class="s"># Build DER-encoded SubjectPublicKeyInfo</span>
+<span class="s">def der_integer(value):</span>
+<span class="s">    b = value.to_bytes((value.bit_length() + 8) // 8, &#39;big&#39;)</span>
+<span class="s">    return b&#39;\x02&#39; + der_length(len(b)) + b</span>
+<span class="s">def der_length(l):</span>
+<span class="s">    if l &lt; 128: return bytes([l])</span>
+<span class="s">    elif l &lt; 256: return b&#39;\x81&#39; + bytes([l])</span>
+<span class="s">    else: return b&#39;\x82&#39; + l.to_bytes(2, &#39;big&#39;)</span>
+<span class="s">def der_sequence(data):</span>
+<span class="s">    return b&#39;\x30&#39; + der_length(len(data)) + data</span>
+
+<span class="s">rsa_pub = der_sequence(der_integer(n_int) + der_integer(e_int))</span>
+<span class="s">rsa_oid = b&#39;\x30\x0d\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x01\x01\x05\x00&#39;</span>
+<span class="s">bit_string = b&#39;\x03&#39; + der_length(len(rsa_pub) + 1) + b&#39;\x00&#39; + rsa_pub</span>
+<span class="s">spki = der_sequence(rsa_oid + bit_string)</span>
+
+<span class="s">pem = b&#39;-----BEGIN PUBLIC KEY-----\n&#39;</span>
+<span class="s">pem += base64.encodebytes(spki)</span>
+<span class="s">pem += b&#39;-----END PUBLIC KEY-----\n&#39;</span>
+<span class="s">sys.stdout.buffer.write(pem)</span>
+<span class="s">PYEOF</span>
+</pre></div>
+</div>
+<p>This uses <code class="docutils literal notranslate"><span class="pre">READKEY</span></code> to read the raw RSA public key from the YubiKey, parses
+the modulus and exponent from the gpg-agent S-expression, and constructs a
+standard PKCS#8 PEM file. The result should look like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-----</span><span class="n">BEGIN</span> <span class="n">PUBLIC</span> <span class="n">KEY</span><span class="o">-----</span>
+<span class="n">MIICIjANBgkqhkiG9w0BAQEFAAOC</span><span class="o">...</span>
+<span class="o">-----</span><span class="n">END</span> <span class="n">PUBLIC</span> <span class="n">KEY</span><span class="o">-----</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="the-signing-script">
+<h2>The signing script<a class="headerlink" href="#the-signing-script" title="Link to this heading"></a></h2>
+<p>This script is called by <code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code> as the <code class="docutils literal notranslate"><span class="pre">signing_command</span></code>. It reads the
+hex hash from stdin, performs the double hash, signs via <code class="docutils literal notranslate"><span class="pre">gpg-agent</span></code>, and
+outputs the result in pkg’s expected format.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/bin/sh</span>
+<span class="nb">set</span><span class="w"> </span>-e
+
+<span class="nv">SCRIPT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$0</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">pwd</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="nv">REPO_PUB</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REPO_PUB</span><span class="k">:-</span><span class="si">${</span><span class="nv">SCRIPT_DIR</span><span class="si">}</span><span class="p">/repo.pub</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<span class="c1"># Keygrip of the GPG signing subkey on the YubiKey</span>
+<span class="nv">KEYGRIP</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">GPG_SIGN_KEYGRIP</span><span class="k">:-</span><span class="p">&lt;your-keygrip-here&gt;</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REPO_PUB</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;ERROR: </span><span class="si">${</span><span class="nv">REPO_PUB</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span><span class="p">;</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="o">}</span>
+
+<span class="k">for</span><span class="w"> </span>cmd<span class="w"> </span><span class="k">in</span><span class="w"> </span>gpg-connect-agent<span class="w"> </span>python3<span class="w"> </span>openssl<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$cmd</span><span class="s2">&quot;</span><span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;ERROR: </span><span class="nv">$cmd</span><span class="s2"> not found&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span><span class="p">;</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="k">done</span>
+
+<span class="nv">SIG</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="k">)</span>
+<span class="nb">trap</span><span class="w"> </span><span class="s1">&#39;rm -f &quot;${SIG}&quot;&#39;</span><span class="w"> </span>EXIT
+
+<span class="c1"># pkg sends SHA256(data) as hex on stdin (doesn&#39;t close stdin -- use read).</span>
+<span class="c1"># pkg verifies against SHA256(hex_string), so hash it again.</span>
+<span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>HEX_HASH
+<span class="nv">HASH</span><span class="o">=</span><span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HEX_HASH</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>openssl<span class="w"> </span>dgst<span class="w"> </span>-sha256<span class="w"> </span>-hex<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{print $NF}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">&#39;a-f&#39;</span><span class="w"> </span><span class="s1">&#39;A-F&#39;</span><span class="k">)</span>
+
+<span class="c1"># Sign via gpg-agent PKSIGN.</span>
+<span class="c1"># SETHASH --hash=sha256 tells the agent the hash algorithm;</span>
+<span class="c1"># PKSIGN wraps it in DigestInfo(SHA256_OID, hash) and RSA-signs it.</span>
+python3<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;</span>
+<span class="s1">import subprocess, re, sys</span>
+
+<span class="s1">keygrip = sys.argv[1]</span>
+<span class="s1">hash_hex = sys.argv[2]</span>
+<span class="s1">output_file = sys.argv[3]</span>
+
+<span class="s1">result = subprocess.run(</span>
+<span class="s1">    [&quot;gpg-connect-agent&quot;,</span>
+<span class="s1">     &quot;SIGKEY &quot; + keygrip,</span>
+<span class="s1">     &quot;SETHASH --hash=sha256 &quot; + hash_hex,</span>
+<span class="s1">     &quot;PKSIGN&quot;, &quot;/bye&quot;],</span>
+<span class="s1">    capture_output=True</span>
+<span class="s1">)</span>
+
+<span class="s1">if result.returncode != 0:</span>
+<span class="s1">    sys.stderr.write(&quot;ERROR: gpg-connect-agent failed\n&quot;)</span>
+<span class="s1">    sys.exit(1)</span>
+
+<span class="s1"># Decode Assuan protocol D lines (%-encoded binary)</span>
+<span class="s1">data_parts = []</span>
+<span class="s1">for line in result.stdout.split(b&quot;\n&quot;):</span>
+<span class="s1">    if line.startswith(b&quot;D &quot;):</span>
+<span class="s1">        part = line[2:]</span>
+<span class="s1">        decoded = b&quot;&quot;</span>
+<span class="s1">        i = 0</span>
+<span class="s1">        while i &lt; len(part):</span>
+<span class="s1">            if part[i:i+1] == b&quot;%&quot; and i + 2 &lt; len(part):</span>
+<span class="s1">                decoded += bytes([int(part[i+1:i+3], 16)])</span>
+<span class="s1">                i += 3</span>
+<span class="s1">            else:</span>
+<span class="s1">                decoded += part[i:i+1]</span>
+<span class="s1">                i += 1</span>
+<span class="s1">        data_parts.append(decoded)</span>
+
+<span class="s1">sexp = b&quot;&quot;.join(data_parts)</span>
+
+<span class="s1"># Parse raw RSA signature from S-expression:</span>
+<span class="s1"># (7:sig-val(3:rsa(1:s&lt;len&gt;:&lt;sig&gt;)))</span>
+<span class="s1">m = re.search(rb&quot;\(1:s(\d+):&quot;, sexp)</span>
+<span class="s1">if not m:</span>
+<span class="s1">    sys.stderr.write(&quot;ERROR: could not parse signature S-expression\n&quot;)</span>
+<span class="s1">    sys.exit(1)</span>
+
+<span class="s1">sig_len = int(m.group(1))</span>
+<span class="s1">sig = sexp[m.end():m.end() + sig_len]</span>
+<span class="s1">if len(sig) != sig_len:</span>
+<span class="s1">    sys.stderr.write(f&quot;ERROR: expected {sig_len} byte signature, got {len(sig)}\n&quot;)</span>
+<span class="s1">    sys.exit(1)</span>
+
+<span class="s1">with open(output_file, &quot;wb&quot;) as f:</span>
+<span class="s1">    f.write(sig)</span>
+<span class="s1">&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">KEYGRIP</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HASH</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SIG</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;ERROR: GPG signing failed&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;SIGNATURE&quot;</span>
+cat<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SIG</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;CERT&quot;</span>
+cat<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REPO_PUB</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;END&quot;</span>
+</pre></div>
+</div>
+<section id="why-gpg-connect-agent-instead-of-gpg-sign">
+<h3>Why gpg-connect-agent instead of gpg –sign?<a class="headerlink" href="#why-gpg-connect-agent-instead-of-gpg-sign" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">gpg</span> <span class="pre">--sign</span></code> produces OpenPGP-format signatures, which are completely
+different from what pkg expects. pkg needs a raw PKCS#1 v1.5 RSA signature. The
+<code class="docutils literal notranslate"><span class="pre">gpg-connect-agent</span></code> command talks directly to the agent daemon using the
+Assuan protocol, giving us access to the low-level <code class="docutils literal notranslate"><span class="pre">PKSIGN</span></code> operation that
+returns a raw RSA signature wrapped in an S-expression.</p>
+<p>The Assuan protocol is GnuPG’s line-based IPC protocol. Responses come as
+single-letter prefixed lines: <code class="docutils literal notranslate"><span class="pre">OK</span></code> for success, <code class="docutils literal notranslate"><span class="pre">ERR</span></code> for errors, and
+<code class="docutils literal notranslate"><span class="pre">D</span></code> for data. Binary payloads are returned on <code class="docutils literal notranslate"><span class="pre">D</span></code> lines with special bytes
+percent-encoded (e.g. <code class="docutils literal notranslate"><span class="pre">%25</span></code> for <code class="docutils literal notranslate"><span class="pre">%</span></code>, <code class="docutils literal notranslate"><span class="pre">%0A</span></code> for newline). Large responses
+may span multiple <code class="docutils literal notranslate"><span class="pre">D</span></code> lines that need to be concatenated after decoding.</p>
+<p>The signing flow is:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">SIGKEY</span> <span class="pre">&lt;keygrip&gt;</span></code> – select the signing key</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SETHASH</span> <span class="pre">--hash=sha256</span> <span class="pre">&lt;hex&gt;</span></code> – set the hash to sign</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PKSIGN</span></code> – produce the signature</p></li>
+</ol>
+<p>The agent returns the signature on <code class="docutils literal notranslate"><span class="pre">D</span></code> lines as an S-expression:
+<code class="docutils literal notranslate"><span class="pre">(sig-val(rsa(s&lt;len&gt;:&lt;bytes&gt;)))</span></code>. The Python code decodes the percent-encoded
+<code class="docutils literal notranslate"><span class="pre">D</span></code> lines and extracts the raw signature bytes.</p>
+</section>
+<section id="why-python">
+<h3>Why Python?<a class="headerlink" href="#why-python" title="Link to this heading"></a></h3>
+<p>The Assuan <code class="docutils literal notranslate"><span class="pre">D</span></code> line decoding and S-expression binary parsing are awkward in
+pure shell. Python is available on FreeBSD by default and handles binary data
+cleanly.</p>
+</section>
+</section>
+<section id="gpg-agent-forwarding-for-remote-builds">
+<h2>GPG agent forwarding for remote builds<a class="headerlink" href="#gpg-agent-forwarding-for-remote-builds" title="Link to this heading"></a></h2>
+<p>In many setups, packages are built on a remote FreeBSD machine but the YubiKey
+is plugged into your local workstation. GPG agent forwarding over SSH solves
+this: the remote machine’s <code class="docutils literal notranslate"><span class="pre">gpg-connect-agent</span></code> commands are transparently
+forwarded to your local agent, which talks to the YubiKey.</p>
+<section id="setup">
+<h3>Setup<a class="headerlink" href="#setup" title="Link to this heading"></a></h3>
+<p>SSH’s <code class="docutils literal notranslate"><span class="pre">-R</span></code> flag creates a remote Unix socket that forwards to a local one:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get socket paths</span>
+<span class="nv">REMOTE_GPG_SOCK</span><span class="o">=</span><span class="k">$(</span>ssh<span class="w"> </span>remote-host<span class="w"> </span><span class="s2">&quot;gpgconf --list-dirs agent-socket&quot;</span><span class="k">)</span>
+<span class="nv">LOCAL_GPG_EXTRA</span><span class="o">=</span><span class="k">$(</span>gpgconf<span class="w"> </span>--list-dirs<span class="w"> </span>agent-extra-socket<span class="k">)</span>
+
+<span class="c1"># Kill any existing remote agent -- critical!</span>
+ssh<span class="w"> </span>remote-host<span class="w"> </span><span class="s2">&quot;gpgconf --kill gpg-agent; rm -f </span><span class="si">${</span><span class="nv">REMOTE_GPG_SOCK</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<span class="c1"># Connect with agent forwarding</span>
+ssh<span class="w"> </span>-R<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REMOTE_GPG_SOCK</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">LOCAL_GPG_EXTRA</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>remote-host<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">&quot;pkg repo /path/to/repo/ signing_command: /path/to/sign-repo.py&quot;</span>
+</pre></div>
+</div>
+<p>The <strong>extra socket</strong> (<code class="docutils literal notranslate"><span class="pre">agent-extra-socket</span></code>) is a restricted socket that GPG
+provides specifically for forwarding – it limits operations to signing and
+decryption, preventing a compromised remote from modifying your keyring.</p>
+</section>
+<section id="the-stale-socket-trap">
+<h3>The stale socket trap<a class="headerlink" href="#the-stale-socket-trap" title="Link to this heading"></a></h3>
+<p>If a <code class="docutils literal notranslate"><span class="pre">gpg-agent</span></code> is already running on
+the remote (or a stale socket file exists), SSH’s <code class="docutils literal notranslate"><span class="pre">-R</span></code> forwarding will fail
+silently – the remote socket file already exists, so SSH can’t create its
+forwarded socket. You’ll get <code class="docutils literal notranslate"><span class="pre">remote</span> <span class="pre">port</span> <span class="pre">forwarding</span> <span class="pre">failed</span> <span class="pre">for</span> <span class="pre">listen</span> <span class="pre">path</span></code>
+in the SSH output, but the connection proceeds without forwarding. Then
+<code class="docutils literal notranslate"><span class="pre">gpg-connect-agent</span></code> on the remote talks to the local (remote machine’s) agent
+instead of your forwarded one, and signing fails because the key isn’t there.</p>
+<p>The fix: <strong>always kill the remote gpg-agent and remove the socket in a separate
+SSH call before the -R connection</strong>:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>remote-host<span class="w"> </span><span class="s2">&quot;gpgconf --kill gpg-agent; rm -f </span><span class="si">${</span><span class="nv">REMOTE_GPG_SOCK</span><span class="si">}</span><span class="s2">&quot;</span>
+ssh<span class="w"> </span>-R<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REMOTE_GPG_SOCK</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">LOCAL_GPG_EXTRA</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>remote-host<span class="w"> </span><span class="s2">&quot;...&quot;</span>
+</pre></div>
+</div>
+<p>This must be two separate SSH calls. If you put the kill and the <code class="docutils literal notranslate"><span class="pre">ssh</span> <span class="pre">-R</span></code> in
+the same command, the forwarding is set up at connection time – before your
+kill command runs.</p>
+</section>
+<section id="pin-entry">
+<h3>PIN entry<a class="headerlink" href="#pin-entry" title="Link to this heading"></a></h3>
+<p>When the signing operation reaches the YubiKey, it prompts for the user PIN via
+<code class="docutils literal notranslate"><span class="pre">pinentry</span></code>. On macOS with <code class="docutils literal notranslate"><span class="pre">pinentry-mac</span></code>, this is a GUI dialog on your
+local machine. On Linux, <code class="docutils literal notranslate"><span class="pre">pinentry-curses</span></code> or <code class="docutils literal notranslate"><span class="pre">pinentry-gnome3</span></code> will prompt
+on your local terminal or desktop. The remote machine never sees the PIN.</p>
+</section>
+</section>
+<section id="putting-it-together-the-build-script">
+<h2>Putting it together: the build script<a class="headerlink" href="#putting-it-together-the-build-script" title="Link to this heading"></a></h2>
+<p>Here’s the signing section of a build script that builds packages on a remote
+FreeBSD host and signs the repo via agent forwarding:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Upload the signing script and public key</span>
+scp<span class="w"> </span>-q<span class="w"> </span>tools/sign-repo.py<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/sign-repo.py&quot;</span>
+scp<span class="w"> </span>-q<span class="w"> </span>Keys/repo.pub<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/repo.pub&quot;</span>
+
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Signing repo (GPG key on this host via agent forwarding)...&quot;</span>
+<span class="nv">REMOTE_GPG_SOCK</span><span class="o">=</span><span class="k">$(</span>ssh<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;gpgconf --list-dirs agent-socket&quot;</span><span class="k">)</span>
+<span class="nv">LOCAL_GPG_EXTRA</span><span class="o">=</span><span class="k">$(</span>gpgconf<span class="w"> </span>--list-dirs<span class="w"> </span>agent-extra-socket<span class="k">)</span>
+
+<span class="c1"># Kill remote agent and remove stale socket before forwarding</span>
+ssh<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;gpgconf --kill gpg-agent; rm -f </span><span class="si">${</span><span class="nv">REMOTE_GPG_SOCK</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<span class="c1"># Sign with forwarded agent</span>
+ssh<span class="w"> </span>-R<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REMOTE_GPG_SOCK</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">LOCAL_GPG_EXTRA</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">&quot;pkg repo </span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/ signing_command: </span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/sign-repo.py&quot;</span>
+
+<span class="c1"># Verify signing succeeded (pkg repo exits 0 even on failure)</span>
+ssh<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;test -f </span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/meta.conf&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;ERROR: Repo signing failed&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="o">}</span>
+
+<span class="c1"># Clean up signing artifacts before downloading</span>
+ssh<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;rm -f </span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/sign-repo.py </span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/repo.pub&quot;</span>
+</pre></div>
+</div>
+<p>Note the <code class="docutils literal notranslate"><span class="pre">meta.conf</span></code> check: <code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code> exits 0 even when signing fails, so
+you need to verify the output explicitly.</p>
+</section>
+<section id="client-side-setup">
+<h2>Client-side setup<a class="headerlink" href="#client-side-setup" title="Link to this heading"></a></h2>
+<p>On each machine that should trust the repo, install the fingerprint:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>-p<span class="w"> </span>/usr/local/etc/pkg/fingerprints/myrepo/trusted
+mkdir<span class="w"> </span>-p<span class="w"> </span>/usr/local/etc/pkg/fingerprints/myrepo/revoked
+
+<span class="c1"># Fingerprint is SHA256 of the PEM file (not the DER key)</span>
+<span class="nv">FINGERPRINT</span><span class="o">=</span><span class="k">$(</span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>repo.pub<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{print $1}&#39;</span><span class="k">)</span>
+
+cat<span class="w"> </span>&gt;<span class="w"> </span>/usr/local/etc/pkg/fingerprints/myrepo/trusted/repo.fingerprint<span class="w"> </span><span class="s">&lt;&lt;EOF</span>
+<span class="s">function: sha256</span>
+<span class="s">fingerprint: ${FINGERPRINT}</span>
+<span class="s">EOF</span>
+</pre></div>
+</div>
+<p>Then add the repository configuration:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>cat<span class="w"> </span>&gt;<span class="w"> </span>/usr/local/etc/pkg/repos/myrepo.conf<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39;</span>
+<span class="s">myrepo: {</span>
+<span class="s">  url: &quot;https://example.com/packages/${ABI}/repo&quot;,</span>
+<span class="s">  signature_type: &quot;fingerprints&quot;,</span>
+<span class="s">  fingerprints: &quot;/usr/local/etc/pkg/fingerprints/myrepo&quot;,</span>
+<span class="s">  enabled: yes</span>
+<span class="s">}</span>
+<span class="s">EOF</span>
+
+pkg<span class="w"> </span>update<span class="w"> </span>-f<span class="w"> </span>-r<span class="w"> </span>myrepo
+</pre></div>
+</div>
+</section>
+<section id="verifying-signatures-manually">
+<h2>Verifying signatures manually<a class="headerlink" href="#verifying-signatures-manually" title="Link to this heading"></a></h2>
+<p>You can’t use <code class="docutils literal notranslate"><span class="pre">openssl</span> <span class="pre">dgst</span> <span class="pre">-verify</span></code> – it tests the wrong thing. Instead,
+extract and inspect the DigestInfo:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Extract signature components from the repo archive</span>
+tar<span class="w"> </span>-xf<span class="w"> </span>data.pkg<span class="w"> </span>data<span class="w"> </span>data.pub<span class="w"> </span>data.sig
+
+<span class="c1"># Decrypt the signature to see the DigestInfo</span>
+openssl<span class="w"> </span>rsautl<span class="w"> </span>-verify<span class="w"> </span>-pubin<span class="w"> </span>-inkey<span class="w"> </span>data.pub<span class="w"> </span>-in<span class="w"> </span>data.sig<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="p">|</span><span class="w"> </span>od<span class="w"> </span>-A<span class="w"> </span>x<span class="w"> </span>-t<span class="w"> </span>x1<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-4
+
+<span class="c1"># Compute the expected hash (double SHA256):</span>
+<span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>openssl<span class="w"> </span>dgst<span class="w"> </span>-sha256<span class="w"> </span>-hex<span class="w"> </span>data<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{print $NF}&#39;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="p">|</span><span class="w"> </span>openssl<span class="w"> </span>dgst<span class="w"> </span>-sha256<span class="w"> </span>-hex<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{print $NF}&#39;</span>
+</pre></div>
+</div>
+<p>The last 32 bytes of the DigestInfo from the first command should match the
+hash from the second command.</p>
+</section>
+<section id="summary-of-pitfalls">
+<h2>Summary of pitfalls<a class="headerlink" href="#summary-of-pitfalls" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 35.0%" />
+<col style="width: 40.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Pitfall</p></th>
+<th class="head"><p>Symptom</p></th>
+<th class="head"><p>Fix</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Signing hex hash directly</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">openssl</span> <span class="pre">dgst</span> <span class="pre">-verify</span></code> passes but <code class="docutils literal notranslate"><span class="pre">pkg</span></code> rejects</p></td>
+<td><p>Hash the hex string again with SHA256 before signing</p></td>
+</tr>
+<tr class="row-odd"><td><p>Using <code class="docutils literal notranslate"><span class="pre">cat</span></code> to read stdin</p></td>
+<td><p>Signing command hangs forever</p></td>
+<td><p>Use <code class="docutils literal notranslate"><span class="pre">read</span> <span class="pre">-r</span></code> – pkg doesn’t close stdin</p></td>
+</tr>
+<tr class="row-even"><td><p>Fingerprint from DER key</p></td>
+<td><p>“No trusted public keys found”</p></td>
+<td><p>Fingerprint is <code class="docutils literal notranslate"><span class="pre">SHA256(PEM</span> <span class="pre">file)</span></code>, headers and all</p></td>
+</tr>
+<tr class="row-odd"><td><p>Testing with <code class="docutils literal notranslate"><span class="pre">openssl</span> <span class="pre">dgst</span> <span class="pre">-verify</span></code></p></td>
+<td><p>False negatives / false positives</p></td>
+<td><p>This test is invalid for pkg signatures; use manual DigestInfo extraction</p></td>
+</tr>
+<tr class="row-even"><td><p>Stale remote gpg-agent socket</p></td>
+<td><p>“remote port forwarding failed”</p></td>
+<td><p>Kill agent and remove socket in a <em>separate</em> SSH call before <code class="docutils literal notranslate"><span class="pre">-R</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code> exit code</p></td>
+<td><p>Build succeeds but repo is unsigned</p></td>
+<td><p>Check for <code class="docutils literal notranslate"><span class="pre">meta.conf</span></code> existence after <code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Using <code class="docutils literal notranslate"><span class="pre">gpg</span> <span class="pre">--sign</span></code></p></td>
+<td><p>Produces OpenPGP format, not PKCS#1</p></td>
+<td><p>Use <code class="docutils literal notranslate"><span class="pre">gpg-connect-agent</span></code> with <code class="docutils literal notranslate"><span class="pre">PKSIGN</span></code> for raw RSA</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../releases/26.1/metrics_exporter.html" class="btn btn-neutral float-left" title="Metrics Exporter" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Brendan Bank. Licensed under the BSD 2-Clause License.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
