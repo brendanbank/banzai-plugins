@@ -34,7 +34,7 @@ mkdir -p /usr/local/etc/pkg/fingerprints/banzai-plugins/revoked
 
 cat > /usr/local/etc/pkg/fingerprints/banzai-plugins/trusted/repo.fingerprint <<'EOF'
 function: sha256
-fingerprint: 5d03d774f3fa2926f9e2156b98d261461478f4f5d1332926fa5c7906b29eab87
+fingerprint: 7b31f3e4417cc095e946dd9be3c5eb08c25dc5584ea93b3e7f8b0344a87aa737
 EOF
 ```
 

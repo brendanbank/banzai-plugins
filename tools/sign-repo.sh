@@ -34,10 +34,10 @@ fi
 
 # PIV slot 9c = Digital Signature; hashes input with SHA256 and signs
 if [ -n "${PIV_PIN}" ]; then
-    yubico-piv-tool -a verify-pin -a sign -s "${SLOT}" -H SHA256 -A "${ALG}" \
+    yubico-piv-tool -a verify-pin --sign -s "${SLOT}" -H SHA256 -A "${ALG}" \
         -P "${PIV_PIN}" -i "${INPUT}" -o "${SIG}" 2>/dev/null
 else
-    yubico-piv-tool -a verify-pin -a sign -s "${SLOT}" -H SHA256 -A "${ALG}" \
+    yubico-piv-tool -a verify-pin --sign -s "${SLOT}" -H SHA256 -A "${ALG}" \
         -i "${INPUT}" -o "${SIG}" 2>/dev/null
 fi || {
     echo "ERROR: YubiKey signing failed (check slot ${SLOT}, PIN, and YUBICO_PIV_ALG=${ALG})" >&2
