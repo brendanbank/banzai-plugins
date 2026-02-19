@@ -194,15 +194,35 @@ Switching from GPG (RSA 4096) to PIV (RSA 2048) requires:
 4. Update fingerprints on all clients (casa, fw):
    `/usr/local/etc/pkg/fingerprints/banzai-plugins/trusted/repo.fingerprint`
 
+## Pitfalls
+
+### ykman invalidates PKCS#11 sessions
+
+`ykman` (and any tool that opens its own PCSC connection to the YubiKey)
+will invalidate an open PKCS#11 session. If you call `ykman piv keys
+export` after `C_Initialize`/`C_OpenSession`, subsequent `C_Sign` calls
+fail with **0x101**.
+
+**Fix:** Export the public key with `ykman` *before* opening the PKCS#11
+session. The daemon caches the public key in memory so `ykman` is only
+called once at startup.
+
+### Touch timeout returns 0x101
+
+When touch policy is ALWAYS, `C_Sign` blocks waiting for the user to touch
+the YubiKey. If not touched within ~15 seconds, it returns 0x101
+(`CKR_CANCEL` in Yubico's PKCS#11). This is not a standard PKCS#11 error
+code.
+
 ## Verified Behavior
 
 Tested on 2026-02-19:
 
 - PKCS#11 session via `libykcs11.dylib` — works
-- `C_Login` with PIV PIN from 1Password — works (2 retries remaining after
-  one failed attempt with wrong PIN)
+- `C_Login` with PIV PIN from 1Password — works
 - `C_Sign` with `CKM_RSA_PKCS` + DigestInfo — works (requires touch)
 - Signature verified: `openssl rsautl -verify` recovers the correct
   double-hash `SHA256(hex_string)`
 - PIV public key extracted via `ykman piv keys export 9c` matches the key
   used for verification
+- `piv-sign-agent.py --test` self-test passes (sign + verify round-trip)
