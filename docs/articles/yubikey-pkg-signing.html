@@ -658,10 +658,12 @@ and DER construction).</p>
 </section>
 <section id="the-piv-signing-agent">
 <h2>The PIV signing agent<a class="headerlink" href="#the-piv-signing-agent" title="Link to this heading"></a></h2>
-<p>The signing agent runs on your local workstation (where the YubiKey is plugged
-in) and listens on a Unix socket. It signs digests using the YubiKey PIV slot
-via PKCS#11 (<code class="docutils literal notranslate"><span class="pre">libykcs11</span></code>), using Python’s <code class="docutils literal notranslate"><span class="pre">ctypes</span></code> to call the PKCS#11
-functions directly – no pip dependencies required beyond what Homebrew’s
+<p>The signing agent
+(<a class="reference external" href="https://github.com/brendanbank/banzai-plugins/blob/main/tools/piv-sign-agent.py">piv-sign-agent.py</a>)
+runs on your local workstation (where the YubiKey is plugged in) and listens on
+a Unix socket. It signs digests using the YubiKey PIV slot via PKCS#11
+(<code class="docutils literal notranslate"><span class="pre">libykcs11</span></code>), using Python’s <code class="docutils literal notranslate"><span class="pre">ctypes</span></code> to call the PKCS#11 functions
+directly – no pip dependencies required beyond what Homebrew’s
 <code class="docutils literal notranslate"><span class="pre">yubico-piv-tool</span></code> provides.</p>
 <pre  class="mermaid">
         flowchart LR
@@ -731,7 +733,9 @@ the DER-encoded DigestInfo structure:</p>
 </section>
 <section id="the-signing-command">
 <h2>The signing command<a class="headerlink" href="#the-signing-command" title="Link to this heading"></a></h2>
-<p>This script runs on the <strong>remote build host</strong>, called by <code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code> as the
+<p>The signing command
+(<a class="reference external" href="https://github.com/brendanbank/banzai-plugins/blob/main/tools/sign-repo.py">sign-repo.py</a>)
+runs on the <strong>remote build host</strong>, called by <code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code> as the
 <code class="docutils literal notranslate"><span class="pre">signing_command</span></code>. It connects to the forwarded PIV agent socket, sends the
 double-hashed digest, and outputs the result in pkg’s expected format.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python3</span>
