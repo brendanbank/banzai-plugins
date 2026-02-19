@@ -338,7 +338,7 @@ LOCALEOF
     # Install packages via SSH (nuageinit runs before networking,
     # so package installation must happen after boot)
     info "Installing packages"
-    vm_ssh "root@${vm_ip}" "env ASSUME_ALWAYS_YES=yes pkg bootstrap -f && pkg update -f && pkg install -y git sudo" \
+    vm_ssh "root@${vm_ip}" "env ASSUME_ALWAYS_YES=yes pkg bootstrap -f && pkg update -f && pkg install -y git sudo rsync" \
         || die "Package installation failed"
     step "Packages installed"
 
