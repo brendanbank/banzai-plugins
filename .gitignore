@@ -6,6 +6,10 @@ dist/
 /Templates
 /Scripts
 docs/sphinx/_build/
+docs/.buildinfo
+docs/.buildinfo.bak
+docs/.doctrees/
+docs/objects.inv
 docs/**/repo/sign-repo.sh
 docs/**/repo/sign-repo.py
 docs/**/repo/repo.pub
