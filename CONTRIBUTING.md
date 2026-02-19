@@ -10,7 +10,7 @@ Suggestions and contributions are very welcome! There are several ways to contri
 
 - An OPNsense or FreeBSD host accessible via SSH (for building packages)
 - Git with submodule support
-- For maintainers: YubiKey with GPG signing subkey and `gpg-agent` for package repo signing (see below)
+- For maintainers: YubiKey with PIV signing key and `piv-sign-agent.py` for package repo signing (see below)
 
 ## Getting Started
 
@@ -93,17 +93,17 @@ This will:
 
 ## Signing (maintainers)
 
-Repo signing uses the **GPG signing subkey** on your YubiKey so the private key never leaves the device. `build.sh` forwards the local `gpg-agent` socket to the remote via `ssh -R`, then runs `pkg repo` with `tools/sign-repo.py` as the signing command. The script signs through the forwarded agent, so the private key never leaves the YubiKey.
+Repo signing uses the **PIV applet** (slot 9c) on your YubiKey so the private key never leaves the device. `piv-sign-agent.py` runs locally, listens on a Unix socket, and signs digests via PKCS#11 (`libykcs11`). `build.sh` forwards this socket to the remote via `ssh -R`, then runs `pkg repo` with `tools/sign-repo.py` as the signing command.
 
-PIN entry is handled by `pinentry` (e.g. `pinentry-mac`), so no environment variables or `/dev/tty` hacks are needed.
+Each signing request fetches the PIV PIN from 1Password and requires a physical touch of the YubiKey.
 
 **Setup:**
 
-1. Ensure `gpg-agent` is running with a `pinentry` program configured.
-2. The GPG signing subkey must be on the YubiKey. `Keys/repo.pub` must match that key.
-3. The default keygrip is configured in `tools/sign-repo.py`. To override, set `GPG_SIGN_KEYGRIP`.
+1. Start the agent: `python3 tools/piv-sign-agent.py`
+2. The PIV signing key must be in slot 9c. `Keys/repo.pub` must match that key.
+3. Store the PIV PIN in 1Password (item "banzai-plugins pkg repo signing key", field "pin") or set `PIV_PIN`.
 
-**Requires:** `gpg-agent`, `python3`.
+**Requires:** `yubico-piv-tool` (provides `libykcs11`), `ykman`, `python3`.
 
 ## Releasing
 

@@ -695,6 +695,8 @@ tools/
 ├── create-build-vm.sh             # VM creation (runs on KVM host)
 ├── opnsense-build.sh              # Orchestrator (runs on workstation)
 ├── opnsense-build-server.sh       # Build wrapper (synced to build server)
+├── piv-sign-agent.py              # PIV signing agent (runs on workstation)
+├── sign-repo.py                   # pkg signing command (runs on build host)
 ├── Makefile                       # Convenience targets (runs on build server)
 ├── opnsense-build.conf.sample     # Documented sample configuration
 ├── opnsense-build.conf            # User config (git-ignored)

@@ -9,8 +9,8 @@
 #
 # After building, packages are downloaded to dist/ and the GitHub Pages pkg
 # repo in docs/${ABI}/${SERIES}/repo/ is updated with signed packages.
-# Signing uses a GPG signing subkey on a YubiKey via GPG agent forwarding
-# (tools/sign-repo.py runs on the remote, gpg-agent calls reach the local key).
+# Signing uses the YubiKey PIV slot via piv-sign-agent.py: the agent listens
+# on a Unix socket locally and the socket is forwarded to the remote via SSH -R.
 #
 # Options:
 #   --test    Build only; skip repo signing, docs, and GitHub Pages update.
@@ -162,21 +162,25 @@ for pkg in "${LOCAL_DIST}"/*.pkg; do
     scp -q "${pkg}" "${FIREWALL}:${REMOTE_REPO_DIR}/"
 done
 
-# Sign with YubiKey GPG key via agent forwarding: the remote gpg-agent
-# socket is forwarded to the local agent (which has the YubiKey).
+# Sign with YubiKey PIV via piv-sign-agent.py: the local agent's Unix socket
+# is forwarded to the remote via SSH -R.
 scp -q "${REPO_ROOT}/tools/sign-repo.py" "${FIREWALL}:${REMOTE_REPO_DIR}/sign-repo.py"
 scp -q "${REPO_ROOT}/Keys/repo.pub" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.pub"
 
-echo "    Signing repo (GPG key on this host via agent forwarding)..."
-REMOTE_GPG_SOCK=$(remote "gpgconf --list-dirs agent-socket")
-LOCAL_GPG_EXTRA=$(gpgconf --list-dirs agent-extra-socket)
+# Ensure piv-sign-agent.py is running locally
+LOCAL_PIV_SOCK="${PIV_AGENT_SOCK:-${HOME}/.piv-sign-agent/agent.sock}"
+if [ ! -S "${LOCAL_PIV_SOCK}" ]; then
+    die "PIV signing agent not running. Start it with: python3 tools/piv-sign-agent.py"
+fi
 
-# Kill remote gpg-agent and remove stale socket before forwarding,
-# otherwise ssh -R fails because the socket file already exists.
-remote "gpgconf --kill gpg-agent; rm -f ${REMOTE_GPG_SOCK}"
+REMOTE_PIV_SOCK="/tmp/piv-sign-agent.sock"
+echo "    Signing repo (PIV key on this host via socket forwarding)..."
 
-ssh -R "${REMOTE_GPG_SOCK}:${LOCAL_GPG_EXTRA}" "${FIREWALL}" \
-    "pkg repo ${REMOTE_REPO_DIR}/ signing_command: ${REMOTE_REPO_DIR}/sign-repo.py"
+# Remove stale remote socket before forwarding
+remote "rm -f ${REMOTE_PIV_SOCK}"
+
+ssh -R "${REMOTE_PIV_SOCK}:${LOCAL_PIV_SOCK}" "${FIREWALL}" \
+    "PIV_AGENT_SOCK=${REMOTE_PIV_SOCK} pkg repo ${REMOTE_REPO_DIR}/ signing_command: ${REMOTE_REPO_DIR}/sign-repo.py"
 
 # pkg repo exits 0 even when signing fails — verify the signature was created
 remote "test -f ${REMOTE_REPO_DIR}/meta.conf" || die "Repo signing failed (no meta.conf)"
