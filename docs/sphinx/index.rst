@@ -27,6 +27,12 @@ belongs in the official `opnsense/plugins <https://github.com/opnsense/plugins>`
 repository, great -- it will follow the standards and requirements set by the
 OPNsense project. Until then, contributions are welcome here.
 
+This is as much a research project as a plugin repository. I don't take myself
+too seriously here -- the real goal is to learn. Building a signed pkg repo from
+scratch, wiring up YubiKey PIV signing, automating VM builds, writing MVC
+plugins for a framework I'd never touched before -- every piece taught me
+something I didn't know going in.
+
 I'm an `amateur <https://winningmindtraining.com/remaining-an-amateur-a-lover-of-the-work/>`_
 Python developer -- a lover of the work rather than a professional software
 engineer. I do have a long history with FreeBSD from my days as a sysadmin

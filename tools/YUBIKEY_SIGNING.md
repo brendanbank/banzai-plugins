@@ -19,8 +19,8 @@ applet via PKCS#11.
 - **sign-repo.py** runs on the remote FreeBSD host, called by `pkg repo` as
   the `signing_command`. Connects to the forwarded Unix socket.
 - **build.sh** uses `ssh -R` to forward the local agent socket to the remote.
-- SSH authentication is unchanged — gpg-agent with `--enable-ssh-support`
-  handles auth directly (no `-A` forwarding needed for the build host).
+- SSH authentication is separate — it uses its own key (e.g. via gpg-agent
+  or ssh-agent). No `-A` forwarding needed for the build host.
 
 ## PIV vs GPG
 
@@ -122,10 +122,10 @@ The daemon supports any method for providing the PIV PIN:
    whose stdout is the PIN (e.g. a password manager CLI)
 3. Interactive prompt via `getpass` (fallback, requires a terminal)
 
-Example with 1Password:
+Example:
 
 ```sh
-piv-sign-agent.py --pin-command "op item get 'my-item' --fields pin --reveal"
+piv-sign-agent.py --pin-command "your-pin-retrieval-command"
 ```
 
 The PIN is 8 characters. The YubiKey locks after 3 failed attempts.
@@ -221,7 +221,7 @@ code.
 Tested on 2026-02-19:
 
 - PKCS#11 session via `libykcs11.dylib` — works
-- `C_Login` with PIV PIN from 1Password — works
+- `C_Login` with PIV PIN via `--pin-command` — works
 - `C_Sign` with `CKM_RSA_PKCS` + DigestInfo — works (requires touch)
 - Signature verified: `openssl rsautl -verify` recovers the correct
   double-hash `SHA256(hex_string)`

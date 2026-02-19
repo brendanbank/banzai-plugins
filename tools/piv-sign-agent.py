@@ -438,7 +438,30 @@ def self_test(module_path, pubkey_pem, pin_command=None, touch=True):
 # ── Main ─────────────────────────────────────────────────────────────
 
 
+def load_dotenv():
+    """Load .env file from the repo root into os.environ (no-op if missing)."""
+    env_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), os.pardir, ".env"
+    )
+    try:
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip()
+                if not key:
+                    continue
+                os.environ.setdefault(key, value)
+    except FileNotFoundError:
+        pass
+
+
 def main():
+    load_dotenv()
+
     parser = argparse.ArgumentParser(
         description="PIV signing agent for FreeBSD pkg repo signing",
     )

@@ -16,6 +16,441 @@
       <script src="../_static/documentation_options.js?v=7f41d439"></script>
       <script src="../_static/doctools.js?v=fd6eb6e6"></script>
       <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+      <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.12.1/dist/mermaid.esm.min.mjs";
+
+
+
+
+
+const initStyles = () => {
+    const defaultStyle = document.createElement('style');
+    defaultStyle.textContent = `pre.mermaid {
+    /* Same as .mermaid-container > pre */
+    display: block;
+    width: 100%;
+}
+
+pre.mermaid > svg {
+    /* Same as .mermaid-container > pre > svg */
+    height: auto;
+    width: 100%;
+    max-width: 100% !important;
+}`;
+    document.head.appendChild(defaultStyle);
+
+    const fullscreenStyle = document.createElement('style');
+    fullscreenStyle.textContent = `.mermaid-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+
+.mermaid-container > pre {
+    display: block;
+    width: 100%;
+}
+
+.mermaid-container > pre > svg {
+    height: auto;
+    width: 100%;
+    max-width: 100% !important;
+}
+
+.mermaid-fullscreen-btn {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    color: #333;
+}
+
+.mermaid-fullscreen-btn:hover {
+    opacity: 100% !important;
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-btn.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-btn.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal {
+    display: none;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 95vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 9999;
+    padding: 20px;
+    overflow: auto;
+}
+
+.mermaid-fullscreen-modal.dark-theme {
+    background: rgba(0, 0, 0, 0.98);
+}
+
+.mermaid-fullscreen-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen {
+    position: relative;
+    width: 95vw;
+    height: 90vh;
+    max-width: 95vw;
+    max-height: 90vh;
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen.dark-theme {
+    background: #1a1a1a;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.mermaid-container-fullscreen pre.mermaid {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen .mermaid svg {
+    height: 100% !important;
+    width: 100% !important;
+    cursor: grab;
+}
+
+.mermaid-fullscreen-close {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s;
+    font-size: 24px;
+    line-height: 1;
+    color: #333;
+}
+
+.mermaid-fullscreen-close:hover {
+    background: white;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-close.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-close.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal .mermaid-fullscreen-btn {
+    display: none !important;
+}`;
+    document.head.appendChild(fullscreenStyle);
+}
+
+// Detect if page has dark background
+const isDarkTheme = () => {
+    // We use a set of heuristics:
+    // 1. Check for common dark mode classes or attributes
+    // 2. Check computed background color brightness
+    if (document.documentElement.classList.contains('dark') ||
+        document.documentElement.getAttribute('data-theme') === 'dark' ||
+        document.body.classList.contains('dark') ||
+        document.body.getAttribute('data-theme') === 'dark') {
+        // console.log("Dark theme detected via class/attribute");
+        return true;
+    }
+    if (document.documentElement.classList.contains('light') ||
+        document.documentElement.getAttribute('data-theme') === 'light' ||
+        document.body.classList.contains('light') ||
+        document.body.getAttribute('data-theme') === 'light') {
+        // console.log("Light theme detected via class/attribute");
+        return false;
+    }
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        // console.log("Dark theme detected via prefers-color-scheme");
+        return true;
+    }
+    const bgColor = window.getComputedStyle(document.body).backgroundColor;
+    const match = bgColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        // console.log("Background color brightness:", brightness);
+        return brightness < 128;
+    }
+    // console.log("No dark or light theme detected, defaulting to light theme");
+    return false;
+};
+
+let darkTheme = isDarkTheme();
+let modal = null;
+let modalContent = null;
+let previousScrollOffset = [window.scrollX, window.scrollY];
+
+const runMermaid = async (rerun) => {
+    console.log("Running mermaid diagrams, rerun =", rerun);
+    // clear all existing mermaid charts
+    let all_mermaids = document.querySelectorAll(".mermaid");
+
+    if (rerun) {
+        all_mermaids.forEach((el) => {
+            if(!el.hasAttribute("data-original-code")) {
+                // store original code
+                // console.log(`Storing original code for first run: `, el.innerHTML);
+                el.setAttribute('data-original-code', el.innerHTML);
+            }
+            if(el.getAttribute("data-processed") === "true") {
+                // remove and restore original
+                el.removeAttribute("data-processed");
+                // console.log(`Restoring original code for re-run: `, el.getAttribute('data-original-code'));
+                el.innerHTML = el.getAttribute('data-original-code');
+            } else {
+                // store original code
+                // console.log(`Storing original code for re-run: `, el.innerHTML);
+                el.setAttribute('data-original-code', el.innerHTML);
+            }
+        });
+        await mermaid.run();
+    }
+
+    all_mermaids = document.querySelectorAll(".mermaid");
+    const mermaids_processed = document.querySelectorAll(".mermaid[data-processed='true']");
+
+    if ("False" === "True") {
+        const mermaids_to_add_zoom = -1 === -1 ? all_mermaids.length : -1;
+        if(mermaids_to_add_zoom > 0) {
+            var svgs = d3.selectAll("");
+            if(all_mermaids.length !== mermaids_processed.length) {
+                setTimeout(() => runMermaid(false), 200);
+                return;
+            } else if(svgs.size() !== mermaids_to_add_zoom) {
+                setTimeout(() => runMermaid(false), 200);
+                return;
+            } else {
+                svgs.each(function() {
+                    var svg = d3.select(this);
+                    svg.html("<g class='wrapper'>" + svg.html() + "</g>");
+                    var inner = svg.select("g");
+                    var zoom = d3.zoom().on("zoom", function(event) {
+                        inner.attr("transform", event.transform);
+                    });
+                    svg.call(zoom);
+                });
+            }
+        }
+    } else if(all_mermaids.length !== mermaids_processed.length) {
+        // Wait for mermaid to process all diagrams
+        setTimeout(() => runMermaid(false), 200);
+        return;
+    }
+
+    // Stop here if not adding fullscreen capability
+    if ("True" !== "True") return;
+
+    if (modal !== null ) {
+        // Destroy existing modal
+        modal.remove();
+        modal = null;
+        modalContent = null;
+    }
+
+    modal = document.createElement('div');
+    modal.className = 'mermaid-fullscreen-modal' + (darkTheme ? ' dark-theme' : '');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Fullscreen diagram viewer');
+    modal.innerHTML = `
+        <button class="mermaid-fullscreen-close${darkTheme ? ' dark-theme' : ''}" aria-label="Close fullscreen">✕</button>
+        <div class="mermaid-container-fullscreen${darkTheme ? ' dark-theme' : ''}"></div>
+    `;
+    document.body.appendChild(modal);
+
+    modalContent = modal.querySelector('.mermaid-container-fullscreen');
+    const closeBtn = modal.querySelector('.mermaid-fullscreen-close');
+
+    const closeModal = () => {
+        modal.classList.remove('active');
+        modalContent.innerHTML = '';
+        document.body.style.overflow = ''
+        window.scrollTo({left: previousScrollOffset[0], top: previousScrollOffset[1], behavior: 'instant'});
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+
+    document.querySelectorAll('.mermaid').forEach((mermaidDiv) => {
+        if (mermaidDiv.parentNode.classList.contains('mermaid-container') ||
+            mermaidDiv.closest('.mermaid-fullscreen-modal')) {
+            // Already processed, adjust button class if needed
+            const existingBtn = mermaidDiv.parentNode.querySelector('.mermaid-fullscreen-btn');
+            if (existingBtn) {
+                existingBtn.className = 'mermaid-fullscreen-btn' + (darkTheme ? ' dark-theme' : '');
+            }
+            return;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'mermaid-container';
+        mermaidDiv.parentNode.insertBefore(container, mermaidDiv);
+        container.appendChild(mermaidDiv);
+
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.className = 'mermaid-fullscreen-btn' + (darkTheme ? ' dark-theme' : '');
+        fullscreenBtn.setAttribute('aria-label', 'View diagram in fullscreen');
+        fullscreenBtn.textContent = '⛶';
+        fullscreenBtn.style.opacity = '50%';
+
+        // Calculate dynamic position based on diagram's margin and padding
+        const diagramStyle = window.getComputedStyle(mermaidDiv);
+        const marginTop = parseFloat(diagramStyle.marginTop) || 0;
+        const marginRight = parseFloat(diagramStyle.marginRight) || 0;
+        const paddingTop = parseFloat(diagramStyle.paddingTop) || 0;
+        const paddingRight = parseFloat(diagramStyle.paddingRight) || 0;
+        fullscreenBtn.style.top = `${marginTop + paddingTop + 4}px`;
+        fullscreenBtn.style.right = `${marginRight + paddingRight + 4}px`;
+
+        fullscreenBtn.addEventListener('click', () => {
+            previousScrollOffset = [window.scroll, window.scrollY];
+            const clone = mermaidDiv.cloneNode(true);
+            modalContent.innerHTML = '';
+            modalContent.appendChild(clone);
+
+            const svg = clone.querySelector('svg');
+            if (svg) {
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+                svg.style.width = '100%';
+                svg.style.height = 'auto';
+                svg.style.maxWidth = '100%';
+                svg.style.sdisplay = 'block';
+
+                if ("False" === "True") {
+                    setTimeout(() => {
+                        const g = svg.querySelector('g');
+                        if (g) {
+                            var svgD3 = d3.select(svg);
+                            svgD3.html("<g class='wrapper'>" + svgD3.html() + "</g>");
+                            var inner = svgD3.select("g");
+                            var zoom = d3.zoom().on("zoom", function(event) {
+                                inner.attr("transform", event.transform);
+                            });
+                            svgD3.call(zoom);
+                        }
+                    }, 100);
+                }
+            }
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+        container.appendChild(fullscreenBtn);
+    });
+};
+
+const load = async () => {
+    initStyles();
+
+    await runMermaid(true);
+
+    const reRunIfThemeChanges = async () => {
+        const newDarkTheme = isDarkTheme();
+        if (newDarkTheme !== darkTheme) {
+            darkTheme = newDarkTheme;
+            console.log("Theme change detected, re-running mermaid with", darkTheme ? "dark" : "default", "theme");
+            await mermaid.initialize(
+                {...JSON.parse(
+                    `{"startOnLoad": false}`
+                ),
+                ...{ darkMode: darkTheme, theme: darkTheme ? 'dark' : 'default' },
+                }
+            );
+            await runMermaid(true);
+        }
+    };
+
+    // Update theme classes when theme changes
+    const themeObserver = new MutationObserver(reRunIfThemeChanges);
+    themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-theme']
+    });
+    themeObserver.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-theme']
+    });
+};
+
+
+
+
+
+console.log("Initializing mermaid with", darkTheme ? "dark" : "default", "theme");
+mermaid.initialize(
+    {...JSON.parse(
+        `{"startOnLoad": false}`
+    ),
+    ...{ darkMode: darkTheme, theme: darkTheme ? 'dark' : 'default' },
+    }
+);
+
+window.addEventListener("load", load);</script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -54,21 +489,13 @@
 <li class="toctree-l3"><a class="reference internal" href="#fingerprints">Fingerprints</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#setting-up-the-gpg-signing-key">Setting up the GPG signing key</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#generate-or-identify-your-signing-subkey">Generate or identify your signing subkey</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#export-the-public-key-in-pem-format">Export the public key in PEM format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#setting-up-the-piv-signing-key">Setting up the PIV signing key</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-piv-signing-agent">The PIV signing agent</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pkcs-11-signing-flow">PKCS#11 signing flow</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#the-signing-script">The signing script</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#why-gpg-connect-agent-instead-of-gpg-sign">Why gpg-connect-agent instead of gpg –sign?</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#gpg-agent-forwarding-for-remote-builds">GPG agent forwarding for remote builds</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#setup">Setup</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#the-stale-socket-trap">The stale socket trap</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#pin-entry">PIN entry</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="#the-signing-command">The signing command</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#socket-forwarding-for-remote-builds">Socket forwarding for remote builds</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#putting-it-together-the-build-script">Putting it together: the build script</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#client-side-setup">Client-side setup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#verifying-signatures-manually">Verifying signatures manually</a></li>
@@ -106,8 +533,21 @@
 <p>FreeBSD’s <code class="docutils literal notranslate"><span class="pre">pkg</span></code> supports cryptographic signing of package repositories.
 It uses its own signing protocol with a double-hash scheme and a specific
 stdin/stdout contract for signing commands. This article walks through signing a
-<code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code> with a GPG key stored on a YubiKey, including GPG agent forwarding
-for remote builds.</p>
+<code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code> with a key stored on a YubiKey’s PIV applet via PKCS#11, including
+socket forwarding for remote builds.</p>
+<p>The scripts and tools described here are part of the
+<a class="reference external" href="https://github.com/brendanbank/banzai-plugins">banzai-plugins</a> repository.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>An earlier version of this setup used the YubiKey’s GPG applet with
+<code class="docutils literal notranslate"><span class="pre">gpg-connect-agent</span></code> and Assuan protocol over a forwarded gpg-agent socket.
+That approach works but is fragile: gpg-agent socket forwarding requires
+killing the remote agent in a separate SSH call, the Assuan protocol requires
+percent-encoding and S-expression parsing, and gpg-agent socket conflicts
+with SSH auth when both use the same agent. The PIV approach described here
+uses an independent applet with a standard PKCS#11 interface and a simple
+custom socket protocol.</p>
+</div>
 <section id="why-hardware-backed-signing">
 <h2>Why hardware-backed signing?<a class="headerlink" href="#why-hardware-backed-signing" title="Link to this heading"></a></h2>
 <p>A pkg repository signing key is a high-value target. If the private key is
@@ -121,7 +561,7 @@ is designed to prevent extraction of private keys.</p>
 <p>Before writing any code, you need to understand what <code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code> actually does
 when it signs. The
 <a class="reference external" href="https://man.freebsd.org/cgi/man.cgi?query=pkg-repo&amp;sektion=8">pkg-repo(8)</a>
-man page <a class="footnote-reference brackets" href="#id9" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> documents the output format (<code class="docutils literal notranslate"><span class="pre">SIGNATURE</span></code>/<code class="docutils literal notranslate"><span class="pre">CERT</span></code>/<code class="docutils literal notranslate"><span class="pre">END</span></code>) and
+man page <a class="footnote-reference brackets" href="#id7" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> documents the output format (<code class="docutils literal notranslate"><span class="pre">SIGNATURE</span></code>/<code class="docutils literal notranslate"><span class="pre">CERT</span></code>/<code class="docutils literal notranslate"><span class="pre">END</span></code>) and
 states that the signing command receives “the SHA256 of the repository catalogue
 on its stdin.” However, it does not describe the double-hash verification
 scheme, the fact that stdin remains open, or how fingerprints are computed.</p>
@@ -140,8 +580,8 @@ this format:</p>
 </pre></div>
 </div>
 <p>The critical detail: <strong>pkg keeps stdin open</strong> while it waits for the signing
-command’s response, only closing it during cleanup <a class="footnote-reference brackets" href="#id13" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>5<span class="fn-bracket">]</span></a>. This means <code class="docutils literal notranslate"><span class="pre">cat</span></code> will
-deadlock waiting for EOF. The official example script <a class="footnote-reference brackets" href="#id11" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a> in the pkg repository
+command’s response, only closing it during cleanup <a class="footnote-reference brackets" href="#id11" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>5<span class="fn-bracket">]</span></a>. This means <code class="docutils literal notranslate"><span class="pre">cat</span></code> will
+deadlock waiting for EOF. The official example script <a class="footnote-reference brackets" href="#id9" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a> in the pkg repository
 uses <code class="docutils literal notranslate"><span class="pre">read</span> <span class="pre">-t</span> <span class="pre">2</span></code> (with a 2-second timeout) to handle this.</p>
 <section id="the-double-hash">
 <h3>The double hash<a class="headerlink" href="#the-double-hash" title="Link to this heading"></a></h3>
@@ -163,7 +603,7 @@ that pkg expects, so it is not a valid test for pkg signatures.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">RSA</span><span class="p">(</span><span class="n">PKCS</span><span class="c1">#1 v1.5(DigestInfo(SHA256_OID, SHA256(hex_string))))</span>
 </pre></div>
 </div>
-<p>This is confirmed by the verification code in <code class="docutils literal notranslate"><span class="pre">libpkg/pkgsign_ossl.c</span></code> <a class="footnote-reference brackets" href="#id12" id="id4" role="doc-noteref"><span class="fn-bracket">[</span>4<span class="fn-bracket">]</span></a>.
+<p>This is confirmed by the verification code in <code class="docutils literal notranslate"><span class="pre">libpkg/pkgsign_ossl.c</span></code> <a class="footnote-reference brackets" href="#id10" id="id4" role="doc-noteref"><span class="fn-bracket">[</span>4<span class="fn-bracket">]</span></a>.
 The function <code class="docutils literal notranslate"><span class="pre">ossl_verify_cb</span></code> calls <code class="docutils literal notranslate"><span class="pre">pkg_checksum_fd()</span></code> to get the hex hash,
 then passes the 64-byte hex string directly to <code class="docutils literal notranslate"><span class="pre">EVP_PKEY_verify</span></code> with a
 custom digest <code class="docutils literal notranslate"><span class="pre">EVP_md_pkg_sha1()</span></code>. This custom digest has the SHA-1 OID but
@@ -183,177 +623,124 @@ openssl<span class="w"> </span>rsa<span class="w"> </span>-pubin<span class="w">
 </pre></div>
 </div>
 <p>The fingerprint is not a hash of the DER-encoded public key material. It’s a
-hash of the PEM file as-is <a class="footnote-reference brackets" href="#id14" id="id5" role="doc-noteref"><span class="fn-bracket">[</span>6<span class="fn-bracket">]</span></a>.</p>
+hash of the PEM file as-is <a class="footnote-reference brackets" href="#id12" id="id5" role="doc-noteref"><span class="fn-bracket">[</span>6<span class="fn-bracket">]</span></a>.</p>
 </section>
 </section>
-<section id="setting-up-the-gpg-signing-key">
-<h2>Setting up the GPG signing key<a class="headerlink" href="#setting-up-the-gpg-signing-key" title="Link to this heading"></a></h2>
-<section id="generate-or-identify-your-signing-subkey">
-<h3>Generate or identify your signing subkey<a class="headerlink" href="#generate-or-identify-your-signing-subkey" title="Link to this heading"></a></h3>
-<p>If you already have a GPG key on your YubiKey, identify the signing subkey:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>gpg<span class="w"> </span>--list-keys<span class="w"> </span>--with-keygrip<span class="w"> </span>your@email.com
+<section id="setting-up-the-piv-signing-key">
+<h2>Setting up the PIV signing key<a class="headerlink" href="#setting-up-the-piv-signing-key" title="Link to this heading"></a></h2>
+<p>The signing key lives in the YubiKey’s PIV applet, slot <strong>9c</strong> (Digital
+Signature). PIV is independent from the GPG applet – no contention with
+GPG/SSH auth.</p>
+<p>Check your PIV slot:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>ykman<span class="w"> </span>piv<span class="w"> </span>info
 </pre></div>
 </div>
-<p>Look for a subkey with <code class="docutils literal notranslate"><span class="pre">[S]</span></code> (signing) capability and note its <strong>keygrip</strong> –
-a 40-character hex string. The keygrip identifies the key to <code class="docutils literal notranslate"><span class="pre">gpg-agent</span></code>
-regardless of the key’s OpenPGP metadata.</p>
-<p>If you need to generate a new signing subkey and move it to your YubiKey,
-see one of these guides:</p>
-<ul class="simple">
-<li><p><a class="reference external" href="https://developers.yubico.com/PGP/PGP_Walk-Through.html">Yubico PGP Walk-Through</a>
-– Yubico’s official guide to generating PGP keys and loading them onto a
-YubiKey.</p></li>
-<li><p><a class="reference external" href="https://github.com/drduh/YubiKey-Guide">drduh/YubiKey-Guide</a> – detailed
-community guide covering key generation, subkey creation, and transfer to
-YubiKey with full console output examples.</p></li>
-</ul>
-</section>
-<section id="export-the-public-key-in-pem-format">
-<h3>Export the public key in PEM format<a class="headerlink" href="#export-the-public-key-in-pem-format" title="Link to this heading"></a></h3>
-<p>pkg needs a PKCS#8 PEM public key, not a GPG public key. If the key was created
-outside GPG and imported, you may already have the PEM file. If the key was
-generated on the YubiKey via GPG, you can extract it with <code class="docutils literal notranslate"><span class="pre">gpg-connect-agent</span></code>
-and convert it to PEM. <code class="docutils literal notranslate"><span class="pre">gpg-connect-agent</span></code> returns key material as
-S-expressions – a length-prefixed binary format (e.g. <code class="docutils literal notranslate"><span class="pre">3:rsa</span></code> means “3 bytes:
-rsa”, <code class="docutils literal notranslate"><span class="pre">1:n512:&lt;bytes&gt;</span></code> means “field n, 512 bytes of data”):</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span><span class="s">&lt;&lt; &#39;PYEOF&#39; &gt; repo.pub</span>
-<span class="s">import subprocess, re, base64, sys</span>
-
-<span class="s">KEYGRIP = &quot;&lt;your-keygrip-here&gt;&quot;</span>
-
-<span class="s">result = subprocess.run(</span>
-<span class="s">    [&quot;gpg-connect-agent&quot;, f&quot;READKEY {KEYGRIP}&quot;, &quot;/bye&quot;],</span>
-<span class="s">    capture_output=True</span>
-<span class="s">)</span>
-
-<span class="s"># Decode Assuan protocol D lines (%-encoded binary)</span>
-<span class="s">data_parts = []</span>
-<span class="s">for line in result.stdout.split(b&#39;\n&#39;):</span>
-<span class="s">    if line.startswith(b&#39;D &#39;):</span>
-<span class="s">        part = line[2:]</span>
-<span class="s">        decoded = b&#39;&#39;</span>
-<span class="s">        i = 0</span>
-<span class="s">        while i &lt; len(part):</span>
-<span class="s">            if part[i:i+1] == b&#39;%&#39; and i+2 &lt; len(part):</span>
-<span class="s">                decoded += bytes([int(part[i+1:i+3], 16)])</span>
-<span class="s">                i += 3</span>
-<span class="s">            else:</span>
-<span class="s">                decoded += part[i:i+1]</span>
-<span class="s">                i += 1</span>
-<span class="s">        data_parts.append(decoded)</span>
-<span class="s">sexp = b&#39;&#39;.join(data_parts)</span>
-
-<span class="s"># Parse n and e from S-expression:</span>
-<span class="s"># (10:public-key(3:rsa(1:n&lt;len&gt;:&lt;n&gt;)(1:e&lt;len&gt;:&lt;e&gt;)))</span>
-<span class="s">n_match = re.search(rb&#39;\(1:n(\d+):&#39;, sexp)</span>
-<span class="s">n_len = int(n_match.group(1))</span>
-<span class="s">n_bytes = sexp[n_match.end():n_match.end()+n_len]</span>
-<span class="s">e_start = n_match.end() + n_len</span>
-<span class="s">e_match = re.search(rb&#39;\(1:e(\d+):&#39;, sexp[e_start:])</span>
-<span class="s">e_len = int(e_match.group(1))</span>
-<span class="s">e_bytes = sexp[e_start + e_match.end():e_start + e_match.end() + e_len]</span>
-
-<span class="s">n_int = int.from_bytes(n_bytes, &#39;big&#39;)</span>
-<span class="s">e_int = int.from_bytes(e_bytes, &#39;big&#39;)</span>
-
-<span class="s"># Build DER-encoded SubjectPublicKeyInfo</span>
-<span class="s">def der_integer(value):</span>
-<span class="s">    b = value.to_bytes((value.bit_length() + 8) // 8, &#39;big&#39;)</span>
-<span class="s">    return b&#39;\x02&#39; + der_length(len(b)) + b</span>
-<span class="s">def der_length(l):</span>
-<span class="s">    if l &lt; 128: return bytes([l])</span>
-<span class="s">    elif l &lt; 256: return b&#39;\x81&#39; + bytes([l])</span>
-<span class="s">    else: return b&#39;\x82&#39; + l.to_bytes(2, &#39;big&#39;)</span>
-<span class="s">def der_sequence(data):</span>
-<span class="s">    return b&#39;\x30&#39; + der_length(len(data)) + data</span>
-
-<span class="s">rsa_pub = der_sequence(der_integer(n_int) + der_integer(e_int))</span>
-<span class="s">rsa_oid = b&#39;\x30\x0d\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x01\x01\x05\x00&#39;</span>
-<span class="s">bit_string = b&#39;\x03&#39; + der_length(len(rsa_pub) + 1) + b&#39;\x00&#39; + rsa_pub</span>
-<span class="s">spki = der_sequence(rsa_oid + bit_string)</span>
-
-<span class="s">pem = b&#39;-----BEGIN PUBLIC KEY-----\n&#39;</span>
-<span class="s">pem += base64.encodebytes(spki)</span>
-<span class="s">pem += b&#39;-----END PUBLIC KEY-----\n&#39;</span>
-<span class="s">sys.stdout.buffer.write(pem)</span>
-<span class="s">PYEOF</span>
+<p>You should see something like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Slot</span> <span class="mi">9</span><span class="n">C</span> <span class="p">(</span><span class="n">SIGNATURE</span><span class="p">):</span>
+  <span class="n">Private</span> <span class="n">key</span> <span class="nb">type</span><span class="p">:</span> <span class="n">RSA2048</span>
+  <span class="n">Public</span> <span class="n">key</span> <span class="nb">type</span><span class="p">:</span>  <span class="n">RSA2048</span>
+  <span class="n">Subject</span> <span class="n">DN</span><span class="p">:</span>       <span class="n">CN</span><span class="o">=</span><span class="n">repo</span> <span class="n">signing</span>
+  <span class="n">PIN</span> <span class="n">required</span><span class="p">:</span>     <span class="n">ALWAYS</span>
+  <span class="n">Touch</span> <span class="n">required</span><span class="p">:</span>   <span class="n">ALWAYS</span>
 </pre></div>
 </div>
-<p>This uses <code class="docutils literal notranslate"><span class="pre">READKEY</span></code> to read the raw RSA public key from the YubiKey, parses
-the modulus and exponent from the gpg-agent S-expression, and constructs a
-standard PKCS#8 PEM file. The result should look like:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-----</span><span class="n">BEGIN</span> <span class="n">PUBLIC</span> <span class="n">KEY</span><span class="o">-----</span>
-<span class="n">MIICIjANBgkqhkiG9w0BAQEFAAOC</span><span class="o">...</span>
-<span class="o">-----</span><span class="n">END</span> <span class="n">PUBLIC</span> <span class="n">KEY</span><span class="o">-----</span>
+<p>If you need to generate a key in the PIV slot:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>ykman<span class="w"> </span>piv<span class="w"> </span>keys<span class="w"> </span>generate<span class="w"> </span>-a<span class="w"> </span>RSA2048<span class="w"> </span>--touch-policy<span class="w"> </span>ALWAYS<span class="w"> </span>--pin-policy<span class="w"> </span>ALWAYS<span class="w"> </span>9c<span class="w"> </span>pubkey.pem
+</pre></div>
+</div>
+<p>Export the public key in PEM format:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>ykman<span class="w"> </span>piv<span class="w"> </span>keys<span class="w"> </span><span class="nb">export</span><span class="w"> </span>9c<span class="w"> </span>repo.pub
+</pre></div>
+</div>
+<p>This gives you a standard PKCS#8 PEM file that pkg can use directly – no
+format conversion needed (unlike GPG keys which require S-expression parsing
+and DER construction).</p>
+</section>
+<section id="the-piv-signing-agent">
+<h2>The PIV signing agent<a class="headerlink" href="#the-piv-signing-agent" title="Link to this heading"></a></h2>
+<p>The signing agent runs on your local workstation (where the YubiKey is plugged
+in) and listens on a Unix socket. It signs digests using the YubiKey PIV slot
+via PKCS#11 (<code class="docutils literal notranslate"><span class="pre">libykcs11</span></code>), using Python’s <code class="docutils literal notranslate"><span class="pre">ctypes</span></code> to call the PKCS#11
+functions directly – no pip dependencies required beyond what Homebrew’s
+<code class="docutils literal notranslate"><span class="pre">yubico-piv-tool</span></code> provides.</p>
+<pre  class="mermaid">
+        flowchart LR
+    subgraph remote[&quot;Remote build host&quot;]
+        sign[&quot;sign-repo.py&quot;]
+    end
+    subgraph local[&quot;Local workstation&quot;]
+        agent[&quot;piv-sign-agent.py&quot;]
+        yubikey[(&quot;YubiKey PIV&quot;)]
+        agent --- yubikey
+    end
+    sign -- &quot;&amp;ensp;ssh -R socket&amp;ensp;&quot; --&gt; agent
+    </pre><p>The agent protocol is line-based:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Request:  SIGN SHA256 &lt;hex-encoded-32-byte-digest&gt;\n
+Response: OK &lt;base64-encoded-raw-PKCS1-signature&gt;\n
+
+Request:  PUBKEY\n
+Response: OK &lt;base64-encoded-PEM-public-key&gt;\n
+
+Errors:   ERR &lt;message&gt;\n
+</pre></div>
+</div>
+<p>A fresh PKCS#11 session is opened for each signing request to avoid stale
+session issues (e.g. after <code class="docutils literal notranslate"><span class="pre">ykman</span></code> calls or YubiKey re-insertion).</p>
+<p>Starting the agent:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># With a password manager command for PIN retrieval:</span>
+python3<span class="w"> </span>piv-sign-agent.py<span class="w"> </span>--pin-command<span class="w"> </span><span class="s2">&quot;your-pin-retrieval-command&quot;</span>
+
+<span class="c1"># With PIN from environment:</span>
+<span class="nv">PIV_PIN</span><span class="o">=</span><span class="m">123456</span><span class="w"> </span>python3<span class="w"> </span>piv-sign-agent.py
+
+<span class="c1"># Interactive (prompts for PIN at each signing request):</span>
+python3<span class="w"> </span>piv-sign-agent.py
+
+<span class="c1"># Self-test (sign and verify a test digest):</span>
+python3<span class="w"> </span>piv-sign-agent.py<span class="w"> </span>--test<span class="w"> </span>--pin-command<span class="w"> </span><span class="s2">&quot;your-pin-retrieval-command&quot;</span>
+
+<span class="c1"># Suppress touch prompts (for YubiKeys with touch disabled):</span>
+python3<span class="w"> </span>piv-sign-agent.py<span class="w"> </span>--no-touch<span class="w"> </span>--pin-command<span class="w"> </span><span class="s2">&quot;...&quot;</span>
+</pre></div>
+</div>
+<section id="pkcs-11-signing-flow">
+<h3>PKCS#11 signing flow<a class="headerlink" href="#pkcs-11-signing-flow" title="Link to this heading"></a></h3>
+<p>The PKCS#11 flow for each signing request:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>C_Initialize(None)
+C_GetSlotList(tokenPresent=True)  -&gt;  slot
+C_OpenSession(slot, CKF_SERIAL_SESSION | CKF_RW_SESSION)  -&gt;  session
+C_Login(session, CKU_USER, pin)
+C_FindObjectsInit(session, [CKA_CLASS=CKO_PRIVATE_KEY, CKA_SIGN=True])
+C_FindObjects(session)  -&gt;  key_handle
+C_FindObjectsFinal(session)
+C_SignInit(session, CKM_RSA_PKCS, key_handle)
+C_Sign(session, digest_info, sig_buf)  -&gt;  signature    # touch required here
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">CKM_RSA_PKCS</span></code> performs raw PKCS#1 v1.5 padding – the caller must provide
+the DER-encoded DigestInfo structure:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">SHA256_DER_PREFIX</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">([</span>
+    <span class="mh">0x30</span><span class="p">,</span> <span class="mh">0x31</span><span class="p">,</span> <span class="mh">0x30</span><span class="p">,</span> <span class="mh">0x0d</span><span class="p">,</span> <span class="mh">0x06</span><span class="p">,</span> <span class="mh">0x09</span><span class="p">,</span> <span class="mh">0x60</span><span class="p">,</span> <span class="mh">0x86</span><span class="p">,</span>
+    <span class="mh">0x48</span><span class="p">,</span> <span class="mh">0x01</span><span class="p">,</span> <span class="mh">0x65</span><span class="p">,</span> <span class="mh">0x03</span><span class="p">,</span> <span class="mh">0x04</span><span class="p">,</span> <span class="mh">0x02</span><span class="p">,</span> <span class="mh">0x01</span><span class="p">,</span> <span class="mh">0x05</span><span class="p">,</span>
+    <span class="mh">0x00</span><span class="p">,</span> <span class="mh">0x04</span><span class="p">,</span> <span class="mh">0x20</span>
+<span class="p">])</span>
+<span class="n">digest_info</span> <span class="o">=</span> <span class="n">SHA256_DER_PREFIX</span> <span class="o">+</span> <span class="n">sha256_hash</span>  <span class="c1"># 19 + 32 = 51 bytes</span>
 </pre></div>
 </div>
 </section>
 </section>
-<section id="the-signing-script">
-<h2>The signing script<a class="headerlink" href="#the-signing-script" title="Link to this heading"></a></h2>
-<p>This script is called by <code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code> as the <code class="docutils literal notranslate"><span class="pre">signing_command</span></code>. It reads the
-hex hash from stdin, performs the double hash, signs via <code class="docutils literal notranslate"><span class="pre">gpg-agent</span></code>, and
-outputs the result in pkg’s expected format.</p>
+<section id="the-signing-command">
+<h2>The signing command<a class="headerlink" href="#the-signing-command" title="Link to this heading"></a></h2>
+<p>This script runs on the <strong>remote build host</strong>, called by <code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code> as the
+<code class="docutils literal notranslate"><span class="pre">signing_command</span></code>. It connects to the forwarded PIV agent socket, sends the
+double-hashed digest, and outputs the result in pkg’s expected format.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python3</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">base64</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">socket</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
-
-<span class="n">DEFAULT_KEYGRIP</span> <span class="o">=</span> <span class="s2">&quot;&lt;your-keygrip-here&gt;&quot;</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">find_repo_pub</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Locate the public key PEM file.&quot;&quot;&quot;</span>
-    <span class="n">env_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;REPO_PUB&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">env_path</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">env_path</span>
-    <span class="n">script_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
-    <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">script_dir</span><span class="p">,</span> <span class="s2">&quot;repo.pub&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">path</span>
-    <span class="n">repo_root</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">script_dir</span><span class="p">)</span>
-    <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">repo_root</span><span class="p">,</span> <span class="s2">&quot;Keys&quot;</span><span class="p">,</span> <span class="s2">&quot;repo.pub&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">path</span>
-    <span class="k">return</span> <span class="kc">None</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">decode_assuan_data</span><span class="p">(</span><span class="n">stdout</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decode Assuan protocol D lines (%-encoded binary) and concatenate.&quot;&quot;&quot;</span>
-    <span class="n">data_parts</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">stdout</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">):</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;D &quot;</span><span class="p">):</span>
-            <span class="k">continue</span>
-        <span class="n">part</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
-        <span class="n">decoded</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span>
-        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">part</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">part</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="sa">b</span><span class="s2">&quot;%&quot;</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">part</span><span class="p">):</span>
-                <span class="n">decoded</span> <span class="o">+=</span> <span class="nb">bytes</span><span class="p">([</span><span class="nb">int</span><span class="p">(</span><span class="n">part</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">],</span> <span class="mi">16</span><span class="p">)])</span>
-                <span class="n">i</span> <span class="o">+=</span> <span class="mi">3</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">decoded</span> <span class="o">+=</span> <span class="n">part</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
-                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="n">data_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">decoded</span><span class="p">)</span>
-    <span class="k">return</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_parts</span><span class="p">)</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">extract_rsa_signature</span><span class="p">(</span><span class="n">sexp</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract raw RSA signature bytes from a gpg-agent S-expression.</span>
-
-<span class="sd">    The S-expression has the form: (7:sig-val(3:rsa(1:s&lt;len&gt;:&lt;sig&gt;)))</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">rb</span><span class="s2">&quot;\(1:s(\d+):&quot;</span><span class="p">,</span> <span class="n">sexp</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">m</span><span class="p">:</span>
-        <span class="n">die</span><span class="p">(</span><span class="s2">&quot;could not parse signature S-expression&quot;</span><span class="p">)</span>
-    <span class="n">sig_len</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
-    <span class="n">sig</span> <span class="o">=</span> <span class="n">sexp</span><span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">end</span><span class="p">():</span><span class="n">m</span><span class="o">.</span><span class="n">end</span><span class="p">()</span> <span class="o">+</span> <span class="n">sig_len</span><span class="p">]</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span> <span class="o">!=</span> <span class="n">sig_len</span><span class="p">:</span>
-        <span class="n">die</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;expected </span><span class="si">{</span><span class="n">sig_len</span><span class="si">}</span><span class="s2"> byte signature, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">sig</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">die</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
@@ -361,43 +748,67 @@ outputs the result in pkg’s expected format.</p>
     <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">agent_request</span><span class="p">(</span><span class="n">sock_path</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Send a request to the PIV signing agent.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_UNIX</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">settimeout</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">sock_path</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">sendall</span><span class="p">((</span><span class="n">request</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span>
+        <span class="k">while</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">chunk</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">4096</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">chunk</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">data</span> <span class="o">+=</span> <span class="n">chunk</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">socket</span><span class="o">.</span><span class="n">error</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">die</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;cannot connect to PIV agent at </span><span class="si">{</span><span class="n">sock_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">line</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;OK &quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">line</span><span class="p">[</span><span class="mi">3</span><span class="p">:]</span>
+    <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;ERR &quot;</span><span class="p">):</span>
+        <span class="n">die</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;agent error: </span><span class="si">{</span><span class="n">line</span><span class="p">[</span><span class="mi">4</span><span class="p">:]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">die</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unexpected agent response: </span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">find_repo_pub</span><span class="p">(</span><span class="n">sock_path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the public key PEM: from file or from the agent.&quot;&quot;&quot;</span>
+    <span class="n">env_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;REPO_PUB&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">env_path</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">env_path</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">env_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="n">script_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">script_dir</span><span class="p">,</span> <span class="s2">&quot;repo.pub&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="c1"># Ask the agent</span>
+    <span class="n">b64</span> <span class="o">=</span> <span class="n">agent_request</span><span class="p">(</span><span class="n">sock_path</span><span class="p">,</span> <span class="s2">&quot;PUBKEY&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">b64</span><span class="p">)</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-    <span class="n">keygrip</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;GPG_SIGN_KEYGRIP&quot;</span><span class="p">,</span> <span class="n">DEFAULT_KEYGRIP</span><span class="p">)</span>
+    <span class="n">sock_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;PIV_AGENT_SOCK&quot;</span><span class="p">,</span>
+                               <span class="s2">&quot;/tmp/piv-sign-agent.sock&quot;</span><span class="p">)</span>
+    <span class="n">pub_pem</span> <span class="o">=</span> <span class="n">find_repo_pub</span><span class="p">(</span><span class="n">sock_path</span><span class="p">)</span>
 
-    <span class="n">repo_pub</span> <span class="o">=</span> <span class="n">find_repo_pub</span><span class="p">()</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">repo_pub</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">repo_pub</span><span class="p">):</span>
-        <span class="n">die</span><span class="p">(</span><span class="s2">&quot;public key not found (searched REPO_PUB, script dir, Keys/)&quot;</span><span class="p">)</span>
-
-    <span class="c1"># pkg repo sends SHA256(data) as a hex string on stdin. It doesn&#39;t</span>
-    <span class="c1"># close stdin, so read one line only. pkg verifies against</span>
-    <span class="c1"># SHA256(hex_string), so hash it again.</span>
+    <span class="c1"># pkg repo sends SHA256(data) as a hex string on stdin.</span>
+    <span class="c1"># It doesn&#39;t close stdin, so read one line only.</span>
+    <span class="c1"># pkg verifies against SHA256(hex_string), so hash it again.</span>
     <span class="n">hex_hash</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">hex_hash</span><span class="p">:</span>
         <span class="n">die</span><span class="p">(</span><span class="s2">&quot;no hash received on stdin&quot;</span><span class="p">)</span>
+    <span class="n">double_hash</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">hex_hash</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">digest</span><span class="p">()</span>
 
-    <span class="n">double_hash</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">hex_hash</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
-
-    <span class="c1"># Sign via gpg-agent: SIGKEY selects the key, SETHASH sets the</span>
-    <span class="c1"># digest, PKSIGN produces the signature. PIN prompting goes</span>
-    <span class="c1"># through pinentry.</span>
-    <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-        <span class="p">[</span><span class="s2">&quot;gpg-connect-agent&quot;</span><span class="p">,</span>
-         <span class="sa">f</span><span class="s2">&quot;SIGKEY </span><span class="si">{</span><span class="n">keygrip</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-         <span class="sa">f</span><span class="s2">&quot;SETHASH --hash=sha256 </span><span class="si">{</span><span class="n">double_hash</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-         <span class="s2">&quot;PKSIGN&quot;</span><span class="p">,</span> <span class="s2">&quot;/bye&quot;</span><span class="p">],</span>
-        <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">die</span><span class="p">(</span><span class="s2">&quot;gpg-connect-agent failed&quot;</span><span class="p">)</span>
-
-    <span class="n">sexp</span> <span class="o">=</span> <span class="n">decode_assuan_data</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
-    <span class="n">sig</span> <span class="o">=</span> <span class="n">extract_rsa_signature</span><span class="p">(</span><span class="n">sexp</span><span class="p">)</span>
+    <span class="c1"># Sign via PIV agent</span>
+    <span class="n">sig_b64</span> <span class="o">=</span> <span class="n">agent_request</span><span class="p">(</span><span class="n">sock_path</span><span class="p">,</span>
+                            <span class="sa">f</span><span class="s2">&quot;SIGN SHA256 </span><span class="si">{</span><span class="n">double_hash</span><span class="o">.</span><span class="n">hex</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">sig</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">sig_b64</span><span class="p">)</span>
 
     <span class="c1"># Output in the format pkg expects</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">repo_pub</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-        <span class="n">pub_pem</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-
     <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">buffer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;SIGNATURE</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">buffer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span>
     <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">buffer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">CERT</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -410,108 +821,60 @@ outputs the result in pkg’s expected format.</p>
     <span class="n">main</span><span class="p">()</span>
 </pre></div>
 </div>
-<section id="why-gpg-connect-agent-instead-of-gpg-sign">
-<h3>Why gpg-connect-agent instead of gpg –sign?<a class="headerlink" href="#why-gpg-connect-agent-instead-of-gpg-sign" title="Link to this heading"></a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">gpg</span> <span class="pre">--sign</span></code> produces OpenPGP-format signatures, which are completely
-different from what pkg expects. pkg needs a raw PKCS#1 v1.5 RSA signature. The
-<code class="docutils literal notranslate"><span class="pre">gpg-connect-agent</span></code> command talks directly to the agent daemon using the
-Assuan protocol, giving us access to the low-level <code class="docutils literal notranslate"><span class="pre">PKSIGN</span></code> operation that
-returns a raw RSA signature wrapped in an S-expression.</p>
-<p>The Assuan protocol is GnuPG’s line-based IPC protocol. Responses come as
-single-letter prefixed lines: <code class="docutils literal notranslate"><span class="pre">OK</span></code> for success, <code class="docutils literal notranslate"><span class="pre">ERR</span></code> for errors, and
-<code class="docutils literal notranslate"><span class="pre">D</span></code> for data. Binary payloads are returned on <code class="docutils literal notranslate"><span class="pre">D</span></code> lines with special bytes
-percent-encoded (e.g. <code class="docutils literal notranslate"><span class="pre">%25</span></code> for <code class="docutils literal notranslate"><span class="pre">%</span></code>, <code class="docutils literal notranslate"><span class="pre">%0A</span></code> for newline). Large responses
-may span multiple <code class="docutils literal notranslate"><span class="pre">D</span></code> lines that need to be concatenated after decoding.</p>
-<p>The signing flow is:</p>
-<ol class="arabic simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">SIGKEY</span> <span class="pre">&lt;keygrip&gt;</span></code> – select the signing key</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">SETHASH</span> <span class="pre">--hash=sha256</span> <span class="pre">&lt;hex&gt;</span></code> – set the hash to sign</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">PKSIGN</span></code> – produce the signature</p></li>
-</ol>
-<p>The agent returns the signature on <code class="docutils literal notranslate"><span class="pre">D</span></code> lines as an S-expression:
-<code class="docutils literal notranslate"><span class="pre">(sig-val(rsa(s&lt;len&gt;:&lt;bytes&gt;)))</span></code>. The Python code decodes the percent-encoded
-<code class="docutils literal notranslate"><span class="pre">D</span></code> lines and extracts the raw signature bytes.</p>
 </section>
-</section>
-<section id="gpg-agent-forwarding-for-remote-builds">
-<h2>GPG agent forwarding for remote builds<a class="headerlink" href="#gpg-agent-forwarding-for-remote-builds" title="Link to this heading"></a></h2>
+<section id="socket-forwarding-for-remote-builds">
+<h2>Socket forwarding for remote builds<a class="headerlink" href="#socket-forwarding-for-remote-builds" title="Link to this heading"></a></h2>
 <p>In many setups, packages are built on a remote FreeBSD machine but the YubiKey
-is plugged into your local workstation. GPG agent forwarding over SSH <a class="footnote-reference brackets" href="#id16" id="id6" role="doc-noteref"><span class="fn-bracket">[</span>8<span class="fn-bracket">]</span></a>
-solves this: the remote machine’s <code class="docutils literal notranslate"><span class="pre">gpg-connect-agent</span></code> commands are
-transparently forwarded to your local agent, which talks to the YubiKey.</p>
-<section id="setup">
-<h3>Setup<a class="headerlink" href="#setup" title="Link to this heading"></a></h3>
-<p>SSH’s <code class="docutils literal notranslate"><span class="pre">-R</span></code> flag creates a remote Unix socket that forwards to a local one:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get socket paths</span>
-<span class="nv">REMOTE_GPG_SOCK</span><span class="o">=</span><span class="k">$(</span>ssh<span class="w"> </span>remote-host<span class="w"> </span><span class="s2">&quot;gpgconf --list-dirs agent-socket&quot;</span><span class="k">)</span>
-<span class="nv">LOCAL_GPG_EXTRA</span><span class="o">=</span><span class="k">$(</span>gpgconf<span class="w"> </span>--list-dirs<span class="w"> </span>agent-extra-socket<span class="k">)</span>
+is plugged into your local workstation. SSH socket forwarding solves this: the
+agent’s Unix socket is forwarded to the remote host via <code class="docutils literal notranslate"><span class="pre">ssh</span> <span class="pre">-R</span></code>.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Start the PIV signing agent locally</span>
+python3<span class="w"> </span>piv-sign-agent.py<span class="w"> </span>--pin-command<span class="w"> </span><span class="s2">&quot;your-pin-retrieval-command&quot;</span><span class="w"> </span><span class="p">&amp;</span>
 
-<span class="c1"># Kill any existing remote agent -- critical!</span>
-ssh<span class="w"> </span>remote-host<span class="w"> </span><span class="s2">&quot;gpgconf --kill gpg-agent; rm -f </span><span class="si">${</span><span class="nv">REMOTE_GPG_SOCK</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="c1"># Forward the agent socket to the remote host</span>
+<span class="nv">LOCAL_PIV_SOCK</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="s2">/.piv-sign-agent/agent.sock&quot;</span>
+<span class="nv">REMOTE_PIV_SOCK</span><span class="o">=</span><span class="s2">&quot;/tmp/piv-sign-agent.sock&quot;</span>
 
-<span class="c1"># Connect with agent forwarding</span>
-ssh<span class="w"> </span>-R<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REMOTE_GPG_SOCK</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">LOCAL_GPG_EXTRA</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>remote-host<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span><span class="s2">&quot;pkg repo /path/to/repo/ signing_command: /path/to/sign-repo.py&quot;</span>
+<span class="c1"># Remove stale remote socket, then connect with forwarding</span>
+ssh<span class="w"> </span>remote-host<span class="w"> </span><span class="s2">&quot;rm -f </span><span class="si">${</span><span class="nv">REMOTE_PIV_SOCK</span><span class="si">}</span><span class="s2">&quot;</span>
+ssh<span class="w"> </span>-R<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REMOTE_PIV_SOCK</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">LOCAL_PIV_SOCK</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>remote-host<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">&quot;PIV_AGENT_SOCK=</span><span class="si">${</span><span class="nv">REMOTE_PIV_SOCK</span><span class="si">}</span><span class="s2"> \</span>
+<span class="s2">     pkg repo /path/to/repo/ signing_command: /path/to/sign-repo.py&quot;</span>
 </pre></div>
 </div>
-<p>The <strong>extra socket</strong> (<code class="docutils literal notranslate"><span class="pre">agent-extra-socket</span></code>) is a socket that GPG provides
-specifically for forwarding to remote machines <a class="footnote-reference brackets" href="#id15" id="id7" role="doc-noteref"><span class="fn-bracket">[</span>7<span class="fn-bracket">]</span></a>.
-It is more restricted than the standard agent socket.</p>
-</section>
-<section id="the-stale-socket-trap">
-<h3>The stale socket trap<a class="headerlink" href="#the-stale-socket-trap" title="Link to this heading"></a></h3>
-<p>If a <code class="docutils literal notranslate"><span class="pre">gpg-agent</span></code> is already running on
-the remote (or a stale socket file exists), SSH’s <code class="docutils literal notranslate"><span class="pre">-R</span></code> forwarding will fail
-silently – the remote socket file already exists, so SSH can’t create its
-forwarded socket. You’ll get <code class="docutils literal notranslate"><span class="pre">remote</span> <span class="pre">port</span> <span class="pre">forwarding</span> <span class="pre">failed</span> <span class="pre">for</span> <span class="pre">listen</span> <span class="pre">path</span></code>
-in the SSH output, but the connection proceeds without forwarding. Then
-<code class="docutils literal notranslate"><span class="pre">gpg-connect-agent</span></code> on the remote talks to the local (remote machine’s) agent
-instead of your forwarded one, and signing fails because the key isn’t there.</p>
-<p>The fix: <strong>always kill the remote gpg-agent and remove the socket in a separate
-SSH call before the -R connection</strong>:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>remote-host<span class="w"> </span><span class="s2">&quot;gpgconf --kill gpg-agent; rm -f </span><span class="si">${</span><span class="nv">REMOTE_GPG_SOCK</span><span class="si">}</span><span class="s2">&quot;</span>
-ssh<span class="w"> </span>-R<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REMOTE_GPG_SOCK</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">LOCAL_GPG_EXTRA</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>remote-host<span class="w"> </span><span class="s2">&quot;...&quot;</span>
-</pre></div>
-</div>
-<p>This must be two separate SSH calls. If you put the kill and the <code class="docutils literal notranslate"><span class="pre">ssh</span> <span class="pre">-R</span></code> in
-the same command, the forwarding is set up at connection time – before your
-kill command runs.</p>
-</section>
-<section id="pin-entry">
-<h3>PIN entry<a class="headerlink" href="#pin-entry" title="Link to this heading"></a></h3>
-<p>When the signing operation reaches the YubiKey, it prompts for the user PIN via
-<code class="docutils literal notranslate"><span class="pre">pinentry</span></code>. On macOS with <code class="docutils literal notranslate"><span class="pre">pinentry-mac</span></code>, this is a GUI dialog on your
-local machine. On Linux, <code class="docutils literal notranslate"><span class="pre">pinentry-curses</span></code> or <code class="docutils literal notranslate"><span class="pre">pinentry-gnome3</span></code> will prompt
-on your local terminal or desktop. The remote machine never sees the PIN.</p>
-</section>
+<p>Unlike GPG agent forwarding, this approach is straightforward: there is no
+remote agent to kill, the socket is just a file, and the protocol is a simple
+line-based exchange over the forwarded socket.</p>
 </section>
 <section id="putting-it-together-the-build-script">
 <h2>Putting it together: the build script<a class="headerlink" href="#putting-it-together-the-build-script" title="Link to this heading"></a></h2>
 <p>Here’s the signing section of a build script that builds packages on a remote
-FreeBSD host and signs the repo via agent forwarding:</p>
+FreeBSD host and signs the repo via PIV agent socket forwarding:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Upload the signing script and public key</span>
-scp<span class="w"> </span>-q<span class="w"> </span>tools/sign-repo.py<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/sign-repo.py&quot;</span>
-scp<span class="w"> </span>-q<span class="w"> </span>Keys/repo.pub<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/repo.pub&quot;</span>
+rsync<span class="w"> </span>-aq<span class="w"> </span>-e<span class="w"> </span>ssh<span class="w"> </span>tools/sign-repo.py<span class="w"> </span>Keys/repo.pub<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/&quot;</span>
 
-<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Signing repo (GPG key on this host via agent forwarding)...&quot;</span>
-<span class="nv">REMOTE_GPG_SOCK</span><span class="o">=</span><span class="k">$(</span>ssh<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;gpgconf --list-dirs agent-socket&quot;</span><span class="k">)</span>
-<span class="nv">LOCAL_GPG_EXTRA</span><span class="o">=</span><span class="k">$(</span>gpgconf<span class="w"> </span>--list-dirs<span class="w"> </span>agent-extra-socket<span class="k">)</span>
+<span class="c1"># Ensure piv-sign-agent.py is running locally</span>
+<span class="nv">LOCAL_PIV_SOCK</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PIV_AGENT_SOCK</span><span class="k">:-</span><span class="si">${</span><span class="nv">HOME</span><span class="si">}</span><span class="p">/.piv-sign-agent/agent.sock</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>!<span class="w"> </span>-S<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">LOCAL_PIV_SOCK</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;ERROR: PIV signing agent not running&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="k">fi</span>
 
-<span class="c1"># Kill remote agent and remove stale socket before forwarding</span>
-ssh<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;gpgconf --kill gpg-agent; rm -f </span><span class="si">${</span><span class="nv">REMOTE_GPG_SOCK</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="nv">REMOTE_PIV_SOCK</span><span class="o">=</span><span class="s2">&quot;/tmp/piv-sign-agent.sock&quot;</span>
 
-<span class="c1"># Sign with forwarded agent</span>
-ssh<span class="w"> </span>-R<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REMOTE_GPG_SOCK</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">LOCAL_GPG_EXTRA</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span><span class="s2">&quot;pkg repo </span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/ signing_command: </span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/sign-repo.py&quot;</span>
+<span class="c1"># Remove stale remote socket before forwarding</span>
+ssh<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;rm -f </span><span class="si">${</span><span class="nv">REMOTE_PIV_SOCK</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<span class="c1"># Sign with forwarded PIV agent socket</span>
+ssh<span class="w"> </span>-R<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">REMOTE_PIV_SOCK</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">LOCAL_PIV_SOCK</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">&quot;PIV_AGENT_SOCK=</span><span class="si">${</span><span class="nv">REMOTE_PIV_SOCK</span><span class="si">}</span><span class="s2"> \</span>
+<span class="s2">     pkg repo </span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/ signing_command: </span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/sign-repo.py&quot;</span>
 
 <span class="c1"># Verify signing succeeded (pkg repo exits 0 even on failure)</span>
 ssh<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;test -f </span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/meta.conf&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span>
 <span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;ERROR: Repo signing failed&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="o">}</span>
-
-<span class="c1"># Clean up signing artifacts before downloading</span>
-ssh<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">FIREWALL</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;rm -f </span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/sign-repo.py </span><span class="si">${</span><span class="nv">REMOTE_REPO_DIR</span><span class="si">}</span><span class="s2">/repo.pub&quot;</span>
 </pre></div>
 </div>
 <p>Note the <code class="docutils literal notranslate"><span class="pre">meta.conf</span></code> check: <code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code> exits 0 even when signing fails, so
@@ -519,7 +882,7 @@ you need to verify the output explicitly.</p>
 </section>
 <section id="client-side-setup">
 <h2>Client-side setup<a class="headerlink" href="#client-side-setup" title="Link to this heading"></a></h2>
-<p>On each machine that should trust the repo, install the fingerprint <a class="footnote-reference brackets" href="#id10" id="id8" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a>:</p>
+<p>On each machine that should trust the repo, install the fingerprint <a class="footnote-reference brackets" href="#id8" id="id6" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a>:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>-p<span class="w"> </span>/usr/local/etc/pkg/fingerprints/myrepo/trusted
 mkdir<span class="w"> </span>-p<span class="w"> </span>/usr/local/etc/pkg/fingerprints/myrepo/revoked
 
@@ -596,17 +959,17 @@ hash from the second command.</p>
 <td><p>Valid signatures appear to fail</p></td>
 <td><p>Tests single hash, not pkg’s double hash; use manual DigestInfo extraction</p></td>
 </tr>
-<tr class="row-even"><td><p>Stale remote gpg-agent socket</p></td>
-<td><p>“remote port forwarding failed”</p></td>
-<td><p>Kill agent and remove socket in a <em>separate</em> SSH call before <code class="docutils literal notranslate"><span class="pre">-R</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code> exit code</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code> exit code</p></td>
 <td><p>Build succeeds but repo is unsigned</p></td>
 <td><p>Check for <code class="docutils literal notranslate"><span class="pre">meta.conf</span></code> existence after <code class="docutils literal notranslate"><span class="pre">pkg</span> <span class="pre">repo</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p>Using <code class="docutils literal notranslate"><span class="pre">gpg</span> <span class="pre">--sign</span></code></p></td>
-<td><p>Produces OpenPGP format, not PKCS#1</p></td>
-<td><p>Use <code class="docutils literal notranslate"><span class="pre">gpg-connect-agent</span></code> with <code class="docutils literal notranslate"><span class="pre">PKSIGN</span></code> for raw RSA</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ykman</span></code> invalidates PKCS#11 sessions</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">C_Sign</span></code> fails with <code class="docutils literal notranslate"><span class="pre">0x101</span></code></p></td>
+<td><p>Export public key with <code class="docutils literal notranslate"><span class="pre">ykman</span></code> <em>before</em> opening PKCS#11 session</p></td>
+</tr>
+<tr class="row-even"><td><p>Touch timeout on YubiKey</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">C_Sign</span></code> returns <code class="docutils literal notranslate"><span class="pre">0x101</span></code> after ~15 seconds</p></td>
+<td><p>Touch the YubiKey when prompted; <code class="docutils literal notranslate"><span class="pre">0x101</span></code> is Yubico’s <code class="docutils literal notranslate"><span class="pre">CKR_CANCEL</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -614,25 +977,25 @@ hash from the second command.</p>
 <section id="references">
 <h2>References<a class="headerlink" href="#references" title="Link to this heading"></a></h2>
 <aside class="footnote-list brackets">
-<aside class="footnote brackets" id="id9" role="doc-footnote">
+<aside class="footnote brackets" id="id7" role="doc-footnote">
 <span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
 <p><a class="reference external" href="https://man.freebsd.org/cgi/man.cgi?query=pkg-repo&amp;sektion=8">pkg-repo(8) man page</a>
 – documents the <code class="docutils literal notranslate"><span class="pre">signing_command</span></code> output format and states that the SHA256
 of the catalogue is passed on stdin.</p>
 </aside>
-<aside class="footnote brackets" id="id10" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id8">2</a><span class="fn-bracket">]</span></span>
+<aside class="footnote brackets" id="id8" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id6">2</a><span class="fn-bracket">]</span></span>
 <p><a class="reference external" href="https://man.freebsd.org/cgi/man.cgi?query=pkg.conf&amp;sektion=5">pkg.conf(5) man page</a>
 – documents <code class="docutils literal notranslate"><span class="pre">SIGNATURE_TYPE</span></code>, <code class="docutils literal notranslate"><span class="pre">FINGERPRINTS</span></code>, and the fingerprint file
 format (<code class="docutils literal notranslate"><span class="pre">function:</span> <span class="pre">sha256</span></code>, <code class="docutils literal notranslate"><span class="pre">fingerprint:</span> <span class="pre">...</span></code>).</p>
 </aside>
-<aside class="footnote brackets" id="id11" role="doc-footnote">
+<aside class="footnote brackets" id="id9" role="doc-footnote">
 <span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">3</a><span class="fn-bracket">]</span></span>
 <p><a class="reference external" href="https://github.com/freebsd/pkg/blob/main/scripts/sign.sh">scripts/sign.sh</a>
 – the official example signing script in the freebsd/pkg repository. Uses
 <code class="docutils literal notranslate"><span class="pre">read</span> <span class="pre">-t</span> <span class="pre">2</span></code> and <code class="docutils literal notranslate"><span class="pre">openssl</span> <span class="pre">dgst</span> <span class="pre">-sign</span> <span class="pre">-sha256</span></code>.</p>
 </aside>
-<aside class="footnote brackets" id="id12" role="doc-footnote">
+<aside class="footnote brackets" id="id10" role="doc-footnote">
 <span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id4">4</a><span class="fn-bracket">]</span></span>
 <p><a class="reference external" href="https://github.com/freebsd/pkg/blob/main/libpkg/pkgsign_ossl.c">libpkg/pkgsign_ossl.c</a>
 – OpenSSL signing and verification implementation. Contains
@@ -640,30 +1003,19 @@ format (<code class="docutils literal notranslate"><span class="pre">function:</
 <code class="docutils literal notranslate"><span class="pre">ossl_verify_cb</span></code> (verification using <code class="docutils literal notranslate"><span class="pre">pkg_checksum_fd</span></code> with
 <code class="docutils literal notranslate"><span class="pre">PKG_HASH_TYPE_SHA256_HEX</span></code>).</p>
 </aside>
-<aside class="footnote brackets" id="id13" role="doc-footnote">
+<aside class="footnote brackets" id="id11" role="doc-footnote">
 <span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">5</a><span class="fn-bracket">]</span></span>
 <p><a class="reference external" href="https://github.com/freebsd/pkg/blob/main/libpkg/pkg_repo_create.c">libpkg/pkg_repo_create.c</a>
 – repository creation code. Shows the hash written to stdin via
 <code class="docutils literal notranslate"><span class="pre">fprintf</span></code>/<code class="docutils literal notranslate"><span class="pre">fflush</span></code>, with <code class="docutils literal notranslate"><span class="pre">fclose</span></code> deferred until after reading the
 response.</p>
 </aside>
-<aside class="footnote brackets" id="id14" role="doc-footnote">
+<aside class="footnote brackets" id="id12" role="doc-footnote">
 <span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id5">6</a><span class="fn-bracket">]</span></span>
 <p><a class="reference external" href="https://github.com/freebsd/pkg/blob/main/libpkg/pkg_repo.c">libpkg/pkg_repo.c</a>
 – fingerprint verification code. Computes <code class="docutils literal notranslate"><span class="pre">pkg_checksum_data(s-&gt;cert,</span>
 <span class="pre">s-&gt;certlen,</span> <span class="pre">PKG_HASH_TYPE_SHA256_HEX)</span></code> where <code class="docutils literal notranslate"><span class="pre">cert</span></code> is the PEM data
 returned by the signing command.</p>
-</aside>
-<aside class="footnote brackets" id="id15" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id7">7</a><span class="fn-bracket">]</span></span>
-<p><a class="reference external" href="https://www.gnupg.org/documentation/manuals/gnupg/Agent-Options.html">GnuPG Agent Options</a>
-– documents the extra socket (<code class="docutils literal notranslate"><span class="pre">agent-extra-socket</span></code>) intended for
-forwarding to remote machines.</p>
-</aside>
-<aside class="footnote brackets" id="id16" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id6">8</a><span class="fn-bracket">]</span></span>
-<p><a class="reference external" href="https://wiki.gnupg.org/AgentForwarding">GnuPG Agent Forwarding</a>
-– GnuPG wiki page on forwarding gpg-agent to a remote system over SSH.</p>
 </aside>
 </aside>
 </section>
