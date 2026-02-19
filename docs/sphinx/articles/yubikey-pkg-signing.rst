@@ -154,10 +154,12 @@ and DER construction).
 The PIV signing agent
 ---------------------
 
-The signing agent runs on your local workstation (where the YubiKey is plugged
-in) and listens on a Unix socket. It signs digests using the YubiKey PIV slot
-via PKCS#11 (``libykcs11``), using Python's ``ctypes`` to call the PKCS#11
-functions directly -- no pip dependencies required beyond what Homebrew's
+The signing agent
+(`piv-sign-agent.py <https://github.com/brendanbank/banzai-plugins/blob/main/tools/piv-sign-agent.py>`_)
+runs on your local workstation (where the YubiKey is plugged in) and listens on
+a Unix socket. It signs digests using the YubiKey PIV slot via PKCS#11
+(``libykcs11``), using Python's ``ctypes`` to call the PKCS#11 functions
+directly -- no pip dependencies required beyond what Homebrew's
 ``yubico-piv-tool`` provides.
 
 .. mermaid::
@@ -239,7 +241,9 @@ the DER-encoded DigestInfo structure:
 The signing command
 -------------------
 
-This script runs on the **remote build host**, called by ``pkg repo`` as the
+The signing command
+(`sign-repo.py <https://github.com/brendanbank/banzai-plugins/blob/main/tools/sign-repo.py>`_)
+runs on the **remote build host**, called by ``pkg repo`` as the
 ``signing_command``. It connects to the forwarded PIV agent socket, sends the
 double-hashed digest, and outputs the result in pkg's expected format.
 
