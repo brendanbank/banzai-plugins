@@ -5,13 +5,19 @@ applet via PKCS#11.
 
 ## Architecture
 
-```
-┌──────────────────────┐         ssh -R (unix socket)         ┌──────────────────────┐
-│  Local workstation   │ ──────────────────────────────────── │  Remote build host   │
-│                      │                                      │  (FreeBSD/OPNsense)  │
-│  piv-sign-agent.py   │  ← forwarded socket ←                │  sign-repo.py        │
-│  (PKCS#11 → YubiKey) │                                      │  (called by pkg repo)│
-└──────────────────────┘                                      └──────────────────────┘
+```mermaid
+flowchart LR
+    subgraph remote["Remote build host"]
+        sign["sign-repo.py
+        (called by pkg repo)"]
+    end
+    subgraph local["Local workstation"]
+        agent["piv-sign-agent.py
+        (PKCS#11)"]
+        yubikey[("YubiKey PIV")]
+        agent --- yubikey
+    end
+    sign -- "&ensp;ssh -R (unix socket)&ensp;" --> agent
 ```
 
 - **piv-sign-agent.py** runs on the local Mac, talks to the YubiKey PIV slot
