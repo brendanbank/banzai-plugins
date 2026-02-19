@@ -8,6 +8,9 @@ stdin/stdout contract for signing commands. This article walks through signing a
 ``pkg repo`` with a key stored on a YubiKey's PIV applet via PKCS#11, including
 socket forwarding for remote builds.
 
+The scripts and tools described here are part of the
+`banzai-plugins <https://github.com/brendanbank/banzai-plugins>`_ repository.
+
 .. note::
 
    An earlier version of this setup used the YubiKey's GPG applet with
