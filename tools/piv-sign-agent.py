@@ -6,9 +6,8 @@
 # via PKCS#11 (libykcs11). Designed to be forwarded over SSH (-R) so that
 # pkg repo on a remote build host can sign through the local YubiKey.
 #
-# The PIN is fetched from 1Password at the time of each signing request,
-# which serves as a visual cue that a YubiKey touch will follow. A fresh
-# PKCS#11 session is opened per sign request to avoid stale session issues.
+# The PIN is fetched at the time of each signing request. A fresh PKCS#11
+# session is opened per sign request to avoid stale session issues.
 #
 # Protocol (line-based over Unix socket):
 #   Request:  SIGN SHA256 <hex-encoded-32-byte-digest>\n
@@ -20,7 +19,8 @@
 #   Errors:   ERR <message>\n
 #
 # Requires: yubico-piv-tool (provides libykcs11), ykman (for pubkey export)
-# Optional: PIV_PIN (env var, skips 1Password lookup)
+# Optional: PIV_PIN (env var, static PIN)
+#           PIV_PIN_COMMAND (env var, shell command that prints PIN to stdout)
 #           PIV_AGENT_SOCK (socket path, default ~/.piv-sign-agent/agent.sock)
 #           PIV_SLOT (PIV slot, default 9c)
 #           PKCS11_MODULE (path to libykcs11, auto-detected)
@@ -33,6 +33,7 @@ import argparse
 import atexit
 import base64
 import ctypes
+import getpass
 import hashlib
 import os
 import signal
@@ -81,12 +82,12 @@ class CK_MECHANISM(ctypes.Structure):
 # ── PKCS#11 one-shot signer ─────────────────────────────────────────
 
 
-def pkcs11_sign(module_path, pin, digest):
+def pkcs11_sign(module_path, pin, digest, touch=True):
     """Open a PKCS#11 session, sign a digest, close the session.
 
     Opens a fresh session each time to avoid stale session issues (e.g.
     after ykman calls or YubiKey re-insertion). Returns raw PKCS#1 v1.5
-    RSA signature bytes.
+    RSA signature bytes. Set touch=False to suppress touch prompts.
     """
     lib = ctypes.cdll.LoadLibrary(module_path)
     lib.C_Sign.argtypes = [
@@ -154,8 +155,9 @@ def pkcs11_sign(module_path, pin, digest):
             if rv != 0:
                 raise RuntimeError(f"C_SignInit failed: 0x{rv:x}")
 
-            sys.stderr.write("Touch your YubiKey...\n")
-            sys.stderr.flush()
+            if touch:
+                sys.stderr.write("Touch your YubiKey...\n")
+                sys.stderr.flush()
 
             sig_len = ctypes.c_ulong(256)
             sig_buf = ctypes.create_string_buffer(256)
@@ -197,32 +199,41 @@ def find_pkcs11_module():
     )
 
 
-def get_pin():
-    """Get the PIV PIN from environment or 1Password."""
+def get_pin(pin_command=None):
+    """Get the PIV PIN from environment, command, or interactive prompt.
+
+    Resolution order:
+    1. PIV_PIN environment variable
+    2. pin_command argument or PIV_PIN_COMMAND env var (shell command)
+    3. Interactive prompt (getpass)
+    """
     pin = os.environ.get("PIV_PIN")
     if pin:
         return pin
 
-    # Try 1Password CLI
-    try:
-        result = subprocess.run(
-            [
-                "op", "item", "get",
-                "banzai-plugins pkg repo signing key",
-                "--fields", "pin", "--reveal",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            return result.stdout.strip()
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
+    cmd = pin_command or os.environ.get("PIV_PIN_COMMAND")
+    if cmd:
+        try:
+            result = subprocess.run(
+                cmd, shell=True,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+            raise RuntimeError(
+                f"pin command failed (exit {result.returncode}): {result.stderr.strip()}"
+            )
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("pin command timed out")
 
-    raise RuntimeError(
-        "PIV PIN not available. Set PIV_PIN or sign in to 1Password CLI."
-    )
+    try:
+        return getpass.getpass("PIV PIN: ")
+    except EOFError:
+        raise RuntimeError(
+            "PIV PIN not available. Set PIV_PIN, use --pin-command, or run interactively."
+        )
 
 
 def get_pubkey(slot_id="9c"):
@@ -252,11 +263,14 @@ def default_socket_path():
 class PIVSignAgent:
     """Unix socket server that signs digests via YubiKey PIV."""
 
-    def __init__(self, module_path, pubkey_pem, sock_path):
+    def __init__(self, module_path, pubkey_pem, sock_path,
+                 pin_command=None, touch=True):
         self.module_path = module_path
         self.pubkey_pem = pubkey_pem
         self.pubkey_b64 = base64.b64encode(pubkey_pem).decode()
         self.sock_path = sock_path
+        self.pin_command = pin_command
+        self.touch = touch
         self.server = None
 
     def handle_sign(self, hex_digest):
@@ -268,21 +282,23 @@ class PIVSignAgent:
         if len(digest) != 32:
             return f"ERR digest must be 32 bytes, got {len(digest)}"
 
-        # Fetch PIN (1Password prompt may appear here)
+        # Fetch PIN
         sys.stderr.write("Fetching PIV PIN...\n")
         sys.stderr.flush()
         try:
-            pin = get_pin()
+            pin = get_pin(self.pin_command)
         except RuntimeError as e:
             return f"ERR {e}"
 
         # Sign with a fresh PKCS#11 session
-        sys.stderr.write("\n  >>> Touch your YubiKey NOW! <<<\n\n")
-        sys.stderr.flush()
-        try:
-            sig = pkcs11_sign(self.module_path, pin, digest)
-            sys.stderr.write("Signature complete.\n")
+        if self.touch:
+            sys.stderr.write("\n  >>> Touch your YubiKey NOW! <<<\n\n")
             sys.stderr.flush()
+        try:
+            sig = pkcs11_sign(self.module_path, pin, digest, self.touch)
+            if self.touch:
+                sys.stderr.write("Signature complete.\n")
+                sys.stderr.flush()
             return f"OK {base64.b64encode(sig).decode()}"
         except RuntimeError as e:
             return f"ERR {e}"
@@ -367,20 +383,20 @@ class PIVSignAgent:
 # ── Self-test ────────────────────────────────────────────────────────
 
 
-def self_test(module_path, pubkey_pem):
+def self_test(module_path, pubkey_pem, pin_command=None, touch=True):
     """Fetch PIN, sign a test digest, verify the signature."""
     test_data = b"piv-sign-agent self-test"
     digest = hashlib.sha256(test_data).digest()
 
     sys.stderr.write("Self-test: fetching PIN and signing...\n")
     try:
-        pin = get_pin()
+        pin = get_pin(pin_command)
     except RuntimeError as e:
         sys.stderr.write(f"Self-test: FAILED — {e}\n")
         return False
 
     try:
-        sig = pkcs11_sign(module_path, pin, digest)
+        sig = pkcs11_sign(module_path, pin, digest, touch)
     except RuntimeError as e:
         sys.stderr.write(f"Self-test: FAILED — {e}\n")
         return False
@@ -437,6 +453,22 @@ def main():
         help="PIV slot (default: %(default)s)",
     )
     parser.add_argument(
+        "--pin-command",
+        default=os.environ.get("PIV_PIN_COMMAND"),
+        help="Shell command that prints the PIV PIN to stdout "
+             "(default: PIV_PIN_COMMAND env var)",
+    )
+    parser.add_argument(
+        "--touch", dest="touch",
+        action="store_true", default=True,
+        help="Show touch prompts (default)",
+    )
+    parser.add_argument(
+        "--no-touch", dest="touch",
+        action="store_false",
+        help="Suppress touch prompts (for YubiKeys with touch disabled)",
+    )
+    parser.add_argument(
         "--test",
         action="store_true",
         help="Run self-test (sign and verify a test digest), then exit",
@@ -461,11 +493,12 @@ def main():
 
     # Self-test mode
     if args.test:
-        ok = self_test(module_path, pubkey_pem)
+        ok = self_test(module_path, pubkey_pem, args.pin_command, args.touch)
         sys.exit(0 if ok else 1)
 
     # Run agent
-    agent = PIVSignAgent(module_path, pubkey_pem, args.socket)
+    agent = PIVSignAgent(module_path, pubkey_pem, args.socket,
+                         args.pin_command, args.touch)
     try:
         agent.run()
     except KeyboardInterrupt:

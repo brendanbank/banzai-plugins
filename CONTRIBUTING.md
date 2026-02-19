@@ -95,15 +95,15 @@ This will:
 
 Repo signing uses the **PIV applet** (slot 9c) on your YubiKey so the private key never leaves the device. `piv-sign-agent.py` runs locally, listens on a Unix socket, and signs digests via PKCS#11 (`libykcs11`). `build.sh` forwards this socket to the remote via `ssh -R`, then runs `pkg repo` with `tools/sign-repo.py` as the signing command.
 
-Each signing request fetches the PIV PIN from 1Password and requires a physical touch of the YubiKey.
+Each signing request fetches the PIV PIN and requires a physical touch of the YubiKey (configurable with `--no-touch`).
 
 **Setup:**
 
-1. Start the agent: `python3 tools/piv-sign-agent.py`
+1. Start the agent: `python3 tools/piv-sign-agent.py --pin-command "your-pin-command"`
 2. The PIV signing key must be in slot 9c. `Keys/repo.pub` must match that key.
-3. Store the PIV PIN in 1Password (item "banzai-plugins pkg repo signing key", field "pin") or set `PIV_PIN`.
+3. Provide the PIV PIN via `--pin-command` (any command that prints the PIN), `PIV_PIN` env var, or interactive prompt.
 
-**Requires:** `yubico-piv-tool` (provides `libykcs11`), `ykman`, `python3`.
+**Requires:** `yubico-piv-tool` (provides `libykcs11`), `ykman`, `python3`. Remote host needs `rsync`.
 
 ## Releasing
 

@@ -88,8 +88,7 @@ SUBMODULE_DIR="${REPO_ROOT}/opnsense-plugins"
 
 for infra_dir in Mk Keywords Templates Scripts; do
     echo "    Syncing ${infra_dir}/"
-    remote "rm -rf ${REMOTE_REPO}/${infra_dir}"
-    scp -rq "${SUBMODULE_DIR}/${infra_dir}" "${FIREWALL}:${REMOTE_REPO}/"
+    rsync -aq --delete -e ssh "${SUBMODULE_DIR}/${infra_dir}/" "${FIREWALL}:${REMOTE_REPO}/${infra_dir}/"
 done
 
 # Override devel.mk to prevent -devel package suffix
@@ -101,15 +100,7 @@ for plugin_dir in ${PLUGIN_DIRS}; do
     LOCAL_PLUGIN_DIR="${REPO_ROOT}/${plugin_dir}"
 
     echo "    Syncing ${plugin_dir}/"
-    remote "rm -rf ${REMOTE_PLUGIN_DIR}/src && mkdir -p ${REMOTE_PLUGIN_DIR}"
-    scp -q "${LOCAL_PLUGIN_DIR}/Makefile" "${FIREWALL}:${REMOTE_PLUGIN_DIR}/"
-    scp -q "${LOCAL_PLUGIN_DIR}/pkg-descr" "${FIREWALL}:${REMOTE_PLUGIN_DIR}/"
-    scp -rq "${LOCAL_PLUGIN_DIR}/src" "${FIREWALL}:${REMOTE_PLUGIN_DIR}/"
-    for hook in +POST_INSTALL.post +PRE_DEINSTALL.pre +PRE_INSTALL.pre +POST_DEINSTALL.post; do
-        if [ -f "${LOCAL_PLUGIN_DIR}/${hook}" ]; then
-            scp -q "${LOCAL_PLUGIN_DIR}/${hook}" "${FIREWALL}:${REMOTE_PLUGIN_DIR}/"
-        fi
-    done
+    rsync -aq --delete --exclude work/ -e ssh "${LOCAL_PLUGIN_DIR}/" "${FIREWALL}:${REMOTE_PLUGIN_DIR}/"
 done
 
 # ── 2. Build each plugin ────────────────────────────────────────────
@@ -132,7 +123,7 @@ for plugin_dir in ${PLUGIN_DIRS}; do
     echo "    Built: ${PKG_NAME}"
 
     echo "    Downloading to ${LOCAL_DIST}/"
-    scp -q "${FIREWALL}:${PKG_PATH}" "${LOCAL_DIST}/"
+    rsync -aq -e ssh "${FIREWALL}:${PKG_PATH}" "${LOCAL_DIST}/"
     BUILT_PKGS="${BUILT_PKGS} ${PKG_NAME}"
 
     remote "sudo rm -rf ${REMOTE_PLUGIN_DIR}/work"
@@ -157,15 +148,14 @@ mkdir -p "${PAGES_REPO}"
 REMOTE_REPO_DIR="/tmp/banzai_plugins_repo"
 remote "rm -rf ${REMOTE_REPO_DIR} && mkdir -p ${REMOTE_REPO_DIR}"
 
-for pkg in "${LOCAL_DIST}"/*.pkg; do
-    [ -f "${pkg}" ] || continue
-    scp -q "${pkg}" "${FIREWALL}:${REMOTE_REPO_DIR}/"
-done
+rsync -aq -e ssh "${LOCAL_DIST}/"*.pkg "${FIREWALL}:${REMOTE_REPO_DIR}/"
 
 # Sign with YubiKey PIV via piv-sign-agent.py: the local agent's Unix socket
 # is forwarded to the remote via SSH -R.
-scp -q "${REPO_ROOT}/tools/sign-repo.py" "${FIREWALL}:${REMOTE_REPO_DIR}/sign-repo.py"
-scp -q "${REPO_ROOT}/Keys/repo.pub" "${FIREWALL}:${REMOTE_REPO_DIR}/repo.pub"
+rsync -aq -e ssh \
+    "${REPO_ROOT}/tools/sign-repo.py" \
+    "${REPO_ROOT}/Keys/repo.pub" \
+    "${FIREWALL}:${REMOTE_REPO_DIR}/"
 
 # Ensure piv-sign-agent.py is running locally
 LOCAL_PIV_SOCK="${PIV_AGENT_SOCK:-${HOME}/.piv-sign-agent/agent.sock}"
@@ -186,9 +176,7 @@ ssh -R "${REMOTE_PIV_SOCK}:${LOCAL_PIV_SOCK}" "${FIREWALL}" \
 remote "test -f ${REMOTE_REPO_DIR}/meta.conf" || die "Repo signing failed (no meta.conf)"
 
 remote "rm -f ${REMOTE_REPO_DIR}/sign-repo.py ${REMOTE_REPO_DIR}/repo.pub"
-rm -f "${PAGES_REPO}"/*.pkg
-rm -f "${PAGES_REPO}"/{meta.conf,packagesite.*,data.*,filesite.*}
-scp -q "${FIREWALL}:${REMOTE_REPO_DIR}/*" "${PAGES_REPO}/"
+rsync -aq --delete -e ssh "${FIREWALL}:${REMOTE_REPO_DIR}/" "${PAGES_REPO}/"
 remote "rm -rf ${REMOTE_REPO_DIR}"
 
 # ── 4. Build documentation ───────────────────────────────────────────

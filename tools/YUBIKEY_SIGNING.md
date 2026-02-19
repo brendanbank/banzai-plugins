@@ -115,16 +115,18 @@ If not touched within ~15 seconds, it returns error **0x101**
 
 ### PIN handling
 
-The PIV PIN is stored in 1Password under the item "banzai-plugins pkg repo
-signing key", field "pin". Retrieved at daemon startup:
+The daemon supports any method for providing the PIV PIN:
+
+1. `PIV_PIN` environment variable (highest priority)
+2. `--pin-command` argument or `PIV_PIN_COMMAND` env var — a shell command
+   whose stdout is the PIN (e.g. a password manager CLI)
+3. Interactive prompt via `getpass` (fallback, requires a terminal)
+
+Example with 1Password:
 
 ```sh
-op item get "banzai-plugins pkg repo signing key" --fields pin --reveal
+piv-sign-agent.py --pin-command "op item get 'my-item' --fields pin --reveal"
 ```
-
-The daemon accepts the PIN via:
-1. `PIV_PIN` environment variable (highest priority)
-2. Interactive prompt at startup (fallback)
 
 The PIN is 8 characters. The YubiKey locks after 3 failed attempts.
 
