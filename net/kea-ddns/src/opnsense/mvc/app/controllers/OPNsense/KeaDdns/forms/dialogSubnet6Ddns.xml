@@ -62,4 +62,22 @@
             <visible>false</visible>
         </grid_view>
     </field>
+    <field>
+        <id>assignment.rapid_commit</id>
+        <label>Rapid commit</label>
+        <type>checkbox</type>
+        <help>Enable DHCPv6 Rapid Commit (RFC 8415). Required for macOS clients.</help>
+        <grid_view>
+            <visible>false</visible>
+        </grid_view>
+    </field>
+    <field>
+        <id>assignment.generated_prefix</id>
+        <label>Generated prefix</label>
+        <type>text</type>
+        <help>Prefix for auto-generated hostnames when replacing client name (default: myhost).</help>
+        <grid_view>
+            <visible>false</visible>
+        </grid_view>
+    </field>
 </form>

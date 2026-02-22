@@ -10,6 +10,13 @@ mechanism to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
 Plugin Changelog
 ================
 
+1.3.3_2
+
+Added:
+* DHCPv6 rapid-commit option per subnet (RFC 8415, required for macOS clients)
+* ddns-generated-prefix option for both DHCPv4 and DHCPv6 subnets
+* Conditional UI: generated prefix field hidden when replace client name is 'never'
+
 1.3.3_1
 
 * Remove pkg update from post-install hook to avoid fingerprint errors

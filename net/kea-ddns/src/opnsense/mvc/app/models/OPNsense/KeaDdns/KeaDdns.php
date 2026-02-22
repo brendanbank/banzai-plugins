@@ -154,6 +154,7 @@ class KeaDdns extends BaseModel
                 'ddns-update-on-renew' => $assignment->update_on_renew->isEqual('1'),
                 'ddns-conflict-resolution-mode' => $assignment->conflict_resolution->getValue(),
                 'ddns-replace-client-name' => $assignment->replace_client_name->getValue(),
+                'rapid-commit' => $assignment->rapid_commit->isEqual('1'),
             ];
             if (!$assignment->qualifying_suffix->isEmpty()) {
                 $suffix = $assignment->qualifying_suffix->getValue();
@@ -161,6 +162,9 @@ class KeaDdns extends BaseModel
                     $suffix .= '.';
                 }
                 $entry['ddns-qualifying-suffix'] = $suffix;
+            }
+            if (!$assignment->generated_prefix->isEmpty()) {
+                $entry['ddns-generated-prefix'] = $assignment->generated_prefix->getValue();
             }
             $result['subnets'][$cidr] = $entry;
         }
@@ -213,6 +217,9 @@ class KeaDdns extends BaseModel
                     $suffix .= '.';
                 }
                 $entry['ddns-qualifying-suffix'] = $suffix;
+            }
+            if (!$assignment->generated_prefix->isEmpty()) {
+                $entry['ddns-generated-prefix'] = $assignment->generated_prefix->getValue();
             }
             $result['subnets'][$cidr] = $entry;
         }
