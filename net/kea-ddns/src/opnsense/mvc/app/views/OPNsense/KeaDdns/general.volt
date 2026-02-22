@@ -45,6 +45,30 @@
             del:'/api/keaddns/general/delSubnet6Ddns/'
         });
 
+        function toggleGeneratedPrefix(dialogId) {
+            var replaceVal = $('#' + dialogId + ' select[id$="assignment.replace_client_name"]').val();
+            var row = $('#' + dialogId + ' *[id$="assignment.generated_prefix"]').closest('tr');
+            if (replaceVal === 'never') {
+                row.hide();
+            } else {
+                row.show();
+            }
+        }
+
+        $('#dialogSubnetDdns').on('shown.bs.modal', function() {
+            toggleGeneratedPrefix('dialogSubnetDdns');
+            $(this).find('select[id$="assignment.replace_client_name"]').on('change', function() {
+                toggleGeneratedPrefix('dialogSubnetDdns');
+            });
+        });
+
+        $('#dialogSubnet6Ddns').on('shown.bs.modal', function() {
+            toggleGeneratedPrefix('dialogSubnet6Ddns');
+            $(this).find('select[id$="assignment.replace_client_name"]').on('change', function() {
+                toggleGeneratedPrefix('dialogSubnet6Ddns');
+            });
+        });
+
         $("#reconfigureAct").SimpleActionButton({
             onPreAction: function() {
                 const dfObj = new $.Deferred();

@@ -1,6 +1,6 @@
 <model>
     <mount>//OPNsense/KeaDdns</mount>
-    <version>1.2.0</version>
+    <version>1.3.0</version>
     <description>Kea DHCP-DDNS Configuration</description>
     <items>
         <general>
@@ -161,6 +161,10 @@
                         <no-check-without-dhcid>No check, no DHCID</no-check-without-dhcid>
                     </OptionValues>
                 </conflict_resolution>
+                <generated_prefix type="TextField">
+                    <Mask>/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/u</Mask>
+                    <ValidationMessage>Enter a valid hostname prefix (letters, digits, hyphens).</ValidationMessage>
+                </generated_prefix>
             </assignment>
         </subnet_ddns>
         <subnet6_ddns>
@@ -214,6 +218,13 @@
                         <no-check-without-dhcid>No check, no DHCID</no-check-without-dhcid>
                     </OptionValues>
                 </conflict_resolution>
+                <rapid_commit type="BooleanField">
+                    <Default>0</Default>
+                </rapid_commit>
+                <generated_prefix type="TextField">
+                    <Mask>/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/u</Mask>
+                    <ValidationMessage>Enter a valid hostname prefix (letters, digits, hyphens).</ValidationMessage>
+                </generated_prefix>
             </assignment>
         </subnet6_ddns>
     </items>
