@@ -71,8 +71,17 @@ CKF_RW_SESSION = 0x02
 CKU_USER = 1
 CKM_RSA_PKCS = 0x01
 CKA_CLASS = 0x00
+CKA_ID = 0x102
 CKA_SIGN = 0x108
 CKO_PRIVATE_KEY = 0x03
+
+# libykcs11 PIV slot to CKA_ID mapping
+PIV_SLOT_TO_CKA_ID = {
+    "9a": 0x01,
+    "9c": 0x02,
+    "9d": 0x03,
+    "9e": 0x04,
+}
 
 # DER-encoded DigestInfo prefix for SHA-256 (19 bytes)
 SHA256_DER_PREFIX = bytes([
@@ -104,7 +113,7 @@ class CK_MECHANISM(ctypes.Structure):
 # ── PKCS#11 one-shot signer ─────────────────────────────────────────
 
 
-def pkcs11_sign(module_path, pin, digest, touch=True):
+def pkcs11_sign(module_path, pin, digest, touch=True, slot="9c"):
     """Open a PKCS#11 session, sign a digest, close the session.
 
     Opens a fresh session each time to avoid stale session issues (e.g.
@@ -147,15 +156,20 @@ def pkcs11_sign(module_path, pin, digest, touch=True):
             if rv != 0:
                 raise RuntimeError(f"C_Login failed: 0x{rv:x} (wrong PIN?)")
 
-            # Find signing key
+            # Find signing key in the specific PIV slot
             obj_class = ctypes.c_ulong(CKO_PRIVATE_KEY)
             sign_true = ctypes.c_ubyte(1)
-            attrs = (CK_ATTRIBUTE * 2)(
+            cka_id = PIV_SLOT_TO_CKA_ID.get(slot)
+            if cka_id is None:
+                raise RuntimeError(f"unknown PIV slot: {slot}")
+            slot_id = ctypes.c_ubyte(cka_id)
+            attrs = (CK_ATTRIBUTE * 3)(
                 CK_ATTRIBUTE(CKA_CLASS, ctypes.addressof(obj_class),
                              ctypes.sizeof(obj_class)),
                 CK_ATTRIBUTE(CKA_SIGN, ctypes.addressof(sign_true), 1),
+                CK_ATTRIBUTE(CKA_ID, ctypes.addressof(slot_id), 1),
             )
-            rv = lib.C_FindObjectsInit(session, attrs, 2)
+            rv = lib.C_FindObjectsInit(session, attrs, 3)
             if rv != 0:
                 raise RuntimeError(f"C_FindObjectsInit failed: 0x{rv:x}")
             key = ctypes.c_ulong()
@@ -181,8 +195,14 @@ def pkcs11_sign(module_path, pin, digest, touch=True):
                 sys.stderr.write("Touch your YubiKey...\n")
                 sys.stderr.flush()
 
-            sig_len = ctypes.c_ulong(256)
-            sig_buf = ctypes.create_string_buffer(256)
+            sig_len = ctypes.c_ulong(0)
+            rv = lib.C_Sign(session, digest_info,
+                            ctypes.c_ulong(len(digest_info)),
+                            None, ctypes.byref(sig_len))
+            if rv != 0:
+                raise RuntimeError(f"C_Sign length query failed: 0x{rv:x}")
+
+            sig_buf = ctypes.create_string_buffer(sig_len.value)
             rv = lib.C_Sign(session, digest_info,
                             ctypes.c_ulong(len(digest_info)),
                             sig_buf, ctypes.byref(sig_len))
@@ -286,9 +306,10 @@ class PIVSignAgent:
     """Unix socket server that signs digests via YubiKey PIV."""
 
     def __init__(self, module_path, pubkey_pem, sock_path,
-                 pin_command=None, touch=True):
+                 pin_command=None, touch=True, slot="9c"):
         self.module_path = module_path
         self.pubkey_pem = pubkey_pem
+        self.slot = slot
         self.pubkey_b64 = base64.b64encode(pubkey_pem).decode()
         self.sock_path = sock_path
         self.pin_command = pin_command
@@ -317,7 +338,8 @@ class PIVSignAgent:
             sys.stderr.write("\n  >>> Touch your YubiKey NOW! <<<\n\n")
             sys.stderr.flush()
         try:
-            sig = pkcs11_sign(self.module_path, pin, digest, self.touch)
+            sig = pkcs11_sign(self.module_path, pin, digest, self.touch,
+                             self.slot)
             if self.touch:
                 sys.stderr.write("Signature complete.\n")
                 sys.stderr.flush()
@@ -405,7 +427,8 @@ class PIVSignAgent:
 # ── Self-test ────────────────────────────────────────────────────────
 
 
-def self_test(module_path, pubkey_pem, pin_command=None, touch=True):
+def self_test(module_path, pubkey_pem, pin_command=None, touch=True,
+              slot="9c"):
     """Fetch PIN, sign a test digest, verify the signature."""
     test_data = b"piv-sign-agent self-test"
     digest = hashlib.sha256(test_data).digest()
@@ -418,41 +441,38 @@ def self_test(module_path, pubkey_pem, pin_command=None, touch=True):
         return False
 
     try:
-        sig = pkcs11_sign(module_path, pin, digest, touch)
+        sig = pkcs11_sign(module_path, pin, digest, touch, slot)
     except RuntimeError as e:
         sys.stderr.write(f"Self-test: FAILED — {e}\n")
         return False
     sys.stderr.write(f"Self-test: got {len(sig)} byte signature\n")
 
-    # Verify with openssl
+    # Verify with openssl dgst (works with any RSA key size)
     with tempfile.NamedTemporaryFile(suffix=".pem") as pub_f, \
-         tempfile.NamedTemporaryFile(suffix=".sig") as sig_f:
+         tempfile.NamedTemporaryFile(suffix=".sig") as sig_f, \
+         tempfile.NamedTemporaryFile(suffix=".dat") as dat_f:
         pub_f.write(pubkey_pem)
         pub_f.flush()
         sig_f.write(sig)
         sig_f.flush()
+        dat_f.write(test_data)
+        dat_f.flush()
 
         result = subprocess.run(
             [
-                "openssl", "rsautl", "-verify",
-                "-pubin", "-inkey", pub_f.name,
-                "-in", sig_f.name,
+                "openssl", "dgst", "-sha256",
+                "-verify", pub_f.name,
+                "-signature", sig_f.name,
+                dat_f.name,
             ],
             capture_output=True,
         )
-        if result.returncode != 0:
-            sys.stderr.write("Self-test: FAILED — openssl verify error\n")
-            return False
-
-        recovered = result.stdout[-32:]
-        if recovered == digest:
+        if result.returncode == 0:
             sys.stderr.write("Self-test: PASSED\n")
             return True
         else:
             sys.stderr.write(
-                f"Self-test: FAILED\n"
-                f"  expected: {digest.hex()}\n"
-                f"  got:      {recovered.hex()}\n"
+                f"Self-test: FAILED — {result.stderr.decode().strip()}\n"
             )
             return False
 
@@ -538,12 +558,13 @@ def main():
 
     # Self-test mode
     if args.test:
-        ok = self_test(module_path, pubkey_pem, args.pin_command, args.touch)
+        ok = self_test(module_path, pubkey_pem, args.pin_command, args.touch,
+                       args.slot)
         sys.exit(0 if ok else 1)
 
     # Run agent
     agent = PIVSignAgent(module_path, pubkey_pem, args.socket,
-                         args.pin_command, args.touch)
+                         args.pin_command, args.touch, args.slot)
     try:
         agent.run()
     except KeyboardInterrupt:
