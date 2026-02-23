@@ -20,7 +20,7 @@ VM_FORMAT ?= qcow2
 
 _MAKE = sudo make -C $(TOOLSDIR) DEVICE=$(DEVICE) BATCH=yes
 
-.PHONY: help build base kernel ports core plugins vm status update clean
+.PHONY: help build base kernel ports core plugins vm status update clean verify-sig
 
 help:
 	@echo "Usage: make <target> [SERIES=26.1] [DEVICE=BANZAI]"
@@ -38,6 +38,7 @@ help:
 	@echo "  status      Show build server state"
 	@echo "  update      Pull latest code for all repos"
 	@echo "  clean       Clean build artifacts"
+	@echo "  verify-sig  Verify pkg repo signature (run locally)"
 	@echo ""
 	@echo "Configuration: $(CONF)"
 	@echo "  TOOLSDIR=$(TOOLSDIR)  SERIES=$(SERIES)  DEVICE=$(DEVICE)"
@@ -77,3 +78,47 @@ update:
 
 clean:
 	$(_MAKE) clean
+
+# ── Local targets (run on workstation, not build server) ──────────
+
+REPO_ROOT ?= $(realpath $(dir $(lastword $(MAKEFILE_LIST)))/..)
+REPO_DIR ?= $(firstword $(wildcard $(REPO_ROOT)/docs/FreeBSD:*/*/repo))
+PUBKEY ?= $(REPO_ROOT)/Keys/repo.pub
+
+verify-sig:
+	@if [ -z "$(REPO_DIR)" ]; then \
+		echo "ERROR: No repo found in docs/"; exit 1; \
+	fi
+	@echo "==> Verifying pkg repo signature"
+	@echo "    Repo: $(REPO_DIR)"
+	@echo "    Key:  $(PUBKEY)"
+	@TMPDIR=$$(mktemp -d) && trap 'rm -rf "$$TMPDIR"' EXIT && \
+	tar -C "$$TMPDIR" -xf "$(REPO_DIR)/data.pkg" data data.pub data.sig && \
+	EXPECTED=$$(printf '%s' "$$(openssl dgst -sha256 -hex "$$TMPDIR/data" | awk '{print $$NF}')" \
+		| openssl dgst -sha256 -hex | awk '{print $$NF}') && \
+	ACTUAL=$$(openssl pkeyutl -verifyrecover -pubin -inkey "$$TMPDIR/data.pub" \
+		-in "$$TMPDIR/data.sig" | tail -c 32 | xxd -p -c 32) && \
+	if [ "$$EXPECTED" = "$$ACTUAL" ]; then \
+		echo "    Signature: VALID"; \
+		echo "    Hash: $$EXPECTED"; \
+	else \
+		echo "    Signature: INVALID"; \
+		echo "    Expected: $$EXPECTED"; \
+		echo "    Got:      $$ACTUAL"; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "==> Verifying fingerprint"
+	@EMBEDDED=$$(TMPDIR=$$(mktemp -d) && trap 'rm -rf "$$TMPDIR"' EXIT && \
+		tar -C "$$TMPDIR" -xf "$(REPO_DIR)/data.pkg" data.pub && \
+		shasum -a 256 "$$TMPDIR/data.pub" | awk '{print $$1}') && \
+	LOCAL=$$(shasum -a 256 "$(PUBKEY)" | awk '{print $$1}') && \
+	if [ "$$EMBEDDED" = "$$LOCAL" ]; then \
+		echo "    Public key matches Keys/repo.pub"; \
+		echo "    Fingerprint: $$LOCAL"; \
+	else \
+		echo "    Public key MISMATCH"; \
+		echo "    Repo:  $$EMBEDDED"; \
+		echo "    Local: $$LOCAL"; \
+		exit 1; \
+	fi

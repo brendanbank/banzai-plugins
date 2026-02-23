@@ -140,7 +140,9 @@
                     <Default>1</Default>
                     <Required>Y</Required>
                 </send_updates>
-                <update_on_renew type="BooleanField"/>
+                <update_on_renew type="BooleanField">
+                    <Default>1</Default>
+                </update_on_renew>
                 <replace_client_name type="OptionField">
                     <Default>never</Default>
                     <Required>Y</Required>
@@ -197,7 +199,9 @@
                     <Default>1</Default>
                     <Required>Y</Required>
                 </send_updates>
-                <update_on_renew type="BooleanField"/>
+                <update_on_renew type="BooleanField">
+                    <Default>1</Default>
+                </update_on_renew>
                 <replace_client_name type="OptionField">
                     <Default>never</Default>
                     <Required>Y</Required>

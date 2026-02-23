@@ -10,6 +10,11 @@ mechanism to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
 Plugin Changelog
 ================
 
+1.3.3_3
+
+Changed:
+* Default ddns-update-on-renew to enabled for DHCPv4 and DHCPv6 subnets
+
 1.3.3_2
 
 Added:
