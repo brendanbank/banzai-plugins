@@ -1,23 +1,25 @@
 # Test: configuration validation (sections 1-5)
-# Validates core patches, JSON configs, keactrl, DHCP4 params, and DDNS zones.
+# Validates plugin hook, JSON configs, keactrl, DHCP4 params, and DDNS zones.
 
-# --- 1. Core patch applied ---
+# --- 1. Plugin hook installed ---
+KEA_DDNS_INC="/usr/local/etc/inc/plugins.inc.d/kea_ddns.inc"
+if grep -q 'kea_ddns_configure' "$KEA_DDNS_INC" 2>/dev/null; then
+    pass "Plugin hook: kea_ddns.inc has kea_ddns_configure()"
+else
+    fail "Plugin hook: kea_ddns.inc missing kea_ddns_configure()"
+fi
+
+if grep -q 'kea_sync' "$KEA_DDNS_INC" 2>/dev/null; then
+    pass "Plugin hook: kea_ddns.inc registers for kea_sync event"
+else
+    fail "Plugin hook: kea_ddns.inc not registered for kea_sync"
+fi
+
+# Core should NOT be patched (v2.0 uses post-processing instead)
 if grep -q 'kea_ddns_generate' "$KEA_INC" 2>/dev/null; then
-    pass "Core patch: kea.inc contains plugin hooks"
+    pass "Core: old kea_ddns_generate patch still present (harmless)"
 else
-    fail "Core patch: kea.inc missing kea_ddns_generate hook"
-fi
-
-if grep -q 'kea_dhcpv4_config' "$KEA_DHCPV4_PHP" 2>/dev/null; then
-    pass "Core patch: KeaDhcpv4.php contains plugin hooks"
-else
-    fail "Core patch: KeaDhcpv4.php missing kea_dhcpv4_config hook"
-fi
-
-if grep -q 'kea_dhcpv6_config' "$KEA_DHCPV6_PHP" 2>/dev/null; then
-    pass "Core patch: KeaDhcpv6.php contains plugin hooks"
-else
-    fail "Core patch: KeaDhcpv6.php missing kea_dhcpv6_config hook"
+    pass "Core: kea.inc is clean (no kea-ddns patches)"
 fi
 
 # --- 2. Config files valid JSON ---

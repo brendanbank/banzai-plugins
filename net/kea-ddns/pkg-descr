@@ -4,11 +4,28 @@ Manages the kea-dhcp-ddns daemon configuration including TSIG keys,
 forward and reverse DNS zones, and per-subnet DDNS policy settings
 for both DHCPv4 and DHCPv6.
 
-Integrates with the core Kea DHCP plugin via the plugins_run() hook
-mechanism to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
+Integrates with the core Kea DHCP plugin via the kea_sync configure
+hook to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
 
 Plugin Changelog
 ================
+
+2.0
+
+Changed (architectural — no core patches required):
+* Replaced core patching with kea_sync configure hook. The plugin now
+  post-processes kea-dhcp4.conf and kea-dhcp6.conf after core generates
+  them, using the standard plugins_configure() mechanism. No OPNsense
+  core files are modified.
+* Survives OPNsense upgrades without reinstallation.
+* Removed all patch files (26.1.patch, 26.7.patch) and generate-patch.sh.
+* Simplified install/deinstall scripts — no patch application or reversal.
+
+Fixed:
+* Boot fatal on OPNsense 26.1.3 caused by removed mwexec() function.
+  Plugin no longer calls any core helpers during boot or hook registration.
+* Deinstall hang caused by patch prompting for input.
+* All hook callbacks wrapped in try/catch to prevent system crashes.
 
 1.3.3_3
 
