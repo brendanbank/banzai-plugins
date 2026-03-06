@@ -4,11 +4,10 @@ Kea DDNS
 
 .. warning::
 
-   **USE AT YOUR OWN RISK.** This plugin patches core OPNsense Kea files and
-   interacts directly with the ``kea-dhcp-ddns`` daemon. Applying this plugin
-   modifies files that may be overwritten by OPNsense firmware updates. See
-   :ref:`kea-ddns-patch-rollback` for instructions on how to manually reverse
-   the core patch if needed.
+   **USE AT YOUR OWN RISK.** This plugin interacts directly with the
+   ``kea-dhcp-ddns`` daemon and modifies Kea configuration files. No OPNsense
+   core files are modified — the plugin uses the standard ``plugins_configure()``
+   hook mechanism and survives OPNsense firmware updates without reinstallation.
 
 .. contents:: Index
     :local:
@@ -17,7 +16,7 @@ Kea DDNS
 The Kea DDNS plugin adds Dynamic DNS (DDNS) support for the Kea DHCP server in
 OPNsense. It manages the ``kea-dhcp-ddns`` daemon and injects per-subnet DDNS
 parameters into both ``kea-dhcp4.conf`` and ``kea-dhcp6.conf`` using the
-OPNsense ``plugins_run()`` hook mechanism.
+OPNsense ``plugins_configure()`` hook mechanism.
 
 When enabled, Kea automatically creates forward (A/AAAA) and reverse (PTR) DNS
 records as DHCP leases are assigned, and removes them when leases expire.
@@ -42,9 +41,8 @@ Prerequisites
 
 Before configuring this plugin, ensure:
 
-- **OPNsense 26.1** (tested on 26.1.2). The plugin includes per-release core
-  patches. The package auto-detects the running OPNsense series and applies the
-  correct patch.
+- **OPNsense 26.1** or later. No core patches required — the plugin uses the
+  standard ``kea_sync`` configure hook.
 - **Kea DHCP** is installed and enabled (DHCPv4 and/or DHCPv6) with at least
   one subnet configured.
 - A **DNS server** (e.g. BIND, PowerDNS, Knot) that accepts RFC 2136 dynamic
@@ -478,25 +476,21 @@ interface.
 How it works
 ------------
 
-The plugin integrates with the core Kea DHCP plugin through three
-``plugins_run()`` hooks:
+The plugin integrates with the core Kea DHCP service using the standard
+``plugins_configure()`` mechanism. When Kea is started, restarted, or
+reconfigured, the ``kea_sync`` event fires. OPNsense processes all registered
+plugins alphabetically:
 
-``kea_ddns_generate``
-    Called during ``kea_configure_do()``. Generates
-    ``/usr/local/etc/kea/kea-dhcp-ddns.conf`` with the ``kea-dhcp-ddns`` daemon
-    configuration (TSIG keys, forward/reverse zones, control socket). Also
-    enables ``dhcp_ddns=yes`` in ``keactrl.conf``.
+1. **Core** (``kea.inc``) runs ``kea_configure_do()`` — generates
+   ``kea-dhcp4.conf`` and ``kea-dhcp6.conf`` as JSON files.
 
-``kea_dhcpv4_config``
-    Called during ``KeaDhcpv4::generateConfig()``. Returns an overlay array that
-    is merged into ``kea-dhcp4.conf``. The overlay adds global DDNS settings
-    (``dhcp-ddns`` block, hostname character set) and per-subnet parameters
-    (``ddns-send-updates``, ``ddns-qualifying-suffix``,
-    ``ddns-conflict-resolution-mode``, etc.).
+2. **This plugin** (``kea_ddns.inc``) runs ``kea_ddns_configure_do()`` — reads
+   those JSON files, merges DDNS parameters (global settings and per-subnet
+   overlays), writes them back, generates ``kea-dhcp-ddns.conf``, and enables
+   the DDNS daemon in ``keactrl.conf``.
 
-``kea_dhcpv6_config``
-    Same as above, but for ``KeaDhcpv6::generateConfig()`` and
-    ``kea-dhcp6.conf``.
+This approach requires no modifications to OPNsense core files. The plugin
+survives OPNsense firmware updates without reinstallation.
 
 The ``kea-dhcp-ddns`` daemon listens on ``127.0.0.1:53001`` and receives Name
 Change Requests (NCRs) from the DHCPv4 and DHCPv6 daemons over a local
@@ -504,59 +498,15 @@ connection. It then translates these into RFC 2136 DNS UPDATE requests sent to
 the configured DNS servers.
 
 
-.. _kea-ddns-patch-rollback:
-
-Patch rollback
---------------
-
-This plugin patches three core OPNsense Kea files to add ``plugins_run()``
-hooks. If you need to remove the plugin and restore the original files,
-uninstall the package or follow the manual steps below.
-
 Uninstall
-~~~~~~~~~
+---------
 
-Remove the package using ``pkg``::
+Remove the package::
 
-    pkg remove os-kea-ddns
+    pkg delete os-kea-ddns
 
-This removes all plugin files and reverses the core patch.
-
-Manual rollback
-~~~~~~~~~~~~~~~
-
-If ``pkg remove`` does not cleanly reverse the patch, manually remove the
-patched hooks from these three files:
-
-1. ``/usr/local/etc/inc/plugins.inc.d/kea.inc`` — remove the
-   ``plugins_run('kea_ddns_generate')`` call and the ``keactrl.conf`` DDNS lines
-   added by the patch.
-
-2. ``/usr/local/opnsense/mvc/app/models/OPNsense/Kea/KeaDhcpv4.php`` — remove
-   the ``plugins_run('kea_dhcpv4_config')`` overlay block before
-   ``File::file_put_contents()``.
-
-3. ``/usr/local/opnsense/mvc/app/models/OPNsense/Kea/KeaDhcpv6.php`` — remove
-   the ``plugins_run('kea_dhcpv6_config')`` overlay block before
-   ``File::file_put_contents()``.
-
-Then remove the plugin files::
-
-    rm -f /usr/local/etc/inc/plugins.inc.d/kea_ddns.inc
-    rm -rf /usr/local/opnsense/mvc/app/controllers/OPNsense/KeaDdns
-    rm -rf /usr/local/opnsense/mvc/app/models/OPNsense/KeaDdns
-    rm -rf /usr/local/opnsense/mvc/app/views/OPNsense/KeaDdns
-    rm -rf /usr/local/opnsense/data/kea-ddns
-
-Finally, restart Kea::
-
-    configctl kea restart
-
-.. note::
-
-    OPNsense firmware updates may overwrite the patched core files, effectively
-    reverting the patch. After a firmware update, reinstall the package to
-    reapply the hooks.
+This removes all plugin files, disables DDNS in ``keactrl.conf``, and removes
+``kea-dhcp-ddns.conf``. No core files are modified or need to be restored.
 
 
 API

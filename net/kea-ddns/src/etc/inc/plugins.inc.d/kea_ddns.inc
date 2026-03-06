@@ -27,101 +27,108 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-function kea_ddns_run()
-{
-    kea_ddns_check_core_patch();
+use OPNsense\Core\File;
 
+/**
+ * Register for the kea_sync configure event. Alphabetical ordering
+ * (kea.inc < kea_ddns.inc) guarantees core generates configs first,
+ * then this plugin post-processes them.
+ */
+function kea_ddns_configure()
+{
     return [
-        'kea_dhcpv4_config' => 'kea_ddns_get_dhcpv4_overlay',
-        'kea_dhcpv6_config' => 'kea_ddns_get_dhcpv6_overlay',
-        'kea_ddns_generate' => 'kea_ddns_generate_config',
+        'kea_sync' => ['kea_ddns_configure_do'],
     ];
 }
 
-function kea_ddns_check_core_patch()
+/**
+ * Post-process Kea configs to add DDNS parameters. Runs after core's
+ * kea_configure_do() generates kea-dhcp4.conf and kea-dhcp6.conf.
+ */
+function kea_ddns_configure_do($verbose = false)
 {
-    $kea_inc = '/usr/local/etc/inc/plugins.inc.d/kea.inc';
-    $keav6_php = '/usr/local/opnsense/mvc/app/models/OPNsense/Kea/KeaDhcpv6.php';
-    if (
-        strpos(@file_get_contents($kea_inc), 'kea_ddns_generate') !== false &&
-        strpos(@file_get_contents($keav6_php), 'kea_dhcpv6_config') !== false
-    ) {
-        return;
-    }
-
-    $version_file = '/usr/local/opnsense/version/core';
-    $patch_dir = '/usr/local/opnsense/data/kea-ddns/patches';
-
-    $series = '';
-    $version_json = @file_get_contents($version_file);
-    if ($version_json !== false) {
-        $version = @json_decode($version_json, true);
-        if (isset($version['product_series'])) {
-            $series = $version['product_series'];
+    try {
+        $mdl = new \OPNsense\KeaDdns\KeaDdns();
+        if (!$mdl->general->enabled->isEqual('1')) {
+            kea_ddns_update_keactrl(false);
+            return;
         }
-    }
 
-    if (empty($series)) {
-        syslog(LOG_WARNING, 'kea-ddns: cannot detect OPNsense series, skipping core patch check');
-        return;
-    }
+        service_log('Sync KEA DDNS config...', $verbose);
 
-    $patch = sprintf('%s/%s.patch', $patch_dir, $series);
-    if (!file_exists($patch)) {
-        syslog(LOG_WARNING, sprintf('kea-ddns: no patch file for OPNsense series %s (%s)', $series, $patch));
-        return;
-    }
+        kea_ddns_merge_config($mdl, '/usr/local/etc/kea/kea-dhcp4.conf', 'Dhcp4', 'subnet4', 'getDhcpv4Overlay');
+        kea_ddns_merge_config($mdl, '/usr/local/etc/kea/kea-dhcp6.conf', 'Dhcp6', 'subnet6', 'getDhcpv6Overlay');
 
-    syslog(LOG_NOTICE, sprintf('kea-ddns: core patch missing, testing patch for OPNsense %s', $series));
-    $dry = mwexec(sprintf('/usr/bin/patch --dry-run --forward --strip=1 --directory=/usr/local < %s', escapeshellarg($patch)));
-    if ($dry != 0) {
-        syslog(LOG_ERR, 'kea-ddns: core patch does not apply cleanly, manual intervention required');
-        return;
-    }
-    syslog(LOG_NOTICE, 'kea-ddns: core patch dry-run passed, applying...');
-    $ret = mwexec(sprintf('/usr/bin/patch --forward --strip=1 --directory=/usr/local < %s', escapeshellarg($patch)));
-    if ($ret == 0) {
-        syslog(LOG_NOTICE, 'kea-ddns: core patch applied successfully');
-    } else {
-        syslog(LOG_ERR, 'kea-ddns: core patch failed unexpectedly after dry-run');
+        if ($mdl->general->manual_config->isEmpty()) {
+            $mdl->generateD2Config();
+        }
+
+        kea_ddns_update_keactrl(true);
+
+        service_log("done.\n", $verbose);
+    } catch (\Throwable $e) {
+        @syslog(LOG_ERR, 'kea-ddns: configure failed: ' . $e->getMessage());
     }
 }
 
-function kea_ddns_get_dhcpv4_overlay()
+/**
+ * Read a Kea JSON config, merge DDNS overlay, write it back.
+ */
+function kea_ddns_merge_config($mdl, $target, $rootKey, $subnetKey, $overlayMethod)
 {
-    $mdl = new \OPNsense\KeaDdns\KeaDdns();
-    if (!$mdl->general->enabled->isEqual('1')) {
-        return [];
+    $json = @file_get_contents($target);
+    if ($json === false) {
+        return;
     }
-    return $mdl->getDhcpv4Overlay();
+    $cnf = json_decode($json, true);
+    if (!is_array($cnf) || !isset($cnf[$rootKey])) {
+        return;
+    }
+
+    $overlay = $mdl->$overlayMethod();
+
+    if (isset($overlay['global'])) {
+        $cnf[$rootKey] = array_merge($cnf[$rootKey], $overlay['global']);
+    }
+
+    if (isset($overlay['subnets']) && isset($cnf[$rootKey][$subnetKey])) {
+        foreach ($cnf[$rootKey][$subnetKey] as &$subnet) {
+            if (isset($overlay['subnets'][$subnet['subnet']])) {
+                $subnet = array_merge($subnet, $overlay['subnets'][$subnet['subnet']]);
+            }
+        }
+        unset($subnet);
+    }
+
+    File::file_put_contents($target, json_encode($cnf, JSON_PRETTY_PRINT), 0600);
 }
 
-function kea_ddns_get_dhcpv6_overlay()
+/**
+ * Enable or disable the DDNS daemon in keactrl.conf.
+ */
+function kea_ddns_update_keactrl($enabled)
 {
-    $mdl = new \OPNsense\KeaDdns\KeaDdns();
-    if (!$mdl->general->enabled->isEqual('1')) {
-        return [];
+    $keactrl = '/usr/local/etc/kea/keactrl.conf';
+    $content = @file_get_contents($keactrl);
+    if ($content === false) {
+        return;
     }
-    return $mdl->getDhcpv6Overlay();
-}
-
-function kea_ddns_generate_config()
-{
-    $mdl = new \OPNsense\KeaDdns\KeaDdns();
-    if (!$mdl->general->enabled->isEqual('1')) {
-        return [];
-    }
-    if ($mdl->general->manual_config->isEmpty()) {
-        $mdl->generateD2Config();
-    }
-    return ['enabled' => true];
+    $content = preg_replace(
+        '/^dhcp_ddns=.*$/m',
+        'dhcp_ddns=' . ($enabled ? 'yes' : 'no'),
+        $content
+    );
+    @file_put_contents($keactrl, $content);
 }
 
 function kea_ddns_services()
 {
-    $services = [];
-    $mdl = new \OPNsense\KeaDdns\KeaDdns();
-    if ($mdl->general->enabled->isEqual('1')) {
+    try {
+        $services = [];
+        $mdl = new \OPNsense\KeaDdns\KeaDdns();
+        if (!$mdl->general->enabled->isEqual('1')) {
+            return $services;
+        }
         $services[] = [
             'configd' => [
                 'restart' => ['kea restart'],
@@ -133,8 +140,11 @@ function kea_ddns_services()
             'pidfile' => '/var/run/kea/kea-dhcp-ddns.kea-dhcp-ddns.pid',
             'id' => 'ddns',
         ];
+        return $services;
+    } catch (\Throwable $e) {
+        @syslog(LOG_ERR, 'kea-ddns: services failed: ' . $e->getMessage());
+        return [];
     }
-    return $services;
 }
 
 function kea_ddns_syslog()

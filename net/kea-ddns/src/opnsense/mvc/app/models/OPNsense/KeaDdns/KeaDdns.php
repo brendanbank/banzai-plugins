@@ -117,8 +117,8 @@ class KeaDdns extends BaseModel
     }
 
     /**
-     * Return the overlay array that core's generateConfig() merges into kea-dhcp6.conf.
-     * Keyed by subnet CIDR string.
+     * Return the DDNS overlay for kea-dhcp6.conf. Contains global DDNS settings
+     * and per-subnet parameters keyed by CIDR string.
      */
     public function getDhcpv6Overlay()
     {
@@ -173,8 +173,8 @@ class KeaDdns extends BaseModel
     }
 
     /**
-     * Return the overlay array that core's generateConfig() merges into kea-dhcp4.conf.
-     * Keyed by subnet CIDR string.
+     * Return the DDNS overlay for kea-dhcp4.conf. Contains global DDNS settings
+     * and per-subnet parameters keyed by CIDR string.
      */
     public function getDhcpv4Overlay()
     {
