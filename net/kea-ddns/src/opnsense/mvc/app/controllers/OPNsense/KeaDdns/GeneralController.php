@@ -48,4 +48,9 @@ class GeneralController extends IndexController
         $this->view->formGridSubnetDdns = $this->getFormGrid('dialogSubnetDdns', 'gridSubnetDdns');
         $this->view->formGridSubnet6Ddns = $this->getFormGrid('dialogSubnet6Ddns', 'gridSubnet6Ddns');
     }
+
+    public function statusAction()
+    {
+        $this->view->pick('OPNsense/KeaDdns/status');
+    }
 }

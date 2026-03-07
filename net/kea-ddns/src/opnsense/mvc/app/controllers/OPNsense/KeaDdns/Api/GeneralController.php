@@ -30,6 +30,7 @@
 namespace OPNsense\KeaDdns\Api;
 
 use OPNsense\Base\ApiMutableModelControllerBase;
+use OPNsense\Core\Backend;
 
 class GeneralController extends ApiMutableModelControllerBase
 {
@@ -243,5 +244,43 @@ class GeneralController extends ApiMutableModelControllerBase
         $significant = substr($hex, 0, $nibbles);
         $reversed = implode('.', array_reverse(str_split($significant)));
         return $reversed . '.ip6.arpa';
+    }
+
+    /* DDNS status dashboard */
+    public function ddnsStatusAction()
+    {
+        $backend = new Backend();
+        $response = json_decode(trim($backend->configdRun('kea_ddns status')), true);
+        if (!is_array($response)) {
+            return ['running' => false];
+        }
+        return $response;
+    }
+
+    public function searchDdnsLeasesAction()
+    {
+        $backend = new Backend();
+        $records = [];
+
+        foreach (['kea list leases4', 'kea list leases6'] as $cmd) {
+            $data = json_decode(trim($backend->configdpRun($cmd)), true);
+            if (!empty($data['records'])) {
+                foreach ($data['records'] as $rec) {
+                    if (($rec['fqdn_fwd'] ?? '0') === '1' || ($rec['fqdn_rev'] ?? '0') === '1') {
+                        $records[] = [
+                            'hostname' => $rec['hostname'] ?? '',
+                            'address' => $rec['address'] ?? '',
+                            'hwaddr' => $rec['hwaddr'] ?? '',
+                            'fqdn_fwd' => $rec['fqdn_fwd'] ?? '0',
+                            'fqdn_rev' => $rec['fqdn_rev'] ?? '0',
+                            'state' => $rec['state'] ?? '',
+                            'expire' => $rec['expire'] ?? '',
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $this->searchRecordsetBase($records, null, 'hostname');
     }
 }
