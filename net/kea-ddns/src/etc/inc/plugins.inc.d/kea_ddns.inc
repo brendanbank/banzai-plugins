@@ -147,6 +147,16 @@ function kea_ddns_services()
     }
 }
 
+function kea_ddns_xmlrpc_sync()
+{
+    return [[
+        'description' => gettext('Kea DDNS'),
+        'section' => 'OPNsense.KeaDdns',
+        'id' => 'keaddns',
+        'services' => ['kea-dhcp-ddns'],
+    ]];
+}
+
 function kea_ddns_syslog()
 {
     return ['keaddns' => ['facility' => ['kea-dhcp-ddns']]];
