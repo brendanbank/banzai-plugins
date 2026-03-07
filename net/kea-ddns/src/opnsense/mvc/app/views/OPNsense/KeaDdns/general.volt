@@ -87,6 +87,57 @@
             });
         });
 
+        /* Reverse zone auto-mapping: derive zone name from Kea subnet */
+        $('#dialog_gridReverseZones').on('shown.bs.modal', function() {
+            var dialog = $(this);
+            var nameInput = dialog.find('input[id$="zone.name"]');
+
+            if (!dialog.find('.reverse-zone-suggest').length) {
+                var nameRow = nameInput.closest('tr');
+                var suggestRow = $('<tr class="reverse-zone-suggest">' +
+                    '<td></td>' +
+                    '<td>' +
+                    '<div class="input-group" style="margin-top: 4px;">' +
+                    '<select class="form-control" id="reverseZoneSubnetPicker">' +
+                    '<option value="">{{ lang._("Derive zone name from subnet...") }}</option></select>' +
+                    '<span class="input-group-btn">' +
+                    '<button type="button" class="btn btn-default" id="btnDeriveReverseZone">' +
+                    '<i class="fa fa-magic"></i> {{ lang._("Derive") }}</button></span>' +
+                    '</div>' +
+                    '</td>' +
+                    '<td></td>' +
+                    '</tr>');
+                nameRow.after(suggestRow);
+
+                $('#btnDeriveReverseZone').on('click', function() {
+                    var zone = $('#reverseZoneSubnetPicker').val();
+                    if (zone) {
+                        nameInput.val(zone);
+                    }
+                });
+
+                $('#reverseZoneSubnetPicker').on('dblclick', function() {
+                    var zone = $(this).val();
+                    if (zone) {
+                        nameInput.val(zone);
+                    }
+                });
+            }
+
+            /* refresh subnet list each time the dialog opens */
+            var picker = $('#reverseZoneSubnetPicker');
+            picker.find('option:not(:first)').remove();
+            $.post('/api/keaddns/general/suggestReverseZones', function(data) {
+                if (data.suggestions) {
+                    $.each(data.suggestions, function(i, s) {
+                        picker.append($('<option>').val(s.zone).text(
+                            s.subnet + '  \u2192  ' + s.zone + ' (' + s.family + ')'
+                        ));
+                    });
+                }
+            });
+        });
+
         $("#reconfigureAct").SimpleActionButton({
             onPreAction: function() {
                 const dfObj = new $.Deferred();
