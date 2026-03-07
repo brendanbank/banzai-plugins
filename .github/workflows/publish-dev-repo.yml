@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout devel branch
@@ -32,8 +33,10 @@ jobs:
           cp -f devel/docs/FreeBSD:14:amd64/26.1/dev/repo/* \
                  main/docs/FreeBSD:14:amd64/26.1/dev/repo/
 
-      - name: Commit and push to main
+      - name: Create PR to publish dev repo
         working-directory: main
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -42,5 +45,14 @@ jobs:
             echo "No changes to publish"
             exit 0
           fi
+
+          BRANCH="publish-dev-repo-$(date +%Y%m%d%H%M%S)"
+          git checkout -b "$BRANCH"
           git commit -m "Publish dev repo from devel branch"
-          git push origin main
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "Publish dev repo to GitHub Pages" \
+            --body "Automated: copy signed dev repo packages from devel branch to main for GitHub Pages." \
+            --base main \
+            --head "$BRANCH"
