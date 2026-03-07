@@ -16,10 +16,15 @@ SSH connects as an unprivileged user (not root). Use `sudo` for privileged comma
 
 ```sh
 make setup                          # first time: init submodule + create symlinks
-./build.sh <firewall-hostname>      # build all plugins, download pkgs, update repo
+./build.sh <firewall-hostname>      # build stable plugins, sign, update repo
+./build.sh --dev <firewall-hostname> # build -devel plugins to dev repo
+./build.sh --test <firewall-hostname> # build only, skip signing/docs
 ```
 
-`build.sh` detects the remote's ABI (`FreeBSD:14:amd64`) and OPNsense series (`26.1`), syncs build infrastructure from the submodule (with an empty `devel.mk` override to prevent `-devel` suffix), builds each plugin, and populates `docs/<ABI>/<series>/repo/`.
+`build.sh` detects the remote's ABI (`FreeBSD:14:amd64`) and OPNsense series (`26.1`), syncs build infrastructure from the submodule, builds each plugin, and populates the signed pkg repo in `docs/`.
+
+- **Stable builds** (default): empties `devel.mk` to produce `os-<name>` packages → `docs/<ABI>/<series>/repo/`
+- **Dev builds** (`--dev`): creates `devel.mk` with `PLUGIN_DEVEL?=yes` to produce `os-<name>-devel` packages (TIER 4, conflicts with stable) → `docs/<ABI>/<series>/dev/repo/`
 
 After building, commit and push `docs/` to update the GitHub Pages pkg repo. Plugins are installable via the OPNsense UI at **System > Firmware > Plugins** or via `pkg install`.
 
@@ -54,7 +59,7 @@ Individual plugins have their own `PLUGIN_VERSION` in their Makefile.
 
 - BSD 2-Clause license header in all PHP/inc files
 - Package names: `os-<plugin_name>` (OPNsense requires `os-` prefix)
-- `+POST_INSTALL.post` registers plugin with firmware + adds shared banzai-plugins repo config
+- `+POST_INSTALL.post` registers plugin with firmware + adds shared banzai-plugins repo config + disabled dev repo config
 - `+PRE_DEINSTALL.pre` deregisters plugin from firmware (repo config is left in place)
 - Model XML: don't set empty `<Default></Default>` or `<Required>N</Required>` — they're implicit
 - `$internalModelName` in API controllers must match the `<id>` prefix in `forms/*.xml`

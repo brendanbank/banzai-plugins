@@ -86,7 +86,9 @@ banzai-plugins/
 ├── docs/                       # GitHub Pages (per-release pkg repos)
 │   └── FreeBSD:14:amd64/
 │       └── 26.1/
-│           └── repo/           # Signed pkg repo for this ABI + series
+│           ├── repo/           # Signed stable pkg repo
+│           └── dev/
+│               └── repo/       # Signed dev pkg repo (--dev builds)
 ├── dist/                       # Local build artifacts (gitignored)
 └── <category>/<plugin>/        # Plugin directories
 ```
@@ -108,6 +110,43 @@ Packages are built on a remote OPNsense/FreeBSD host via SSH:
 ```
 
 This detects the remote's ABI and OPNsense series, syncs all plugin source and build infrastructure, builds each plugin with `make package`, downloads `.pkg` files to `dist/`, and updates the signed per-release pkg repo in `docs/`.
+
+### Development builds
+
+Build `-devel` packages for testing unreleased changes:
+
+```sh
+./build.sh --dev <firewall-hostname>
+```
+
+This uses the opnsense-plugins `PLUGIN_DEVEL` mechanism to produce packages with an `os-<name>-devel` suffix (e.g., `os-kea-ddns-devel`). Devel packages have `PLUGIN_TIER=4` and automatically conflict with their stable counterpart — installing one removes the other.
+
+Dev packages are published to a separate repo path (`docs/<ABI>/<series>/dev/repo/`) and signed with the same key. To install them on a firewall:
+
+```sh
+# Enable the dev repo (created automatically by plugin install, disabled by default)
+sudo sed -i '' 's/enabled: no/enabled: yes/' \
+  /usr/local/etc/pkg/repos/banzai-plugins-dev.conf
+sudo pkg update
+
+# Install a devel package (automatically removes the stable version)
+sudo pkg install os-kea-ddns-devel
+
+# Switch back to stable
+sudo pkg install -r banzai-plugins os-kea-ddns
+
+# Disable the dev repo when done
+sudo sed -i '' 's/enabled: yes/enabled: no/' \
+  /usr/local/etc/pkg/repos/banzai-plugins-dev.conf
+```
+
+Devel packages also appear in **System > Firmware > Plugins** when the dev repo is enabled.
+
+You can combine `--dev` with `--test` to build devel packages without signing:
+
+```sh
+./build.sh --test --dev <firewall-hostname>
+```
 
 ## Releasing
 
