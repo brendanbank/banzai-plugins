@@ -38,7 +38,7 @@ Three scripts split responsibilities:
 # On the KVM host: create a FreeBSD build VM
 ./tools/create-build-vm.sh create \
     --ssh-pubkey ~/.ssh/id_ed25519.pub \
-    --build-user brendan
+    --build-user myuser
 
 # Note the IP address from the output
 ```
@@ -125,7 +125,7 @@ developer maintains their own. Config file search order:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `BUILD_HOST` | SSH target for the build server | `brendan@10.0.10.138` |
+| `BUILD_HOST` | SSH target for the build server | `user@build-server` |
 | `SERIES` | OPNsense release series | `26.1` |
 
 #### Build settings
@@ -157,7 +157,7 @@ developer maintains their own. Config file search order:
 #### Example configuration
 
 ```sh
-BUILD_HOST=brendan@10.0.10.138
+BUILD_HOST=user@build-server
 SERIES=26.1
 
 KVM_HOST=vm.example.com
@@ -195,7 +195,7 @@ FreeBSD VM provisioned as an OPNsense build server.
     --network br0 \
     --freebsd-version 14.3 \
     --ssh-pubkey ~/.ssh/id_ed25519.pub \
-    --build-user brendan
+    --build-user myuser
 
 # Delete a VM
 ./tools/create-build-vm.sh delete --name fbsd-build
@@ -616,12 +616,12 @@ To add a user named `alice` with UID 2000:
 # On the KVM host: create a build VM
 ./tools/create-build-vm.sh create \
     --ssh-pubkey ~/.ssh/id_ed25519.pub \
-    --build-user brendan
+    --build-user myuser
 # Note the IP address from the output
 
 # On your workstation: configure
 cp tools/opnsense-build.conf.sample tools/opnsense-build.conf
-# Set BUILD_HOST=brendan@<ip> and SERIES=26.1
+# Set BUILD_HOST=user@<ip> and SERIES=26.1
 
 # Clone all OPNsense repos
 ./tools/opnsense-build.sh bootstrap

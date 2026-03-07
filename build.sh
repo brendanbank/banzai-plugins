@@ -50,7 +50,8 @@ if [ "$1" = "--test" ]; then
 fi
 
 FIREWALL="${1:-${FIREWALL:?Usage: ./build.sh [--test] <hostname>}}"
-REMOTE_REPO="/home/brendan/src/banzai-plugins"
+REMOTE_USER=$(echo "$FIREWALL" | cut -d@ -f1)
+REMOTE_REPO="/home/${REMOTE_USER}/src/banzai-plugins"
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 LOCAL_DIST="${REPO_ROOT}/dist"
 
