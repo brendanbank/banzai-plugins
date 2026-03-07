@@ -2,6 +2,60 @@
 
 ---
 
+## P1 — High Impact
+
+### 1. TSIG key auto-generation
+
+A **Generate** button in the TSIG key dialog creates a cryptographically
+random Base64 secret of the correct length for the selected algorithm.
+Eliminates the need to run `tsig-keygen` or `dnssec-keygen` externally.
+
+**Implementation:**
+- `generateTsigSecretAction()` in `Api/GeneralController.php` — POST
+  endpoint accepts `algorithm` parameter, returns `{secret: "<base64>"}`.
+- Key lengths: MD5=16, SHA1=20, SHA224=28, SHA256=32, SHA384=48, SHA512=64.
+- UI: button injected next to the secret field in the TSIG key dialog
+  (`general.volt`), reads the selected algorithm from the dropdown.
+
+### 2. Per-subnet reverse zone auto-mapping
+
+Auto-derive `in-addr.arpa` / `ip6.arpa` zone names from configured Kea
+subnet CIDRs. A dropdown in the reverse zone dialog lists all DHCPv4 and
+DHCPv6 subnets with their corresponding reverse zone names.
+
+**Implementation:**
+- `suggestReverseZonesAction()` in `Api/GeneralController.php` — reads
+  `KeaDhcpv4` and `KeaDhcpv6` model subnets, returns suggestions with
+  subnet, zone name, and address family.
+- `deriveIpv4ReverseZone()` — octet-boundary rounding (`ceil(prefix/8)`),
+  reverse up to 3 significant octets.
+- `deriveIpv6ReverseZone()` — nibble-boundary rounding (`ceil(prefix/4)`),
+  expand with `inet_pton`, reverse nibbles.
+- UI: subnet picker dropdown + **Derive** button in reverse zone dialog
+  (`general.volt`). Double-click also populates the zone name field.
+
+### 3. DDNS status dashboard
+
+Separate Status page querying the D2 control socket for daemon status,
+update statistics, per-TSIG-key counters, and per-lease DDNS info.
+
+**Implementation:**
+- `ddns_status.py` — Python configd script querying D2 Unix socket
+  (`/var/run/kea/kea-ddns-ctrl-socket`) with `status-get`, `version-get`,
+  and `statistic-get-all` commands.
+- `actions_kea_ddns.conf` — configd action definition.
+- `ddnsStatusAction()` — calls configd, returns daemon info + statistics.
+- `searchDdnsLeasesAction()` — fetches leases from core Kea via
+  `configdpRun`, filters for `fqdn_fwd`/`fqdn_rev`, returns paginated
+  results via `searchRecordsetBase()`.
+- `status.volt` — two-tab page: Daemon Status (version, PID, uptime,
+  global stats, per-key stats) and DDNS Leases (paginated `UIBootgrid`
+  with forward/reverse checkmarks and expiry timestamps).
+- `Menu.xml` — Status menu item at order 20.
+- `GeneralController.php` (UI) — `statusAction()` routing.
+
+---
+
 ## P0 — Infrastructure (repo-wide, not kea-ddns specific)
 
 ### 0. Dev branch plugin install via the OPNsense firmware UI
