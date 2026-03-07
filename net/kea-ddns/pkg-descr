@@ -10,6 +10,12 @@ hook to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
 Plugin Changelog
 ================
 
+2.0_2
+
+Added:
+* HA sync support: register OPNsense.KeaDdns config section for XMLRPC
+  sync to backup firewall via kea_ddns_xmlrpc_sync()
+
 2.0
 
 Changed (architectural — no core patches required):

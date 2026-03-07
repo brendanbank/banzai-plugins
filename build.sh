@@ -50,7 +50,12 @@ if [ "$1" = "--test" ]; then
 fi
 
 FIREWALL="${1:-${FIREWALL:?Usage: ./build.sh [--test] <hostname>}}"
-REMOTE_USER=$(echo "$FIREWALL" | cut -d@ -f1)
+if echo "$FIREWALL" | grep -q '@'; then
+    REMOTE_USER=$(echo "$FIREWALL" | cut -d@ -f1)
+else
+    REMOTE_USER=$(ssh -G "$FIREWALL" 2>/dev/null | awk '/^user /{print $2}')
+    REMOTE_USER="${REMOTE_USER:-$(whoami)}"
+fi
 REMOTE_REPO="/home/${REMOTE_USER}/src/banzai-plugins"
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 LOCAL_DIST="${REPO_ROOT}/dist"
