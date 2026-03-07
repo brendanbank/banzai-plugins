@@ -1,12 +1,11 @@
 name: Publish dev repo to GitHub Pages
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
       - devel
-    paths:
-      - 'docs/**'
 
 jobs:
   publish:
