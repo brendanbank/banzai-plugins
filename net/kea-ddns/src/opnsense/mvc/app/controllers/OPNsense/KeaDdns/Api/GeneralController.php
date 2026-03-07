@@ -58,6 +58,27 @@ class GeneralController extends ApiMutableModelControllerBase
         return $this->delBase('tsig_keys.tsig_key', $uuid);
     }
 
+    /**
+     * Generate a random TSIG secret for the given algorithm.
+     */
+    public function generateTsigSecretAction()
+    {
+        if ($this->request->isPost()) {
+            $algorithm = $this->request->getPost('algorithm', 'striptags', 'HMAC-SHA256');
+            $keyLengths = [
+                'HMAC-MD5' => 16,
+                'HMAC-SHA1' => 20,
+                'HMAC-SHA224' => 28,
+                'HMAC-SHA256' => 32,
+                'HMAC-SHA384' => 48,
+                'HMAC-SHA512' => 64,
+            ];
+            $len = $keyLengths[$algorithm] ?? 32;
+            return ['secret' => base64_encode(random_bytes($len))];
+        }
+        return ['status' => 'error'];
+    }
+
     /* Forward zones */
     public function searchForwardZoneAction()
     {

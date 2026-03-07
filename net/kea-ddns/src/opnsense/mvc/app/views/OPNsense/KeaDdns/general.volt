@@ -13,6 +13,24 @@
             del:'/api/keaddns/general/delTsigKey/'
         });
 
+        $('#dialog_gridTsigKeys').on('shown.bs.modal', function() {
+            var secretInput = $(this).find('input[id$="tsig_key.secret"]');
+            if (secretInput.length && !secretInput.next('.btn-generate-secret').length) {
+                var btn = $('<button type="button" class="btn btn-default btn-generate-secret" style="margin-left: 8px;">' +
+                    '<i class="fa fa-random"></i> {{ lang._("Generate") }}</button>');
+                secretInput.after(btn);
+                secretInput.css('display', 'inline-block').css('width', 'calc(100% - 110px)');
+                btn.on('click', function() {
+                    var algorithm = $('#dialog_gridTsigKeys select[id$="tsig_key.algorithm"]').val();
+                    $.post('/api/keaddns/general/generateTsigSecret', {algorithm: algorithm}, function(data) {
+                        if (data.secret) {
+                            secretInput.val(data.secret);
+                        }
+                    });
+                });
+            }
+        });
+
         $("#gridForwardZones").UIBootgrid({
             search:'/api/keaddns/general/searchForwardZone',
             get:'/api/keaddns/general/getForwardZone/',

@@ -3,38 +3,7 @@
 Prioritized by usefulness/impact. Each item includes current status and
 the Kea configuration parameter(s) it maps to.
 
----
-
-## P0 — Infrastructure (repo-wide, not kea-ddns specific)
-
-### 0. Dev branch plugin install via the OPNsense firmware UI — DONE
-
-Allow installing development builds from a branch through the standard
-OPNsense **System > Firmware > Plugins** UI.
-
-**Implementation:**
-
-Uses the existing opnsense-plugins `PLUGIN_DEVEL` / conflicts machinery.
-
-1. **`build.sh --dev`** — Keeps `devel.mk` active so packages are built
-   as `os-<name>-devel` (with `PLUGIN_TIER=4`, conflicts with stable).
-   Published to a separate GitHub Pages path:
-   `docs/<ABI>/<series>/dev/repo/` (signed with the same key).
-
-2. **Dev repo config** — All `+POST_INSTALL.post` scripts write a
-   disabled `banzai-plugins-dev.conf` pointing to the dev repo path.
-
-3. **Enable on the firewall:**
-   ```sh
-   sudo sed -i '' 's/enabled: no/enabled: yes/' \
-     /usr/local/etc/pkg/repos/banzai-plugins-dev.conf
-   sudo pkg update
-   ```
-   Then `os-<name>-devel` packages appear in **System > Firmware >
-   Plugins**. Installing `-devel` automatically removes the stable
-   version (pkg conflicts).
-
-**Future:** GitHub Actions CI to auto-build on branch push
+Completed items are tracked in [BACKLOG_COMPLETED.md](BACKLOG_COMPLETED.md).
 
 ---
 
