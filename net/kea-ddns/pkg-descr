@@ -10,6 +10,18 @@ hook to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
 Plugin Changelog
 ================
 
+2.1
+
+Added:
+* TSIG key auto-generation: Generate button creates random secrets of the
+  correct length for the selected HMAC algorithm
+* Reverse zone auto-derive: dropdown in the reverse zone dialog lists all
+  configured Kea subnets with their corresponding in-addr.arpa / ip6.arpa
+  zone names
+* DDNS status dashboard: separate Status page with daemon info (version, PID,
+  uptime), global update statistics, per-TSIG-key counters, and paginated
+  DDNS lease viewer showing all leases with forward/reverse DNS registrations
+
 2.0_2
 
 Added:
