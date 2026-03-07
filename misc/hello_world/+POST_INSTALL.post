@@ -8,16 +8,30 @@ if [ -f "$REGISTER" ] && [ -f "$VERSION_INFO" ]; then
     fi
 fi
 
-# Add banzai-plugins pkg repo with signature verification
+# Add banzai-plugins pkg repos with signature verification
+SERIES=$(opnsense-version -a 2>/dev/null || echo "26.1")
+
 REPO_CONF="/usr/local/etc/pkg/repos/banzai-plugins.conf"
 if [ ! -f "$REPO_CONF" ]; then
-    SERIES=$(opnsense-version -a 2>/dev/null || echo "26.1")
     cat > "$REPO_CONF" <<REPOEOF
 banzai-plugins: {
   url: "https://brendanbank.github.io/banzai-plugins/\${ABI}/${SERIES}/repo",
   signature_type: "fingerprints",
   fingerprints: "/usr/local/etc/pkg/fingerprints/banzai-plugins",
   enabled: yes
+}
+REPOEOF
+fi
+
+# Dev repo for -devel packages (disabled by default)
+DEV_REPO_CONF="/usr/local/etc/pkg/repos/banzai-plugins-dev.conf"
+if [ ! -f "$DEV_REPO_CONF" ]; then
+    cat > "$DEV_REPO_CONF" <<REPOEOF
+banzai-plugins-dev: {
+  url: "https://brendanbank.github.io/banzai-plugins/\${ABI}/${SERIES}/dev/repo",
+  signature_type: "fingerprints",
+  fingerprints: "/usr/local/etc/pkg/fingerprints/banzai-plugins",
+  enabled: no
 }
 REPOEOF
 fi
