@@ -27,7 +27,7 @@
 #
 # Build all OPNsense plugin packages in banzai-plugins.
 #
-# Usage: ./build.sh [--test] <hostname>
+# Usage: ./build.sh [--test] [--dev] <hostname>
 #
 # The build happens on a FreeBSD/OPNsense host via SSH. Build infrastructure
 # comes from the opnsense-plugins/ submodule and is synced to the remote.
@@ -39,17 +39,28 @@
 #
 # Options:
 #   --test    Build only; skip repo signing, docs, and GitHub Pages update.
+#   --dev     Build -devel packages and publish to the dev repo path.
+#             Devel packages have an os-<name>-devel suffix, PLUGIN_TIER=4,
+#             and conflict with their stable counterpart. On the firewall,
+#             enable the dev repo to install them via the firmware UI:
+#               sudo sed -i '' 's/enabled: no/enabled: yes/' \
+#                 /usr/local/etc/pkg/repos/banzai-plugins-dev.conf
+#               sudo pkg update
 #
 
 set -e
 
 TEST_MODE=0
-if [ "$1" = "--test" ]; then
-    TEST_MODE=1
-    shift
-fi
+DEV_MODE=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --test) TEST_MODE=1; shift ;;
+        --dev)  DEV_MODE=1; shift ;;
+        *)      break ;;
+    esac
+done
 
-FIREWALL="${1:-${FIREWALL:?Usage: ./build.sh [--test] <hostname>}}"
+FIREWALL="${1:-${FIREWALL:?Usage: ./build.sh [--test] [--dev] <hostname>}}"
 if echo "$FIREWALL" | grep -q '@'; then
     REMOTE_USER=$(echo "$FIREWALL" | cut -d@ -f1)
 else
@@ -99,8 +110,13 @@ SERIES=$(remote "opnsense-version -a")
 [ -n "${SERIES}" ] || die "Failed to detect OPNsense series"
 echo "    Series: ${SERIES}"
 
-PAGES_REPO="${REPO_ROOT}/docs/${FREEBSD_ABI}/${SERIES}/repo"
-echo "    Pages repo: docs/${FREEBSD_ABI}/${SERIES}/repo/"
+if [ "${DEV_MODE}" -eq 1 ]; then
+    PAGES_REPO="${REPO_ROOT}/docs/${FREEBSD_ABI}/${SERIES}/dev/repo"
+    echo "    Pages repo: docs/${FREEBSD_ABI}/${SERIES}/dev/repo/ (dev)"
+else
+    PAGES_REPO="${REPO_ROOT}/docs/${FREEBSD_ABI}/${SERIES}/repo"
+    echo "    Pages repo: docs/${FREEBSD_ABI}/${SERIES}/repo/"
+fi
 
 # ── 1. Sync source to remote ────────────────────────────────────────
 
@@ -122,8 +138,14 @@ for infra_dir in Mk Keywords Templates Scripts; do
     rsync -aq --delete -e ssh "${SUBMODULE_DIR}/${infra_dir}/" "${FIREWALL}:${REMOTE_REPO}/${infra_dir}/"
 done
 
-# Override devel.mk to prevent -devel package suffix
-remote ": > ${REMOTE_REPO}/Mk/devel.mk"
+if [ "${DEV_MODE}" -eq 1 ]; then
+    # Create devel.mk to enable -devel package suffix and PLUGIN_TIER=4
+    remote "echo 'PLUGIN_DEVEL?=yes' > ${REMOTE_REPO}/Mk/devel.mk"
+    echo "    Dev mode: devel.mk active (packages will have -devel suffix)"
+else
+    # Override devel.mk to prevent -devel package suffix
+    remote ": > ${REMOTE_REPO}/Mk/devel.mk"
+fi
 
 # Sync each plugin
 for plugin_dir in ${PLUGIN_DIRS}; do
@@ -170,10 +192,15 @@ if [ "${TEST_MODE}" -eq 1 ]; then
     exit 0
 fi
 
+BUILD_LABEL="stable"
+if [ "${DEV_MODE}" -eq 1 ]; then
+    BUILD_LABEL="dev"
+fi
+
 # ── 3. Update GitHub Pages repo ─────────────────────────────────────
 
 echo ""
-echo "==> Updating GitHub Pages pkg repo (${FREEBSD_ABI}/${SERIES})"
+echo "==> Updating GitHub Pages pkg repo (${FREEBSD_ABI}/${SERIES}, ${BUILD_LABEL})"
 mkdir -p "${PAGES_REPO}"
 
 REMOTE_REPO_DIR="/tmp/banzai_plugins_repo"
@@ -218,7 +245,7 @@ make -C "${REPO_ROOT}/docs/sphinx" html
 echo "    Commit and push docs/ to update GitHub Pages."
 
 echo ""
-echo "==> Done"
+echo "==> Done (${BUILD_LABEL})"
 echo "    Built packages:${BUILT_PKGS}"
-echo "    Repo: docs/${FREEBSD_ABI}/${SERIES}/repo/"
+echo "    Repo: ${PAGES_REPO#${REPO_ROOT}/}"
 echo "    Docs: docs/releases/"
