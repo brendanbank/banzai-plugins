@@ -1,0 +1,46 @@
+name: Publish dev repo to GitHub Pages
+
+on:
+  push:
+    branches:
+      - devel
+    paths:
+      - 'docs/FreeBSD:14:amd64/26.1/dev/repo/**'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout devel branch
+        uses: actions/checkout@v4
+        with:
+          ref: devel
+          path: devel
+
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+
+      - name: Copy dev repo to main docs
+        run: |
+          mkdir -p main/docs/FreeBSD:14:amd64/26.1/dev/repo
+          cp -f devel/docs/FreeBSD:14:amd64/26.1/dev/repo/* \
+                 main/docs/FreeBSD:14:amd64/26.1/dev/repo/
+
+      - name: Commit and push to main
+        working-directory: main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/FreeBSD:14:amd64/26.1/dev/repo/
+          if git diff --cached --quiet; then
+            echo "No changes to publish"
+            exit 0
+          fi
+          git commit -m "Publish dev repo from devel branch"
+          git push origin main
