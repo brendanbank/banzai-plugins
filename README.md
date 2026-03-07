@@ -121,21 +121,34 @@ Build `-devel` packages for testing unreleased changes:
 
 This uses the opnsense-plugins `PLUGIN_DEVEL` mechanism to produce packages with an `os-<name>-devel` suffix (e.g., `os-kea-ddns-devel`). Devel packages have `PLUGIN_TIER=4` and automatically conflict with their stable counterpart — installing one removes the other.
 
-Dev packages are published to a separate repo path (`docs/<ABI>/<series>/dev/repo/`) and signed with the same key. To install them on a firewall:
+Dev packages are published to a separate repo path (`docs/<ABI>/<series>/dev/repo/`) and signed with the same key. When you push the `devel` branch, a GitHub Actions workflow automatically deploys the dev repo to GitHub Pages alongside the stable repo.
+
+**Setting up the dev repo on a firewall:**
 
 ```sh
-# Enable the dev repo (created automatically by plugin install, disabled by default)
-sudo sed -i '' 's/enabled: no/enabled: yes/' \
-  /usr/local/etc/pkg/repos/banzai-plugins-dev.conf
-sudo pkg update
+SERIES=$(opnsense-version -a)
 
+cat > /usr/local/etc/pkg/repos/banzai-plugins-dev.conf <<EOF
+banzai-plugins-dev: {
+  url: "https://brendanbank.github.io/banzai-plugins/\${ABI}/${SERIES}/dev/repo",
+  signature_type: "fingerprints",
+  fingerprints: "/usr/local/etc/pkg/fingerprints/banzai-plugins",
+  enabled: yes
+}
+EOF
+sudo pkg update
+```
+
+**Installing devel packages:**
+
+```sh
 # Install a devel package (automatically removes the stable version)
 sudo pkg install os-kea-ddns-devel
 
 # Switch back to stable
 sudo pkg install -r banzai-plugins os-kea-ddns
 
-# Disable the dev repo when done
+# Disable the dev repo when done testing
 sudo sed -i '' 's/enabled: yes/enabled: no/' \
   /usr/local/etc/pkg/repos/banzai-plugins-dev.conf
 ```
@@ -148,13 +161,22 @@ You can combine `--dev` with `--test` to build devel packages without signing:
 ./build.sh --test --dev <firewall-hostname>
 ```
 
+## CI/CD
+
+A GitHub Actions workflow (`.github/workflows/publish-dev-repo.yml`) deploys to GitHub Pages on every push to `main` or `devel`. It merges:
+
+- **`main`** — stable repo, documentation, and site assets
+- **`devel`** — signed dev repo packages
+
+This means pushing `docs/` changes to either branch automatically updates the live site and pkg repos.
+
 ## Releasing
 
 1. Bump `PLUGIN_VERSION` in `<category>/<plugin>/Makefile`
 2. Update changelog in `<category>/<plugin>/pkg-descr`
 3. `./build.sh <firewall>`
-4. Commit source changes, tag `v<version>`, push with tags
-5. Commit and push `docs/` to update GitHub Pages
+4. Commit source + docs changes, tag `v<version>`, push with tags
+5. GitHub Pages is updated automatically via the workflow
 6. Create GitHub Release with `.pkg` files attached
 
 ## Updating Build Infrastructure
