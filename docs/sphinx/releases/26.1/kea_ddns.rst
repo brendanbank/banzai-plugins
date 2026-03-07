@@ -28,11 +28,12 @@ TSIG keys (RFC 2845).
 
 **Key features:**
 
-- TSIG key management (HMAC-MD5 through HMAC-SHA512)
-- Forward and reverse DNS zone configuration
+- TSIG key management with auto-generation (HMAC-MD5 through HMAC-SHA512)
+- Forward and reverse DNS zone configuration with reverse zone auto-derive
 - Per-subnet DDNS policy for both DHCPv4 and DHCPv6
 - Automatic overlay injection into ``kea-dhcp4.conf`` and ``kea-dhcp6.conf``
 - DHCID conflict resolution modes (RFC 4703)
+- DDNS status dashboard with daemon statistics and per-lease DDNS info
 - Log file viewer for ``kea-dhcp-ddns``
 
 
@@ -47,8 +48,9 @@ Before configuring this plugin, ensure:
   one subnet configured.
 - A **DNS server** (e.g. BIND, PowerDNS, Knot) that accepts RFC 2136 dynamic
   updates for your forward and reverse zones.
-- A **TSIG key** shared between the DNS server and OPNsense. Generate one
-  with::
+- A **TSIG key** shared between the DNS server and OPNsense. You can generate
+  one using the built-in **Generate** button in the TSIG Keys tab, or on the
+  DNS server with::
 
     tsig-keygen -a hmac-sha256 ddns-key.example.com
 
@@ -92,9 +94,18 @@ Subnet DDNS, and Subnet6 DDNS.
                                                   trailing dot.
         **Algorithm**                             HMAC algorithm. Options: ``HMAC-MD5``, ``HMAC-SHA1``, ``HMAC-SHA224``,
                                                   ``HMAC-SHA256`` (default), ``HMAC-SHA384``, ``HMAC-SHA512``.
-        **Secret**                                Base64-encoded shared secret. Generate with
-                                                  ``tsig-keygen -a hmac-sha256 keyname`` on your DNS server.
+        **Secret**                                Base64-encoded shared secret. Click **Generate** to create a
+                                                  cryptographically random secret of the correct length for the
+                                                  selected algorithm. Alternatively, generate on the DNS server
+                                                  with ``tsig-keygen -a hmac-sha256 keyname``.
         ========================================= ====================================================================================
+
+        .. tip::
+
+            The **Generate** button creates a random secret using the correct key length for the
+            selected algorithm (e.g. 32 bytes for HMAC-SHA256, 64 bytes for HMAC-SHA512). Copy
+            the generated Base64 value to your DNS server configuration. This eliminates the need
+            to run ``tsig-keygen`` or ``dnssec-keygen`` externally.
 
     .. tab:: Forward Zones
 
@@ -129,6 +140,8 @@ Subnet DDNS, and Subnet6 DDNS.
         **Zone name**                             The reverse DNS zone name. For IPv4, use ``in-addr.arpa`` format
                                                   (e.g. ``168.192.in-addr.arpa``). For IPv6, use ``ip6.arpa`` nibble format
                                                   (e.g. ``6.5.4.3.2.1.d.f.ip6.arpa`` for ``fd12:3456::/32``).
+                                                  Use the **Derive** button below the zone name field to auto-derive
+                                                  the zone name from a configured Kea subnet.
         **DNS server**                            IP address of the authoritative DNS server for this zone.
         **Port**                                  DNS server port (default: ``53``).
         **TSIG key**                              TSIG key for authenticating updates.
@@ -136,10 +149,17 @@ Subnet DDNS, and Subnet6 DDNS.
 
         .. tip::
 
+            The **Derive zone name from subnet** dropdown lists all configured Kea DHCPv4 and
+            DHCPv6 subnets with their corresponding reverse zone names. Select a subnet and click
+            **Derive** (or double-click the entry) to populate the zone name field automatically.
+            This eliminates the error-prone manual construction of ``in-addr.arpa`` and ``ip6.arpa``
+            zone names.
+
+        .. tip::
+
             IPv6 reverse zone names use nibble format with the hex digits of the prefix reversed.
             For a ``/48`` prefix ``fd12:3456:789a::/48``, the zone is ``a.9.8.7.6.5.4.3.2.1.d.f.ip6.arpa``.
-            You can compute this with: ``python3 -c "import ipaddress; print(ipaddress.ip_network('fd12:3456:789a::/48').network_address.reverse_pointer)"``
-            and trim to the appropriate prefix length.
+            The auto-derive feature handles this conversion automatically.
 
     .. tab:: Subnet DDNS (DHCPv4)
 
@@ -202,6 +222,83 @@ Subnet DDNS, and Subnet6 DDNS.
             environments), the default ``Check with DHCID`` conflict resolution will cause forward DDNS
             updates to fail with RCODE 8 (NXRRSET). When the forward update fails, the reverse (PTR)
             update is also aborted. Set conflict resolution to ``No check, store DHCID`` to resolve this.
+
+
+Status
+------
+
+Navigate to :menuselection:`Services --> Kea Dynamic DNS --> Status`.
+
+The status page provides real-time visibility into the ``kea-dhcp-ddns`` daemon
+and DDNS-registered leases. It has two tabs:
+
+.. tabs::
+
+    .. tab:: Daemon Status
+
+        Shows the current state of the ``kea-dhcp-ddns`` daemon, queried via its
+        Unix control socket (``/var/run/kea/kea-ddns-ctrl-socket``).
+
+        **Daemon info:**
+
+        - **Version** — Kea DDNS daemon version
+        - **PID** — process ID
+        - **Uptime** — how long the daemon has been running
+
+        **Update Statistics** — global counters for DDNS operations:
+
+        ========================================= ====================================================================================
+        **Statistic**                             **Description**
+        ========================================= ====================================================================================
+        **NCR received**                          Name Change Requests received from DHCPv4/v6 daemons
+        **NCR invalid**                           Malformed NCRs rejected
+        **NCR error**                             NCRs that could not be processed
+        **Queue full**                            NCRs dropped because the internal queue was full
+        **Updates sent**                          DNS UPDATE requests sent to DNS servers
+        **Updates successful**                    DNS updates that completed successfully
+        **Updates error**                         DNS updates that failed (check the log for RCODEs)
+        **Updates timeout**                       DNS updates that timed out (DNS server did not respond)
+        **Updates signed**                        DNS updates authenticated with TSIG
+        **Updates unsigned**                      DNS updates sent without TSIG authentication
+        ========================================= ====================================================================================
+
+        **Per-Key Statistics** — if TSIG keys are in use, shows sent/success/error/timeout
+        counters broken down by TSIG key name.
+
+        Click **Refresh** to reload the daemon status.
+
+        .. note::
+
+            If the daemon is not running, a warning is displayed. Start it by enabling
+            DDNS in the Settings tab and clicking **Apply**.
+
+    .. tab:: DDNS Leases
+
+        Shows all active DHCP leases (both DHCPv4 and DHCPv6) that have DDNS
+        registrations. A lease appears here if it has a forward DNS update,
+        a reverse DNS update, or both.
+
+        ========================================= ====================================================================================
+        **Column**                                **Description**
+        ========================================= ====================================================================================
+        **Hostname**                              The FQDN registered in DNS for this lease
+        **Address**                               The IP address (v4 or v6) assigned to the client
+        **MAC**                                   The client's hardware (MAC) address
+        **Forward**                               Check mark if a forward (A/AAAA) DNS record was registered
+        **Reverse**                               Check mark if a reverse (PTR) DNS record was registered
+        **Expires**                               Lease expiration timestamp
+        ========================================= ====================================================================================
+
+        The table is paginated and searchable. Click **Refresh** to reload the
+        lease data.
+
+        .. tip::
+
+            Use this tab to verify that DDNS is working correctly for your
+            clients. If a client appears with a forward check but no reverse
+            check, verify that a matching reverse zone is configured. If a
+            client is missing entirely, check the log file for
+            ``DHCP_DDNS_NO_MATCH`` messages.
 
 
 Log File
@@ -275,7 +372,7 @@ and configure:
         ==================================  =======================================================================================================
         **Name**                            ``ddns-key.dyn.example.com``
         **Algorithm**                       ``HMAC-SHA256``
-        **Secret**                          (paste the base64 secret from ``tsig-keygen`` output)
+        **Secret**                          Click **Generate** to create a random secret, then copy it to your DNS server
         ==================================  =======================================================================================================
 
         Press **Save**.
@@ -536,6 +633,7 @@ All configuration is available via the REST API under
         ``/api/keaddns/general/addTsigKey``                 POST        Create a TSIG key
         ``/api/keaddns/general/setTsigKey/{uuid}``          POST        Update a TSIG key
         ``/api/keaddns/general/delTsigKey/{uuid}``          POST        Delete a TSIG key
+        ``/api/keaddns/general/generateTsigSecret``         POST        Generate a random TSIG secret (param: ``algorithm``)
         ==================================================  ==========  ==================================================
 
     .. tab:: Zones
@@ -553,6 +651,16 @@ All configuration is available via the REST API under
         ``/api/keaddns/general/addReverseZone``             POST        Create a reverse zone
         ``/api/keaddns/general/setReverseZone/{uuid}``      POST        Update a reverse zone
         ``/api/keaddns/general/delReverseZone/{uuid}``      POST        Delete a reverse zone
+        ``/api/keaddns/general/suggestReverseZones``        POST        Suggest reverse zone names from Kea subnets
+        ==================================================  ==========  ==================================================
+
+    .. tab:: Status
+
+        ==================================================  ==========  ==================================================
+        **Endpoint**                                        **Method**  **Description**
+        ==================================================  ==========  ==================================================
+        ``/api/keaddns/general/ddnsStatus``                 POST        Get D2 daemon status and statistics
+        ``/api/keaddns/general/searchDdnsLeases``           POST        Search DDNS-registered leases (paginated)
         ==================================================  ==========  ==================================================
 
     .. tab:: Subnet DDNS

@@ -13,6 +13,24 @@
             del:'/api/keaddns/general/delTsigKey/'
         });
 
+        $('#dialog_gridTsigKeys').on('shown.bs.modal', function() {
+            var secretInput = $(this).find('input[id$="tsig_key.secret"]');
+            if (secretInput.length && !secretInput.next('.btn-generate-secret').length) {
+                var btn = $('<button type="button" class="btn btn-default btn-generate-secret" style="margin-left: 8px;">' +
+                    '<i class="fa fa-random"></i> {{ lang._("Generate") }}</button>');
+                secretInput.after(btn);
+                secretInput.css('display', 'inline-block').css('width', 'calc(100% - 110px)');
+                btn.on('click', function() {
+                    var algorithm = $('#dialog_gridTsigKeys select[id$="tsig_key.algorithm"]').val();
+                    $.post('/api/keaddns/general/generateTsigSecret', {algorithm: algorithm}, function(data) {
+                        if (data.secret) {
+                            secretInput.val(data.secret);
+                        }
+                    });
+                });
+            }
+        });
+
         $("#gridForwardZones").UIBootgrid({
             search:'/api/keaddns/general/searchForwardZone',
             get:'/api/keaddns/general/getForwardZone/',
@@ -66,6 +84,57 @@
             toggleGeneratedPrefix('dialogSubnet6Ddns');
             $(this).find('select[id$="assignment.replace_client_name"]').on('change', function() {
                 toggleGeneratedPrefix('dialogSubnet6Ddns');
+            });
+        });
+
+        /* Reverse zone auto-mapping: derive zone name from Kea subnet */
+        $('#dialog_gridReverseZones').on('shown.bs.modal', function() {
+            var dialog = $(this);
+            var nameInput = dialog.find('input[id$="zone.name"]');
+
+            if (!dialog.find('.reverse-zone-suggest').length) {
+                var nameRow = nameInput.closest('tr');
+                var suggestRow = $('<tr class="reverse-zone-suggest">' +
+                    '<td></td>' +
+                    '<td>' +
+                    '<div class="input-group" style="margin-top: 4px;">' +
+                    '<select class="form-control" id="reverseZoneSubnetPicker">' +
+                    '<option value="">{{ lang._("Derive zone name from subnet...") }}</option></select>' +
+                    '<span class="input-group-btn">' +
+                    '<button type="button" class="btn btn-default" id="btnDeriveReverseZone">' +
+                    '<i class="fa fa-magic"></i> {{ lang._("Derive") }}</button></span>' +
+                    '</div>' +
+                    '</td>' +
+                    '<td></td>' +
+                    '</tr>');
+                nameRow.after(suggestRow);
+
+                $('#btnDeriveReverseZone').on('click', function() {
+                    var zone = $('#reverseZoneSubnetPicker').val();
+                    if (zone) {
+                        nameInput.val(zone);
+                    }
+                });
+
+                $('#reverseZoneSubnetPicker').on('dblclick', function() {
+                    var zone = $(this).val();
+                    if (zone) {
+                        nameInput.val(zone);
+                    }
+                });
+            }
+
+            /* refresh subnet list each time the dialog opens */
+            var picker = $('#reverseZoneSubnetPicker');
+            picker.find('option:not(:first)').remove();
+            $.post('/api/keaddns/general/suggestReverseZones', function(data) {
+                if (data.suggestions) {
+                    $.each(data.suggestions, function(i, s) {
+                        picker.append($('<option>').val(s.zone).text(
+                            s.subnet + '  \u2192  ' + s.zone + ' (' + s.family + ')'
+                        ));
+                    });
+                }
             });
         });
 

@@ -30,6 +30,7 @@
 namespace OPNsense\KeaDdns\Api;
 
 use OPNsense\Base\ApiMutableModelControllerBase;
+use OPNsense\Core\Backend;
 
 class GeneralController extends ApiMutableModelControllerBase
 {
@@ -56,6 +57,27 @@ class GeneralController extends ApiMutableModelControllerBase
     public function delTsigKeyAction($uuid)
     {
         return $this->delBase('tsig_keys.tsig_key', $uuid);
+    }
+
+    /**
+     * Generate a random TSIG secret for the given algorithm.
+     */
+    public function generateTsigSecretAction()
+    {
+        if ($this->request->isPost()) {
+            $algorithm = $this->request->getPost('algorithm', 'striptags', 'HMAC-SHA256');
+            $keyLengths = [
+                'HMAC-MD5' => 16,
+                'HMAC-SHA1' => 20,
+                'HMAC-SHA224' => 28,
+                'HMAC-SHA256' => 32,
+                'HMAC-SHA384' => 48,
+                'HMAC-SHA512' => 64,
+            ];
+            $len = $keyLengths[$algorithm] ?? 32;
+            return ['secret' => base64_encode(random_bytes($len))];
+        }
+        return ['status' => 'error'];
     }
 
     /* Forward zones */
@@ -144,5 +166,121 @@ class GeneralController extends ApiMutableModelControllerBase
     public function delSubnet6DdnsAction($uuid)
     {
         return $this->delBase('subnet6_ddns.assignment', $uuid);
+    }
+
+    /**
+     * Suggest reverse zone names derived from configured Kea subnets.
+     * Returns all DHCPv4 and DHCPv6 subnets with their corresponding
+     * in-addr.arpa / ip6.arpa zone names.
+     */
+    public function suggestReverseZonesAction()
+    {
+        $suggestions = [];
+
+        /* DHCPv4 subnets */
+        $keav4 = new \OPNsense\Kea\KeaDhcpv4();
+        foreach ($keav4->subnets->subnet4->iterateItems() as $subnet) {
+            $cidr = $subnet->subnet->getValue();
+            if (empty($cidr) || strpos($cidr, '/') === false) {
+                continue;
+            }
+            list($ip, $prefix) = explode('/', $cidr, 2);
+            $zone = $this->deriveIpv4ReverseZone($ip, (int)$prefix);
+            if ($zone !== null) {
+                $suggestions[] = ['subnet' => $cidr, 'zone' => $zone, 'family' => 'IPv4'];
+            }
+        }
+
+        /* DHCPv6 subnets */
+        $keav6 = new \OPNsense\Kea\KeaDhcpv6();
+        foreach ($keav6->subnets->subnet6->iterateItems() as $subnet) {
+            $cidr = $subnet->subnet->getValue();
+            if (empty($cidr) || strpos($cidr, '/') === false) {
+                continue;
+            }
+            list($ip, $prefix) = explode('/', $cidr, 2);
+            $zone = $this->deriveIpv6ReverseZone($ip, (int)$prefix);
+            if ($zone !== null) {
+                $suggestions[] = ['subnet' => $cidr, 'zone' => $zone, 'family' => 'IPv6'];
+            }
+        }
+
+        return ['suggestions' => $suggestions];
+    }
+
+    private function deriveIpv4ReverseZone($ip, $prefix)
+    {
+        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return null;
+        }
+        $octets = explode('.', $ip);
+        /* round up to nearest octet boundary */
+        $significantOctets = (int)ceil($prefix / 8);
+        if ($significantOctets < 1) {
+            $significantOctets = 1;
+        }
+        if ($significantOctets > 3) {
+            $significantOctets = 3;
+        }
+        $reversed = array_reverse(array_slice($octets, 0, $significantOctets));
+        return implode('.', $reversed) . '.in-addr.arpa';
+    }
+
+    private function deriveIpv6ReverseZone($ip, $prefix)
+    {
+        $packed = @inet_pton($ip);
+        if ($packed === false) {
+            return null;
+        }
+        $hex = bin2hex($packed);
+        /* round up to nearest nibble boundary (4 bits) */
+        $nibbles = (int)ceil($prefix / 4);
+        if ($nibbles < 1) {
+            $nibbles = 1;
+        }
+        if ($nibbles > 31) {
+            $nibbles = 31;
+        }
+        $significant = substr($hex, 0, $nibbles);
+        $reversed = implode('.', array_reverse(str_split($significant)));
+        return $reversed . '.ip6.arpa';
+    }
+
+    /* DDNS status dashboard */
+    public function ddnsStatusAction()
+    {
+        $backend = new Backend();
+        $response = json_decode(trim($backend->configdRun('kea_ddns status')), true);
+        if (!is_array($response)) {
+            return ['running' => false];
+        }
+        return $response;
+    }
+
+    public function searchDdnsLeasesAction()
+    {
+        $backend = new Backend();
+        $records = [];
+
+        foreach (['kea list leases4', 'kea list leases6'] as $cmd) {
+            $data = json_decode(trim($backend->configdpRun($cmd)), true);
+            if (!empty($data['records'])) {
+                foreach ($data['records'] as $rec) {
+                    if (($rec['fqdn_fwd'] ?? '0') === '1' || ($rec['fqdn_rev'] ?? '0') === '1') {
+                        $records[] = [
+                            'hostname' => $rec['hostname'] ?? '',
+                            'address' => $rec['address'] ?? '',
+                            'hwaddr' => $rec['hwaddr'] ?? '',
+                            'fqdn_fwd' => $rec['fqdn_fwd'] ?? '0',
+                            'fqdn_rev' => $rec['fqdn_rev'] ?? '0',
+                            'state' => $rec['state'] ?? '',
+                            'expire' => $rec['expire'] ?? '',
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $this->searchRecordsetBase($records, null, 'hostname');
     }
 }

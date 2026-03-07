@@ -2,6 +2,7 @@
     <Services>
         <KeaDdns VisibleName="Kea Dynamic DNS" cssClass="fa fa-exchange fa-fw">
             <Settings order="10" VisibleName="Settings" url="/ui/keaddns/general/index"/>
+            <Status order="20" VisibleName="Status" url="/ui/keaddns/general/status"/>
             <LogFile order="100" VisibleName="Log File" url="/ui/diagnostics/log/core/keaddns"/>
         </KeaDdns>
     </Services>
