@@ -103,6 +103,8 @@ Each signing request fetches the PIV PIN and requires a physical touch of the Yu
 2. The PIV signing key must be in slot 9c. `Keys/repo.pub` must match that key.
 3. Provide the PIV PIN via `--pin-command` (any command that prints the PIN), `PIV_PIN` env var, or interactive prompt.
 
+**Key rotation:** If you replace the signing key, update the fingerprint in all three places: `Keys/fingerprint`, `README.md`, and `docs/sphinx/releases/26.1/index.rst` (then rebuild the Sphinx docs with `make -C docs/sphinx html`).
+
 **Requires:** `yubico-piv-tool` (provides `libykcs11`), `ykman`, `python3`. Remote host needs `rsync`.
 
 ## Releasing
