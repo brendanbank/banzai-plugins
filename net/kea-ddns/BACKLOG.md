@@ -17,7 +17,7 @@ Subnets inherit the global value unless explicitly overridden. Reduces
 repetitive configuration in multi-subnet deployments.
 
 - **Effort:** Medium
-- **Kea parameter:** All `ddns-*` parameters support global scope in Kea
+- **Kea parameter:** All `ddns-`* parameters support global scope in Kea
 
 ---
 
@@ -206,47 +206,52 @@ configuration. High complexity but valuable for Windows/AD environments.
 
 ### DHCP-side DDNS parameters (kea-dhcp4.conf / kea-dhcp6.conf)
 
-| Parameter | Plugin | Scope |
-|-----------|--------|-------|
-| `ddns-send-updates` | Yes | Per-subnet |
-| `ddns-update-on-renew` | Yes | Per-subnet |
-| `ddns-qualifying-suffix` | Yes | Per-subnet |
-| `ddns-generated-prefix` | Yes | Per-subnet |
-| `ddns-replace-client-name` | Yes | Per-subnet |
-| `ddns-conflict-resolution-mode` | Yes | Per-subnet |
-| `ddns-override-no-update` | **No** | — |
-| `ddns-override-client-update` | **No** | — |
-| `ddns-ttl` | **No** | — |
-| `ddns-ttl-percent` | **No** | — |
-| `ddns-ttl-min` | **No** | — |
-| `ddns-ttl-max` | **No** | — |
-| `hostname-char-set` | Hardcoded | — |
-| `hostname-char-replacement` | Hardcoded | — |
-| `dhcp-ddns.enable-updates` | Yes | Global |
-| `dhcp-ddns.server-ip` | Hardcoded | — |
-| `dhcp-ddns.server-port` | Hardcoded | — |
-| `rapid-commit` (v6 only) | Yes | Per-subnet |
+
+| Parameter                       | Plugin    | Scope      |
+| ------------------------------- | --------- | ---------- |
+| `ddns-send-updates`             | Yes       | Per-subnet |
+| `ddns-update-on-renew`          | Yes       | Per-subnet |
+| `ddns-qualifying-suffix`        | Yes       | Per-subnet |
+| `ddns-generated-prefix`         | Yes       | Per-subnet |
+| `ddns-replace-client-name`      | Yes       | Per-subnet |
+| `ddns-conflict-resolution-mode` | Yes       | Per-subnet |
+| `ddns-override-no-update`       | **No**    | —          |
+| `ddns-override-client-update`   | **No**    | —          |
+| `ddns-ttl`                      | **No**    | —          |
+| `ddns-ttl-percent`              | **No**    | —          |
+| `ddns-ttl-min`                  | **No**    | —          |
+| `ddns-ttl-max`                  | **No**    | —          |
+| `hostname-char-set`             | Hardcoded | —          |
+| `hostname-char-replacement`     | Hardcoded | —          |
+| `dhcp-ddns.enable-updates`      | Yes       | Global     |
+| `dhcp-ddns.server-ip`           | Hardcoded | —          |
+| `dhcp-ddns.server-port`         | Hardcoded | —          |
+| `rapid-commit` (v6 only)        | Yes       | Per-subnet |
+
 
 ### D2 daemon parameters (kea-dhcp-ddns.conf)
 
-| Parameter | Plugin | Notes |
-|-----------|--------|-------|
-| `ip-address` | Hardcoded (127.0.0.1) | — |
-| `port` | Hardcoded (53001) | — |
-| `dns-server-timeout` | **No** | Default 500ms |
-| `ncr-protocol` | Hardcoded (UDP) | Only UDP supported by Kea |
-| `ncr-format` | Hardcoded (JSON) | Only JSON supported by Kea |
-| `tsig-keys[].name` | Yes | — |
-| `tsig-keys[].algorithm` | Yes | — |
-| `tsig-keys[].secret` | Yes | — |
-| `tsig-keys[].digest-bits` | **No** | — |
-| `tsig-keys[].secret-file` | **No** | — |
-| `forward-ddns.ddns-domains[].name` | Yes | — |
-| `forward-ddns.ddns-domains[].key-name` | Yes | — |
-| `forward-ddns.ddns-domains[].dns-servers` | Yes (single) | Multiple not supported |
-| `reverse-ddns.ddns-domains[].name` | Yes | — |
-| `reverse-ddns.ddns-domains[].key-name` | Yes | — |
-| `reverse-ddns.ddns-domains[].dns-servers` | Yes (single) | Multiple not supported |
-| `dns-servers[].key-name` (per-server) | **No** | — |
-| `control-socket` | Hardcoded (unix) | — |
-| `loggers[].severity` | Hardcoded (INFO) | — |
+
+| Parameter                                 | Plugin                | Notes                      |
+| ----------------------------------------- | --------------------- | -------------------------- |
+| `ip-address`                              | Hardcoded (127.0.0.1) | —                          |
+| `port`                                    | Hardcoded (53001)     | —                          |
+| `dns-server-timeout`                      | **No**                | Default 500ms              |
+| `ncr-protocol`                            | Hardcoded (UDP)       | Only UDP supported by Kea  |
+| `ncr-format`                              | Hardcoded (JSON)      | Only JSON supported by Kea |
+| `tsig-keys[].name`                        | Yes                   | —                          |
+| `tsig-keys[].algorithm`                   | Yes                   | —                          |
+| `tsig-keys[].secret`                      | Yes                   | —                          |
+| `tsig-keys[].digest-bits`                 | **No**                | —                          |
+| `tsig-keys[].secret-file`                 | **No**                | —                          |
+| `forward-ddns.ddns-domains[].name`        | Yes                   | —                          |
+| `forward-ddns.ddns-domains[].key-name`    | Yes                   | —                          |
+| `forward-ddns.ddns-domains[].dns-servers` | Yes (single)          | Multiple not supported     |
+| `reverse-ddns.ddns-domains[].name`        | Yes                   | —                          |
+| `reverse-ddns.ddns-domains[].key-name`    | Yes                   | —                          |
+| `reverse-ddns.ddns-domains[].dns-servers` | Yes (single)          | Multiple not supported     |
+| `dns-servers[].key-name` (per-server)     | **No**                | —                          |
+| `control-socket`                          | Hardcoded (unix)      | —                          |
+| `loggers[].severity`                      | Hardcoded (INFO)      | —                          |
+
+

@@ -369,7 +369,7 @@ Use this when hosts have pre-existing static DNS records without DHCID.</p></li>
 </tbody>
 </table>
 </div><div aria-labelledby="tab-0-0-5" class="sphinx-tabs-panel" hidden="true" id="panel-0-0-5" name="0-5" role="tabpanel" tabindex="0"><p>Per-subnet DDNS assignments for DHCPv6 subnets. The fields are identical to the DHCPv4 tab
-but reference Kea DHCPv6 subnets.</p>
+but reference Kea DHCPv6 subnets, with an additional Rapid Commit option.</p>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p><strong>Option</strong></p></th>
@@ -397,6 +397,11 @@ but reference Kea DHCPv6 subnets.</p>
 </tr>
 <tr class="row-even"><td><p><strong>Conflict resolution</strong></p></td>
 <td><p>DHCID conflict handling mode (see DHCPv4 tab for details).</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Rapid commit</strong></p></td>
+<td><p>Enable DHCPv6 Rapid Commit (RFC 8415). When enabled, the server
+can complete the DHCPv6 exchange in two messages instead of four.
+Required for macOS clients.</p></td>
 </tr>
 </tbody>
 </table>

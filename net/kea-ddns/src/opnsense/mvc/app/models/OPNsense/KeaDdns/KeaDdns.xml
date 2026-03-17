@@ -1,6 +1,6 @@
 <model>
     <mount>//OPNsense/KeaDdns</mount>
-    <version>1.3.0</version>
+    <version>1.4.0</version>
     <description>Kea DHCP-DDNS Configuration</description>
     <items>
         <general>
@@ -9,6 +9,41 @@
                 <Required>Y</Required>
             </enabled>
             <manual_config type="BooleanField"/>
+            <qualifying_suffix type="TextField">
+                <Mask>/^([a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.)?$/u</Mask>
+                <ValidationMessage>Enter a valid FQDN ending with a dot, or leave empty.</ValidationMessage>
+            </qualifying_suffix>
+            <send_updates type="BooleanField">
+                <Default>1</Default>
+                <Required>Y</Required>
+            </send_updates>
+            <update_on_renew type="BooleanField">
+                <Default>1</Default>
+            </update_on_renew>
+            <replace_client_name type="OptionField">
+                <Default>never</Default>
+                <Required>Y</Required>
+                <OptionValues>
+                    <never>Never</never>
+                    <always>Always</always>
+                    <when-present>When present</when-present>
+                    <when-not-present>When not present</when-not-present>
+                </OptionValues>
+            </replace_client_name>
+            <conflict_resolution type="OptionField">
+                <Default>check-with-dhcid</Default>
+                <Required>Y</Required>
+                <OptionValues>
+                    <check-with-dhcid>Check with DHCID (RFC 4703)</check-with-dhcid>
+                    <no-check-with-dhcid>No check, store DHCID</no-check-with-dhcid>
+                    <check-exists-with-dhcid>Check exists with DHCID</check-exists-with-dhcid>
+                    <no-check-without-dhcid>No check, no DHCID</no-check-without-dhcid>
+                </OptionValues>
+            </conflict_resolution>
+            <generated_prefix type="TextField">
+                <Mask>/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/u</Mask>
+                <ValidationMessage>Enter a valid hostname prefix (letters, digits, hyphens).</ValidationMessage>
+            </generated_prefix>
         </general>
         <tsig_keys>
             <tsig_key type="ArrayField">
@@ -136,16 +171,22 @@
                     <Mask>/^([a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.)?$/u</Mask>
                     <ValidationMessage>Enter a valid FQDN ending with a dot, or leave empty.</ValidationMessage>
                 </qualifying_suffix>
-                <send_updates type="BooleanField">
-                    <Default>1</Default>
-                    <Required>Y</Required>
+                <send_updates type="OptionField">
+                    <BlankDesc>Use global default</BlankDesc>
+                    <OptionValues>
+                        <option_1 value="1">Yes</option_1>
+                        <option_0 value="0">No</option_0>
+                    </OptionValues>
                 </send_updates>
-                <update_on_renew type="BooleanField">
-                    <Default>1</Default>
+                <update_on_renew type="OptionField">
+                    <BlankDesc>Use global default</BlankDesc>
+                    <OptionValues>
+                        <option_1 value="1">Yes</option_1>
+                        <option_0 value="0">No</option_0>
+                    </OptionValues>
                 </update_on_renew>
                 <replace_client_name type="OptionField">
-                    <Default>never</Default>
-                    <Required>Y</Required>
+                    <BlankDesc>Use global default</BlankDesc>
                     <OptionValues>
                         <never>Never</never>
                         <always>Always</always>
@@ -154,8 +195,7 @@
                     </OptionValues>
                 </replace_client_name>
                 <conflict_resolution type="OptionField">
-                    <Default>check-with-dhcid</Default>
-                    <Required>Y</Required>
+                    <BlankDesc>Use global default</BlankDesc>
                     <OptionValues>
                         <check-with-dhcid>Check with DHCID (RFC 4703)</check-with-dhcid>
                         <no-check-with-dhcid>No check, store DHCID</no-check-with-dhcid>
@@ -195,16 +235,22 @@
                     <Mask>/^([a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.)?$/u</Mask>
                     <ValidationMessage>Enter a valid FQDN ending with a dot, or leave empty.</ValidationMessage>
                 </qualifying_suffix>
-                <send_updates type="BooleanField">
-                    <Default>1</Default>
-                    <Required>Y</Required>
+                <send_updates type="OptionField">
+                    <BlankDesc>Use global default</BlankDesc>
+                    <OptionValues>
+                        <option_1 value="1">Yes</option_1>
+                        <option_0 value="0">No</option_0>
+                    </OptionValues>
                 </send_updates>
-                <update_on_renew type="BooleanField">
-                    <Default>1</Default>
+                <update_on_renew type="OptionField">
+                    <BlankDesc>Use global default</BlankDesc>
+                    <OptionValues>
+                        <option_1 value="1">Yes</option_1>
+                        <option_0 value="0">No</option_0>
+                    </OptionValues>
                 </update_on_renew>
                 <replace_client_name type="OptionField">
-                    <Default>never</Default>
-                    <Required>Y</Required>
+                    <BlankDesc>Use global default</BlankDesc>
                     <OptionValues>
                         <never>Never</never>
                         <always>Always</always>
@@ -213,8 +259,7 @@
                     </OptionValues>
                 </replace_client_name>
                 <conflict_resolution type="OptionField">
-                    <Default>check-with-dhcid</Default>
-                    <Required>Y</Required>
+                    <BlankDesc>Use global default</BlankDesc>
                     <OptionValues>
                         <check-with-dhcid>Check with DHCID (RFC 4703)</check-with-dhcid>
                         <no-check-with-dhcid>No check, store DHCID</no-check-with-dhcid>

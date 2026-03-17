@@ -10,6 +10,24 @@ hook to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
 Plugin Changelog
 ================
 
+2.2
+
+Added:
+* Global DDNS defaults on the Settings tab: qualifying suffix, send updates,
+  update on renew, replace client name, conflict resolution, and generated
+  prefix. These defaults are emitted as Kea global parameters and inherited
+  by all subnets unless explicitly overridden.
+* Per-subnet DDNS fields now show "Use global default" as the default option.
+  Only explicitly set values are emitted in the per-subnet config.
+
+2.1_1
+
+Fixed:
+* Syslog multi-line log joining: replaced flags(syslog-protocol) with an
+  explicit template() in the syslog-ng destination so that the newline rewrite
+  actually takes effect. DDNS events now appear as single lines in the log
+  viewer instead of 9 separate entries.
+
 2.1
 
 Added:

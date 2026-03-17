@@ -195,7 +195,7 @@ Subnet DDNS, and Subnet6 DDNS.
     .. tab:: Subnet6 DDNS (DHCPv6)
 
         Per-subnet DDNS assignments for DHCPv6 subnets. The fields are identical to the DHCPv4 tab
-        but reference Kea DHCPv6 subnets.
+        but reference Kea DHCPv6 subnets, with an additional Rapid Commit option.
 
         ========================================= ====================================================================================
         **Option**                                **Description**
@@ -207,6 +207,9 @@ Subnet DDNS, and Subnet6 DDNS.
         **Update on renew**                       Send DNS updates on lease renewals.
         **Replace client name**                   Controls hostname replacement (see DHCPv4 tab for details).
         **Conflict resolution**                   DHCID conflict handling mode (see DHCPv4 tab for details).
+        **Rapid commit**                          Enable DHCPv6 Rapid Commit (RFC 8415). When enabled, the server
+                                                  can complete the DHCPv6 exchange in two messages instead of four.
+                                                  Required for macOS clients.
         ========================================= ====================================================================================
 
         .. note::
