@@ -3,6 +3,7 @@
         const data_get_map = {'frm_generalsettings':"/api/keaddns/general/get"};
         mapDataToFormUI(data_get_map).done(function(data){
             updateServiceControlUI('kea');
+            toggleGlobalGeneratedPrefix();
         });
 
         $("#gridTsigKeys").UIBootgrid({
@@ -62,6 +63,12 @@
             add:'/api/keaddns/general/addSubnet6Ddns/',
             del:'/api/keaddns/general/delSubnet6Ddns/'
         });
+
+        function toggleGlobalGeneratedPrefix() {
+            var val = $('select[id$="general.replace_client_name"]').val();
+            $('*[id$="general.generated_prefix"]').closest('tr').toggle(val !== 'never');
+        }
+        $('select[id$="general.replace_client_name"]').on('change', toggleGlobalGeneratedPrefix);
 
         function toggleGeneratedPrefix(dialogId) {
             var replaceVal = $('#' + dialogId + ' select[id$="assignment.replace_client_name"]').val();
