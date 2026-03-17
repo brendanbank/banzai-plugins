@@ -117,21 +117,91 @@ class KeaDdns extends BaseModel
     }
 
     /**
+     * Build the global DDNS defaults array from general settings.
+     */
+    private function buildGlobalDdnsDefaults()
+    {
+        $globals = [
+            'dhcp-ddns' => [
+                'enable-updates' => true,
+                'server-ip' => '127.0.0.1',
+                'server-port' => 53001,
+            ],
+            'hostname-char-set' => '[^A-Za-z0-9.-]',
+            'hostname-char-replacement' => '-',
+            'ddns-send-updates' => (string)$this->general->send_updates === '1',
+            'ddns-update-on-renew' => (string)$this->general->update_on_renew === '1',
+            'ddns-replace-client-name' => (string)$this->general->replace_client_name,
+            'ddns-conflict-resolution-mode' => (string)$this->general->conflict_resolution,
+        ];
+
+        $suffix = (string)$this->general->qualifying_suffix;
+        if ($suffix !== '') {
+            if (substr($suffix, -1) !== '.') {
+                $suffix .= '.';
+            }
+            $globals['ddns-qualifying-suffix'] = $suffix;
+        }
+
+        $prefix = (string)$this->general->generated_prefix;
+        if ($prefix !== '') {
+            $globals['ddns-generated-prefix'] = $prefix;
+        }
+
+        return $globals;
+    }
+
+    /**
+     * Build per-subnet DDNS entry from an assignment, only including
+     * fields that have explicit overrides (non-empty values).
+     */
+    private function buildSubnetDdnsEntry($assignment)
+    {
+        $entry = [];
+
+        $val = (string)$assignment->send_updates;
+        if ($val !== '') {
+            $entry['ddns-send-updates'] = ($val === '1');
+        }
+
+        $val = (string)$assignment->update_on_renew;
+        if ($val !== '') {
+            $entry['ddns-update-on-renew'] = ($val === '1');
+        }
+
+        $val = (string)$assignment->replace_client_name;
+        if ($val !== '') {
+            $entry['ddns-replace-client-name'] = $val;
+        }
+
+        $val = (string)$assignment->conflict_resolution;
+        if ($val !== '') {
+            $entry['ddns-conflict-resolution-mode'] = $val;
+        }
+
+        if (!$assignment->qualifying_suffix->isEmpty()) {
+            $suffix = $assignment->qualifying_suffix->getValue();
+            if (substr($suffix, -1) !== '.') {
+                $suffix .= '.';
+            }
+            $entry['ddns-qualifying-suffix'] = $suffix;
+        }
+
+        if (!$assignment->generated_prefix->isEmpty()) {
+            $entry['ddns-generated-prefix'] = $assignment->generated_prefix->getValue();
+        }
+
+        return $entry;
+    }
+
+    /**
      * Return the DDNS overlay for kea-dhcp6.conf. Contains global DDNS settings
      * and per-subnet parameters keyed by CIDR string.
      */
     public function getDhcpv6Overlay()
     {
         $result = [
-            'global' => [
-                'dhcp-ddns' => [
-                    'enable-updates' => true,
-                    'server-ip' => '127.0.0.1',
-                    'server-port' => 53001,
-                ],
-                'hostname-char-set' => '[^A-Za-z0-9.-]',
-                'hostname-char-replacement' => '-',
-            ],
+            'global' => $this->buildGlobalDdnsDefaults(),
             'subnets' => [],
         ];
 
@@ -149,23 +219,9 @@ class KeaDdns extends BaseModel
             }
             $cidr = $subnetCidrMap[$subnetUuid];
 
-            $entry = [
-                'ddns-send-updates' => $assignment->send_updates->isEqual('1'),
-                'ddns-update-on-renew' => $assignment->update_on_renew->isEqual('1'),
-                'ddns-conflict-resolution-mode' => $assignment->conflict_resolution->getValue(),
-                'ddns-replace-client-name' => $assignment->replace_client_name->getValue(),
-                'rapid-commit' => $assignment->rapid_commit->isEqual('1'),
-            ];
-            if (!$assignment->qualifying_suffix->isEmpty()) {
-                $suffix = $assignment->qualifying_suffix->getValue();
-                if (substr($suffix, -1) !== '.') {
-                    $suffix .= '.';
-                }
-                $entry['ddns-qualifying-suffix'] = $suffix;
-            }
-            if (!$assignment->generated_prefix->isEmpty()) {
-                $entry['ddns-generated-prefix'] = $assignment->generated_prefix->getValue();
-            }
+            $entry = $this->buildSubnetDdnsEntry($assignment);
+            $entry['rapid-commit'] = $assignment->rapid_commit->isEqual('1');
+
             $result['subnets'][$cidr] = $entry;
         }
 
@@ -179,15 +235,7 @@ class KeaDdns extends BaseModel
     public function getDhcpv4Overlay()
     {
         $result = [
-            'global' => [
-                'dhcp-ddns' => [
-                    'enable-updates' => true,
-                    'server-ip' => '127.0.0.1',
-                    'server-port' => 53001,
-                ],
-                'hostname-char-set' => '[^A-Za-z0-9.-]',
-                'hostname-char-replacement' => '-',
-            ],
+            'global' => $this->buildGlobalDdnsDefaults(),
             'subnets' => [],
         ];
 
@@ -205,23 +253,7 @@ class KeaDdns extends BaseModel
             }
             $cidr = $subnetCidrMap[$subnetUuid];
 
-            $entry = [
-                'ddns-send-updates' => $assignment->send_updates->isEqual('1'),
-                'ddns-update-on-renew' => $assignment->update_on_renew->isEqual('1'),
-                'ddns-conflict-resolution-mode' => $assignment->conflict_resolution->getValue(),
-                'ddns-replace-client-name' => $assignment->replace_client_name->getValue(),
-            ];
-            if (!$assignment->qualifying_suffix->isEmpty()) {
-                $suffix = $assignment->qualifying_suffix->getValue();
-                if (substr($suffix, -1) !== '.') {
-                    $suffix .= '.';
-                }
-                $entry['ddns-qualifying-suffix'] = $suffix;
-            }
-            if (!$assignment->generated_prefix->isEmpty()) {
-                $entry['ddns-generated-prefix'] = $assignment->generated_prefix->getValue();
-            }
-            $result['subnets'][$cidr] = $entry;
+            $result['subnets'][$cidr] = $this->buildSubnetDdnsEntry($assignment);
         }
 
         return $result;
