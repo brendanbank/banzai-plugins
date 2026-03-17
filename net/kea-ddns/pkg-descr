@@ -10,6 +10,14 @@ hook to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
 Plugin Changelog
 ================
 
+2.1_1
+
+Fixed:
+* Syslog multi-line log joining: replaced flags(syslog-protocol) with an
+  explicit template() in the syslog-ng destination so that the newline rewrite
+  actually takes effect. DDNS events now appear as single lines in the log
+  viewer instead of 9 separate entries.
+
 2.1
 
 Added:
