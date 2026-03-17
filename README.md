@@ -161,6 +161,25 @@ You can combine `--dev` with `--test` to build devel packages without signing:
 ./build.sh --test --dev <firewall-hostname>
 ```
 
+### Building on the firewall
+
+You can build plugins directly on an OPNsense firewall without `build.sh`. Clone the repo, set up the build infrastructure, and use `make package` in any plugin directory:
+
+```sh
+git clone --recurse-submodules git@github.com:brendanbank/banzai-plugins.git
+cd banzai-plugins
+make setup
+cd net/kea-ddns
+make package
+ls -la work/pkg/os-kea-ddns-*.pkg
+```
+
+Install the built package:
+
+```sh
+pkg add work/pkg/os-kea-ddns-*.pkg
+```
+
 ## CI/CD
 
 A GitHub Actions workflow (`.github/workflows/publish-dev-repo.yml`) deploys to GitHub Pages on every push to `main` or `devel`. It merges:
