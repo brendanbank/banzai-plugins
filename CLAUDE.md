@@ -38,13 +38,50 @@ The repo itself is tagged with semver-style versions:
 
 Individual plugins have their own `PLUGIN_VERSION` in their Makefile.
 
+## Branch Model
+
+Two long-lived branches serve the GitHub Pages pkg repos:
+
+- **`main`** — source code and stable repo (`docs/<ABI>/<series>/repo/`)
+- **`devel`** — dev repo overlay (`docs/<ABI>/<series>/dev/repo/`)
+
+The GitHub Actions workflow (`publish-dev-repo.yml`) deploys Pages by copying
+`main`'s `docs/` first, then overlaying `devel`'s `docs/.../dev/` on top. This
+means **dev repo packages must be committed to the `devel` branch** for Pages
+to serve them. If `devel` has stale packages, they overwrite newer ones from
+`main`.
+
 ## Releasing
+
+### Stable release
 
 1. Bump `PLUGIN_VERSION` in `<category>/<plugin>/Makefile`
 2. Update changelog in `<category>/<plugin>/pkg-descr`
 3. `./build.sh <firewall>`
 4. Commit source + docs changes, tag `v<version>`, push with tags
 5. `gh release create v<version> dist/*.pkg`
+
+### Dev release
+
+1. Start the PIV signing agent: `python3 tools/piv-sign-agent.py`
+2. `./build.sh --dev <firewall>` — builds `-devel` packages and updates
+   `docs/<ABI>/<series>/dev/repo/`
+3. Commit the dev repo changes to the **`devel`** branch (not `main`):
+   ```sh
+   git checkout devel
+   git merge <your-branch>           # sync source changes first
+   git add docs/<ABI>/<series>/dev/
+   git commit -m "Update dev repo with <package> <version>"
+   git push origin devel
+   ```
+4. The Pages workflow triggers on `devel` push and deploys the updated dev repo
+5. On the firewall, enable the dev repo and install:
+   ```sh
+   sudo sed -i '' 's/enabled: no/enabled: yes/' \
+     /usr/local/etc/pkg/repos/banzai-plugins-dev.conf
+   sudo pkg update -r banzai-plugins-dev
+   sudo pkg install -r banzai-plugins-dev os-<name>-devel
+   ```
 
 ## Adding a New Plugin
 

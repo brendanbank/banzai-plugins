@@ -107,7 +107,23 @@ Each signing request fetches the PIV PIN and requires a physical touch of the Yu
 
 **Requires:** `yubico-piv-tool` (provides `libykcs11`), `ykman`, `python3`. Remote host needs `rsync`.
 
+## Branch Model
+
+Two long-lived branches serve the GitHub Pages pkg repos:
+
+- **`main`** — source code, stable repo packages (`docs/<ABI>/<series>/repo/`), documentation
+- **`devel`** — dev repo overlay (`docs/<ABI>/<series>/dev/repo/`)
+
+The GitHub Actions workflow deploys Pages by copying `main`'s `docs/` first, then overlaying `devel`'s dev directory on top. This means:
+
+- **Stable** repo packages must be committed to `main`
+- **Dev** repo packages must be committed to `devel`
+
+If `devel` falls behind `main`, merge `main` into `devel` to sync.
+
 ## Releasing
+
+### Stable release
 
 1. Bump `PLUGIN_VERSION` in `<category>/<plugin>/Makefile`
 2. Update the changelog in `<category>/<plugin>/pkg-descr`
@@ -115,6 +131,36 @@ Each signing request fetches the PIV PIN and requires a physical touch of the Yu
 4. Commit source changes, tag `v<version>`, push with tags
 5. Commit and push `docs/` to update GitHub Pages
 6. Create a GitHub Release: `gh release create v<version> dist/<pkg>.pkg`
+
+### Dev release
+
+Dev packages have an `os-<name>-devel` suffix, are TIER 4, and conflict with their stable counterpart. They are served from a separate dev repo on GitHub Pages.
+
+1. Ensure the PIV signing agent is running: `python3 tools/piv-sign-agent.py`
+2. Build dev packages: `./build.sh --dev <firewall>`
+3. Commit the dev repo to the **`devel`** branch:
+    ```sh
+    git checkout devel
+    git merge <your-branch>           # sync source changes first
+    git add docs/<ABI>/<series>/dev/
+    git commit -m "Update dev repo with <package> <version>"
+    git push origin devel
+    ```
+4. The Pages workflow triggers on `devel` push and deploys the updated dev repo
+
+**Installing dev packages on a firewall:**
+
+```sh
+# Enable the dev repo (one-time)
+sudo sed -i '' 's/enabled: no/enabled: yes/' \
+  /usr/local/etc/pkg/repos/banzai-plugins-dev.conf
+
+# Install
+sudo pkg update -r banzai-plugins-dev
+sudo pkg install -r banzai-plugins-dev os-<name>-devel
+```
+
+To switch back to stable, remove the devel package and install the stable one. The dev repo can be disabled again by reversing the `sed` command above.
 
 ## Updating Build Infrastructure
 
