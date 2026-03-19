@@ -1,0 +1,36 @@
+# ddns_interaction_test.conf — Configuration for the DDNS interaction test
+#
+# Copy to ddns_interaction_test.conf and edit to match your environment.
+# All variables are required unless marked optional.
+
+# OPNsense target host (IP or hostname)
+OPN_HOST=10.0.10.144
+
+# SSH user for remote commands (default: root). Non-root uses sudo.
+#OPN_SSH_USER=brendan
+
+# API key file: one line with "key:secret" format
+# Generate at System > Access > Users > [user] > API keys
+OPN_API_KEY_FILE=~/opn267.internal_root_apikey.txt
+
+# DNS zone for DDNS testing
+DDNS_ZONE=test.banzai.nl
+
+# Authoritative DNS server for the zone
+DDNS_NS=10.0.10.4
+
+# TSIG key for authenticated DNS updates
+TSIG_KEY_NAME=key.dyn.bgwlan.nl
+TSIG_KEY_ALGORITHM=hmac-sha512
+TSIG_KEY_SECRET=  # base64-encoded TSIG secret
+
+# DHCPv4 test subnet interface (used to find the right subnet UUID)
+# This should match a Kea DHCPv4-enabled interface/subnet
+TEST_SUBNET_PATTERN=10.99.99
+
+# Plugin package name
+PLUGIN_PKG=os-kea-ddns
+
+# Optional: local .pkg file path for direct install via SCP
+# If set, the test will SCP this file to the firewall instead of pkg install from repo
+#PLUGIN_PKG_FILE=/path/to/os-kea-ddns-2.2.pkg
