@@ -10,6 +10,13 @@ hook to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
 Plugin Changelog
 ================
 
+2.2_1
+
+Fixed:
+* Disabled plugin no longer overwrites keactrl.conf — when core DDNS (PR #9923)
+  is enabled and the plugin is disabled, the plugin's kea_sync hook was setting
+  dhcp_ddns=no, preventing the kea-dhcp-ddns daemon from starting.
+
 2.2
 
 Added:

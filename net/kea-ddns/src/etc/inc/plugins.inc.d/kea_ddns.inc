@@ -50,7 +50,6 @@ function kea_ddns_configure_do($verbose = false)
     try {
         $mdl = new \OPNsense\KeaDdns\KeaDdns();
         if (!$mdl->general->enabled->isEqual('1')) {
-            kea_ddns_update_keactrl(false);
             return;
         }
 
