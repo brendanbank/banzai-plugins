@@ -81,6 +81,30 @@ Subnet DDNS, and Subnet6 DDNS.
                                                   manually at ``/usr/local/etc/kea/kea-dhcp-ddns.conf``.
         ========================================= ====================================================================================
 
+        **DDNS Defaults**
+
+        These global defaults are emitted as Kea root-level parameters and inherited by all subnets.
+        Per-subnet DDNS assignments default to "Use global default" — only explicitly set values
+        override these globals.
+
+        ========================================= ====================================================================================
+        **Option**                                **Description**
+        ========================================= ====================================================================================
+        **Qualifying suffix**                     Default FQDN suffix appended to bare hostnames (e.g. ``dyn.example.com.``).
+                                                  Must end with a dot. Can be overridden per subnet.
+        **Send updates**                          Default for sending DDNS updates. Default: enabled. Can be overridden per subnet.
+        **Update on renew**                       Default for sending DNS updates on lease renewals. Default: enabled.
+                                                  Can be overridden per subnet.
+        **Replace client name**                   Default for replacing client-sent hostnames. Options: ``Never`` (default),
+                                                  ``Always``, ``When present``, ``When not present``.
+                                                  Can be overridden per subnet.
+        **Conflict resolution**                   Default DHCID conflict resolution mode. Options: ``Check with DHCID`` (default),
+                                                  ``No check, store DHCID``, ``Check exists with DHCID``, ``No check, no DHCID``.
+                                                  Can be overridden per subnet.
+        **Generated prefix**                      Default prefix for auto-generated hostnames when replacing client name
+                                                  (Kea default: ``myhost``). Can be overridden per subnet.
+        ========================================= ====================================================================================
+
     .. tab:: TSIG Keys
 
         TSIG keys provide authentication for DNS UPDATE requests (RFC 2845). The key name, algorithm, and
@@ -164,7 +188,9 @@ Subnet DDNS, and Subnet6 DDNS.
     .. tab:: Subnet DDNS (DHCPv4)
 
         Per-subnet DDNS assignments control which DHCPv4 subnets get dynamic DNS updates and how
-        hostnames are handled.
+        hostnames are handled. All fields except Subnet and Forward zone default to "Use global
+        default", inheriting the value from the Settings tab. Only explicitly set values are
+        emitted in the per-subnet configuration.
 
         ========================================= ====================================================================================
         **Option**                                **Description**
@@ -195,7 +221,8 @@ Subnet DDNS, and Subnet6 DDNS.
     .. tab:: Subnet6 DDNS (DHCPv6)
 
         Per-subnet DDNS assignments for DHCPv6 subnets. The fields are identical to the DHCPv4 tab
-        but reference Kea DHCPv6 subnets, with an additional Rapid Commit option.
+        but reference Kea DHCPv6 subnets, with an additional Rapid Commit option. All fields
+        default to "Use global default" unless explicitly overridden.
 
         ========================================= ====================================================================================
         **Option**                                **Description**
@@ -366,6 +393,9 @@ and configure:
         Option                              Value
         ==================================  =======================================================================================================
         **Enabled**                         ``X``
+        **Qualifying suffix**               ``dyn.example.com.``
+        **Send updates**                    ``X``
+        **Conflict resolution**             ``Check with DHCID (RFC 4703)``
         ==================================  =======================================================================================================
 
     .. tab:: TSIG Keys
@@ -412,12 +442,11 @@ and configure:
         Option                              Value
         ==================================  =======================================================================================================
         **Subnet**                          ``192.168.1.0/24``
-        **Qualifying suffix**                ``lan.dyn.example.com.``
-        **Send updates**                    ``X``
-        **Conflict resolution**             ``Check with DHCID (RFC 4703)``
+        **Qualifying suffix**                ``lan.dyn.example.com.`` (overrides the global default)
         ==================================  =======================================================================================================
 
-        Press **Save**.
+        The remaining fields (send updates, conflict resolution, etc.) inherit from the global
+        DDNS defaults on the Settings tab. Press **Save**.
 
 Press **Apply** to activate. The ``kea-dhcp-ddns`` daemon starts and Kea DHCPv4
 begins sending DDNS updates.
