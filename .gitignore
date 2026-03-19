@@ -13,6 +13,6 @@ docs/objects.inv
 docs/**/repo/sign-repo.sh
 docs/**/repo/sign-repo.py
 docs/**/repo/repo.pub
-tools/opnsense-build.conf
 .vscode/settings.json
 .env
+net/kea-ddns/scripts/tests/interaction/ddns_interaction_test.conf

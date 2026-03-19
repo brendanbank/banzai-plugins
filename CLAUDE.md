@@ -102,47 +102,11 @@ to serve them. If `devel` has stale packages, they overwrite newer ones from
 - `$internalModelName` in API controllers must match the `<id>` prefix in `forms/*.xml`
 - Model fields go at root of `<items>` (no wrapper element)
 
-## Build Server Tools (`tools/`)
+## Build Server Tools
 
-Three scripts handle the OPNsense VM image build lifecycle:
-
-- **`tools/create-build-vm.sh`** — runs locally on a KVM/libvirt host to
-  create a FreeBSD build server VM. Self-contained, no SSH wrappers.
-- **`tools/opnsense-build.sh`** — workstation-side orchestrator that operates
-  on the build server via SSH.
-- **`tools/opnsense-build-server.sh`** — runs directly on the build server for
-  local builds. Check out the repo on the build server to use.
-
-```sh
-# On the KVM host: create a build VM
-./tools/create-build-vm.sh create --ssh-pubkey ~/.ssh/id_ed25519.pub
-
-# On your workstation: orchestrate remote builds
-./tools/opnsense-build.sh bootstrap     # clone OPNsense repos, sync server script
-./tools/opnsense-build.sh update        # pull latest code for all repos
-./tools/opnsense-build.sh sync-device   # sync BANZAI.conf to build server
-./tools/opnsense-build.sh build         # full VM image build (or: build base kernel ports ...)
-./tools/opnsense-build.sh status        # show repo state, artifacts, disk/RAM
-./tools/opnsense-build.sh deploy        # deploy image to KVM guest
-./tools/opnsense-build.sh series 26.7   # switch repos to a new release series
-
-# On the build server: run builds directly
-opnsense-build-server.sh build          # full build
-opnsense-build-server.sh build core vm  # rebuild specific stages
-opnsense-build-server.sh status         # show local server state
-opnsense-build-server.sh update         # pull latest repos
-
-# Or via Makefile (if banzai-plugins is checked out on the build server)
-cd banzai-plugins/tools && make build
-```
-
-Configuration lives in `tools/opnsense-build.conf` (git-ignored, user-local).
-Copy `opnsense-build.conf.sample` to get started. Key settings: `BUILD_HOST`
-(SSH target), `SERIES` (release series), `KVM_HOST` (for deployment).
-
-Shared helpers are in `tools/lib/common.sh` (SSH wrappers, logging, remote git
-operations). All `/usr` repos on the build server are root-owned, so git/make
-commands go through `sudo`.
+The OPNsense VM image build system lives in a separate repo:
+[banzai-build](https://github.com/brendanbank/banzai-build). See its CLAUDE.md
+for build, deploy, and VM creation instructions.
 
 ## Plugin Layout
 
