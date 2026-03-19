@@ -213,6 +213,44 @@ manually at <code class="docutils literal notranslate"><span class="pre">/usr/lo
 </tr>
 </tbody>
 </table>
+<p><strong>DDNS Defaults</strong></p>
+<p>These global defaults are emitted as Kea root-level parameters and inherited by all subnets.
+Per-subnet DDNS assignments default to “Use global default” — only explicitly set values
+override these globals.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Option</strong></p></th>
+<th class="head"><p><strong>Description</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Qualifying suffix</strong></p></td>
+<td><p>Default FQDN suffix appended to bare hostnames (e.g. <code class="docutils literal notranslate"><span class="pre">dyn.example.com.</span></code>).
+Must end with a dot. Can be overridden per subnet.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Send updates</strong></p></td>
+<td><p>Default for sending DDNS updates. Default: enabled. Can be overridden per subnet.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Update on renew</strong></p></td>
+<td><p>Default for sending DNS updates on lease renewals. Default: enabled.
+Can be overridden per subnet.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Replace client name</strong></p></td>
+<td><p>Default for replacing client-sent hostnames. Options: <code class="docutils literal notranslate"><span class="pre">Never</span></code> (default),
+<code class="docutils literal notranslate"><span class="pre">Always</span></code>, <code class="docutils literal notranslate"><span class="pre">When</span> <span class="pre">present</span></code>, <code class="docutils literal notranslate"><span class="pre">When</span> <span class="pre">not</span> <span class="pre">present</span></code>.
+Can be overridden per subnet.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Conflict resolution</strong></p></td>
+<td><p>Default DHCID conflict resolution mode. Options: <code class="docutils literal notranslate"><span class="pre">Check</span> <span class="pre">with</span> <span class="pre">DHCID</span></code> (default),
+<code class="docutils literal notranslate"><span class="pre">No</span> <span class="pre">check,</span> <span class="pre">store</span> <span class="pre">DHCID</span></code>, <code class="docutils literal notranslate"><span class="pre">Check</span> <span class="pre">exists</span> <span class="pre">with</span> <span class="pre">DHCID</span></code>, <code class="docutils literal notranslate"><span class="pre">No</span> <span class="pre">check,</span> <span class="pre">no</span> <span class="pre">DHCID</span></code>.
+Can be overridden per subnet.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Generated prefix</strong></p></td>
+<td><p>Default prefix for auto-generated hostnames when replacing client name
+(Kea default: <code class="docutils literal notranslate"><span class="pre">myhost</span></code>). Can be overridden per subnet.</p></td>
+</tr>
+</tbody>
+</table>
 </div><div aria-labelledby="tab-0-0-1" class="sphinx-tabs-panel" hidden="true" id="panel-0-0-1" name="0-1" role="tabpanel" tabindex="0"><p>TSIG keys provide authentication for DNS UPDATE requests (RFC 2845). The key name, algorithm, and
 secret must match the configuration on your DNS server.</p>
 <table class="docutils align-default">
@@ -319,7 +357,9 @@ For a <code class="docutils literal notranslate"><span class="pre">/48</span></c
 The auto-derive feature handles this conversion automatically.</p>
 </div>
 </div><div aria-labelledby="tab-0-0-4" class="sphinx-tabs-panel" hidden="true" id="panel-0-0-4" name="0-4" role="tabpanel" tabindex="0"><p>Per-subnet DDNS assignments control which DHCPv4 subnets get dynamic DNS updates and how
-hostnames are handled.</p>
+hostnames are handled. All fields except Subnet and Forward zone default to “Use global
+default”, inheriting the value from the Settings tab. Only explicitly set values are
+emitted in the per-subnet configuration.</p>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p><strong>Option</strong></p></th>
@@ -369,7 +409,8 @@ Use this when hosts have pre-existing static DNS records without DHCID.</p></li>
 </tbody>
 </table>
 </div><div aria-labelledby="tab-0-0-5" class="sphinx-tabs-panel" hidden="true" id="panel-0-0-5" name="0-5" role="tabpanel" tabindex="0"><p>Per-subnet DDNS assignments for DHCPv6 subnets. The fields are identical to the DHCPv4 tab
-but reference Kea DHCPv6 subnets, with an additional Rapid Commit option.</p>
+but reference Kea DHCPv6 subnets, with an additional Rapid Commit option. All fields
+default to “Use global default” unless explicitly overridden.</p>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p><strong>Option</strong></p></th>
@@ -583,6 +624,15 @@ and configure:</p>
 <tr class="row-even"><td><p><strong>Enabled</strong></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">X</span></code></p></td>
 </tr>
+<tr class="row-odd"><td><p><strong>Qualifying suffix</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dyn.example.com.</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Send updates</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">X</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Conflict resolution</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Check</span> <span class="pre">with</span> <span class="pre">DHCID</span> <span class="pre">(RFC</span> <span class="pre">4703)</span></code></p></td>
+</tr>
 </tbody>
 </table>
 </div><div aria-labelledby="tab-2-2-1" class="sphinx-tabs-panel" hidden="true" id="panel-2-2-1" name="2-1" role="tabpanel" tabindex="0"><table class="docutils align-default">
@@ -659,17 +709,12 @@ and configure:</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">192.168.1.0/24</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><strong>Qualifying suffix</strong></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">lan.dyn.example.com.</span></code></p></td>
-</tr>
-<tr class="row-even"><td><p><strong>Send updates</strong></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">X</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><strong>Conflict resolution</strong></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Check</span> <span class="pre">with</span> <span class="pre">DHCID</span> <span class="pre">(RFC</span> <span class="pre">4703)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">lan.dyn.example.com.</span></code> (overrides the global default)</p></td>
 </tr>
 </tbody>
 </table>
-<p>Press <strong>Save</strong>.</p>
+<p>The remaining fields (send updates, conflict resolution, etc.) inherit from the global
+DDNS defaults on the Settings tab. Press <strong>Save</strong>.</p>
 </div></div>
 <p>Press <strong>Apply</strong> to activate. The <code class="docutils literal notranslate"><span class="pre">kea-dhcp-ddns</span></code> daemon starts and Kea DHCPv4
 begins sending DDNS updates.</p>
