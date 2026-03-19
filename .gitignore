@@ -13,6 +13,5 @@ docs/objects.inv
 docs/**/repo/sign-repo.sh
 docs/**/repo/sign-repo.py
 docs/**/repo/repo.pub
-tools/opnsense-build.conf
 .vscode/settings.json
 .env
