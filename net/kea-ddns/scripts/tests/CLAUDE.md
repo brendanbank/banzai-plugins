@@ -55,15 +55,15 @@ Copy `scripts/tests/interaction/ddns_interaction_test.conf.sample` to
 | 1 | Core DDNS only | PR #9923 works standalone (config, daemon, keactrl) |
 | 2 | Plugin only | Plugin works with core DDNS disabled |
 | 3 | Both enabled | Which config wins, duplicates, restart behavior |
-| 4 | Core + disabled plugin | Plugin should be inert (known bug: overwrites keactrl) |
+| 4 | Core + disabled plugin | Plugin should be inert (fixed in 2.2_1) |
 | 5 | Cleanup | Uninstall, orphan check, TSIG format, final reset |
 
-### Known Issue (Phase 4)
+### Phase 4 Bug (Fixed in 2.2_1)
 
-When the plugin is installed but disabled and core DDNS is enabled, the
-plugin's `kea_ddns_configure_do()` calls `kea_ddns_update_keactrl(false)`,
-overwriting core's `dhcp_ddns=yes`. Fix: check whether core DDNS is active
-before touching `keactrl.conf` when the plugin is disabled.
+When the plugin was installed but disabled and core DDNS was enabled, the
+plugin's `kea_ddns_configure_do()` called `kea_ddns_update_keactrl(false)`,
+overwriting core's `dhcp_ddns=yes`. Fixed in 2.2_1 by removing the
+`kea_ddns_update_keactrl(false)` call — a disabled plugin is now fully inert.
 
 ### Files
 

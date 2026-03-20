@@ -104,9 +104,9 @@ to serve them. If `devel` has stale packages, they overwrite newer ones from
 
 ## Build Server Tools
 
-The OPNsense VM image build system lives in a separate repo:
-[banzai-build](https://github.com/brendanbank/banzai-build). See its CLAUDE.md
-for build, deploy, and VM creation instructions.
+The OPNsense VM image build system lives in a separate private repo
+(banzai-build). See its CLAUDE.md for build, deploy, and VM creation
+instructions.
 
 ## Plugin Layout
 
