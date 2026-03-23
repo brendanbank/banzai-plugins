@@ -9,15 +9,6 @@
         </grid_view>
     </field>
     <field>
-        <id>assignment.forward_zone</id>
-        <label>Forward zone</label>
-        <type>dropdown</type>
-        <help>Forward DNS zone for this subnet.</help>
-        <grid_view>
-            <visible>false</visible>
-        </grid_view>
-    </field>
-    <field>
         <id>assignment.qualifying_suffix</id>
         <label>Qualifying suffix</label>
         <type>text</type>

@@ -113,7 +113,6 @@ if [ -n "$_zone_uuid" ] && [ -n "$SUBNET_UUID" ]; then
     _assign_body=$(cat <<EOJSON
 {"assignment":{
     "subnet":"${SUBNET_UUID}",
-    "forward_zone":"${_zone_uuid}",
     "qualifying_suffix":"${DDNS_ZONE}.",
     "send_updates":"1"
 }}
