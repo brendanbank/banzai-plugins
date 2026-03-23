@@ -10,6 +10,18 @@ hook to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
 Plugin Changelog
 ================
 
+2.3
+
+Added:
+* Duplicate subnet validation: prevent adding multiple DDNS assignments
+  for the same subnet (UniqueConstraint on DHCPv4 and DHCPv6 subnet fields).
+
+Removed:
+* Forward zone dropdown from subnet DDNS assignment dialogs. The field had
+  no effect on the generated Kea configuration — the D2 daemon automatically
+  matches FQDNs against all configured forward zones. The forward zones
+  configuration section itself is unchanged.
+
 2.2_1
 
 Fixed:
