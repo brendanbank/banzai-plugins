@@ -157,6 +157,12 @@
                         </subnets>
                     </Model>
                     <ValidationMessage>Select a Kea DHCPv4 subnet.</ValidationMessage>
+                    <Constraints>
+                        <check001>
+                            <type>UniqueConstraint</type>
+                            <ValidationMessage>This subnet already has a DDNS assignment.</ValidationMessage>
+                        </check001>
+                    </Constraints>
                 </subnet>
                 <forward_zone type="ModelRelationField">
                     <Model>
@@ -221,6 +227,12 @@
                         </subnets>
                     </Model>
                     <ValidationMessage>Select a Kea DHCPv6 subnet.</ValidationMessage>
+                    <Constraints>
+                        <check001>
+                            <type>UniqueConstraint</type>
+                            <ValidationMessage>This subnet already has a DDNS assignment.</ValidationMessage>
+                        </check001>
+                    </Constraints>
                 </subnet>
                 <forward_zone type="ModelRelationField">
                     <Model>
