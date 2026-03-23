@@ -188,8 +188,8 @@ Subnet DDNS, and Subnet6 DDNS.
     .. tab:: Subnet DDNS (DHCPv4)
 
         Per-subnet DDNS assignments control which DHCPv4 subnets get dynamic DNS updates and how
-        hostnames are handled. All fields except Subnet and Forward zone default to "Use global
-        default", inheriting the value from the Settings tab. Only explicitly set values are
+        hostnames are handled. All fields except Subnet default to "Use global default",
+        inheriting the value from the Settings tab. Only explicitly set values are
         emitted in the per-subnet configuration.
 
         ========================================= ====================================================================================
@@ -197,7 +197,6 @@ Subnet DDNS, and Subnet6 DDNS.
         ========================================= ====================================================================================
         **Subnet**                                The Kea DHCPv4 subnet to enable DDNS for. Only subnets configured in
                                                   :menuselection:`Services --> KEA DHCP --> KEA DHCPv4 --> Subnets` appear here.
-        **Forward zone**                          Optional association with a forward zone (informational).
         **Qualifying suffix**                     FQDN suffix appended to bare hostnames. For example, if a client sends
                                                   hostname ``laptop`` and the suffix is ``lan.dyn.example.com.``, the resulting
                                                   FQDN is ``laptop.lan.dyn.example.com.``. Must end with a dot.
@@ -228,7 +227,6 @@ Subnet DDNS, and Subnet6 DDNS.
         **Option**                                **Description**
         ========================================= ====================================================================================
         **Subnet**                                The Kea DHCPv6 subnet to enable DDNS for.
-        **Forward zone**                          Optional association with a forward zone.
         **Qualifying suffix**                     FQDN suffix appended to bare hostnames. Must end with a dot.
         **Send updates**                          Enable sending DDNS updates for this subnet.
         **Update on renew**                       Send DNS updates on lease renewals.
