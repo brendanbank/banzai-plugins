@@ -15,4 +15,5 @@ docs/**/repo/sign-repo.py
 docs/**/repo/repo.pub
 .vscode/settings.json
 .env
+__pycache__/
 net/kea-ddns/scripts/tests/interaction/ddns_interaction_test.conf
