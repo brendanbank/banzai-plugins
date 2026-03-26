@@ -75,10 +75,12 @@ Links
 
 .. toctree::
    :caption: Plugin Releases
+   :maxdepth: 2
 
    releases/26.1/index
 
 .. toctree::
    :caption: Articles
+   :maxdepth: 1
 
    articles/yubikey-pkg-signing

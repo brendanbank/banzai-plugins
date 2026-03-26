@@ -9,6 +9,7 @@
   <title>Metrics Exporter &mdash; banzai-plugins  documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=64ce4cbe" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
@@ -45,25 +46,61 @@
               <p class="caption" role="heading"><span class="caption-text">Plugin Releases</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">OPNsense 26.1</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="hello_world.html">Hello World</a></li>
-<li class="toctree-l2"><a class="reference internal" href="kea_ddns.html">Kea DDNS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hello_world.html">Hello World</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="hello_world.html#settings">Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hello_world.html#api-endpoints">API Endpoints</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kea_ddns.html">Kea DDNS</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#settings">Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#status">Status</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#log-file">Log File</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#configuration-examples">Configuration examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#how-it-works">How it works</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#coexistence-with-core-ddns">Coexistence with core DDNS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#uninstall">Uninstall</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kea_ddns.html#api">API</a></li>
+</ul>
+</li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Metrics Exporter</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#settings">Settings</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#collectors">Collectors</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#gateway">Gateway</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#pf-firewall">PF Firewall</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#unbound-dns">Unbound DNS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#collectors">Collectors</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#installation">Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="index.html#trust-the-repository-signing-key">1. Trust the repository signing key</a></li>
+<li class="toctree-l3"><a class="reference internal" href="index.html#add-the-repository">2. Add the repository</a></li>
+<li class="toctree-l3"><a class="reference internal" href="index.html#install-a-plugin">3. Install a plugin</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="index.html#installation">Installation</a></li>
 </ul>
 </li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Articles</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html">Signing FreeBSD pkg Repositories with a YubiKey</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html">Signing FreeBSD pkg Repositories with a YubiKey</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html#why-hardware-backed-signing">Why hardware-backed signing?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html#how-pkg-signing-actually-works">How pkg signing actually works</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html#the-double-hash">The double hash</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html#fingerprints">Fingerprints</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html#setting-up-the-piv-signing-key">Setting up the PIV signing key</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html#the-piv-signing-agent">The PIV signing agent</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html#pkcs-11-signing-flow">PKCS#11 signing flow</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html#the-signing-command">The signing command</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html#socket-forwarding-for-remote-builds">Socket forwarding for remote builds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html#putting-it-together-the-build-script">Putting it together: the build script</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html#client-side-setup">Client-side setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html#verifying-signatures-manually">Verifying signatures manually</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html#summary-of-pitfalls">Summary of pitfalls</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../articles/yubikey-pkg-signing.html#references">References</a></li>
+</ul>
+</li>
 </ul>
 
         </div>

@@ -1,0 +1,31 @@
+/* Override Sphinx basic.css nowrap on docutils tables */
+table.docutils td, table.docutils th {
+    white-space: normal;
+}
+
+/* Expand plugin list under Plugin Releases in sidebar (first toctree section only).
+   Apply the same background as the RTD theme's "current" state so items are readable. */
+.wy-menu-vertical > p.caption:first-of-type + ul li.toctree-l1 > ul {
+    display: block;
+}
+.wy-menu-vertical > p.caption:first-of-type + ul li.toctree-l1 {
+    background: #e3e3e3;
+}
+.wy-menu-vertical > p.caption:first-of-type + ul li.toctree-l1 > a {
+    background: #fcfcfc;
+    color: #404040;
+    font-weight: 700;
+}
+.wy-menu-vertical > p.caption:first-of-type + ul li.toctree-l2 > a {
+    background: #c9c9c9;
+    color: #404040;
+}
+
+/* Hide Installation section from sidebar — it's a section heading in 26.1/index.rst,
+   not a plugin page, so exclude it from the plugin list */
+.wy-menu-vertical li.toctree-l2 > a[href*="#installation"] {
+    display: none;
+}
+.wy-menu-vertical li.toctree-l2:has(> a[href*="#installation"]) {
+    display: none;
+}

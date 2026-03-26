@@ -15,7 +15,7 @@ Kea DDNS
 
 .. contents:: Index
     :local:
-    :depth: 2
+    :depth: 3
 
 The Kea DDNS plugin adds Dynamic DNS (DDNS) support for the Kea DHCP server in
 OPNsense. It manages the ``kea-dhcp-ddns`` daemon and injects per-subnet DDNS
@@ -80,14 +80,18 @@ Subnet DDNS, and Subnet6 DDNS.
 
     .. tab:: Settings
 
-        ========================================= ====================================================================================
-        **Option**                                **Description**
-        ========================================= ====================================================================================
-        **Enabled**                               Enable the ``kea-dhcp-ddns`` daemon and activate DDNS overlays for
-                                                  Kea DHCPv4 and DHCPv6.
-        **Manual config**                         Disable automatic generation of ``kea-dhcp-ddns.conf`` and manage the file
-                                                  manually at ``/usr/local/etc/kea/kea-dhcp-ddns.conf``.
-        ========================================= ====================================================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
+
+            * - **Option**
+              - **Description**
+            * - **Enabled**
+              - Enable the ``kea-dhcp-ddns`` daemon and activate DDNS overlays for
+                Kea DHCPv4 and DHCPv6.
+            * - **Manual config**
+              - Disable automatic generation of ``kea-dhcp-ddns.conf`` and manage the file
+                manually at ``/usr/local/etc/kea/kea-dhcp-ddns.conf``.
 
         **DDNS Defaults**
 
@@ -95,42 +99,55 @@ Subnet DDNS, and Subnet6 DDNS.
         Per-subnet DDNS assignments default to "Use global default" — only explicitly set values
         override these globals.
 
-        ========================================= ====================================================================================
-        **Option**                                **Description**
-        ========================================= ====================================================================================
-        **Qualifying suffix**                     Default FQDN suffix appended to bare hostnames (e.g. ``dyn.example.com.``).
-                                                  Must end with a dot. Can be overridden per subnet.
-        **Send updates**                          Default for sending DDNS updates. Default: enabled. Can be overridden per subnet.
-        **Update on renew**                       Default for sending DNS updates on lease renewals. Default: enabled.
-                                                  Can be overridden per subnet.
-        **Replace client name**                   Default for replacing client-sent hostnames. Options: ``Never`` (default),
-                                                  ``Always``, ``When present``, ``When not present``.
-                                                  Can be overridden per subnet.
-        **Conflict resolution**                   Default DHCID conflict resolution mode. Options: ``Check with DHCID`` (default),
-                                                  ``No check, store DHCID``, ``Check exists with DHCID``, ``No check, no DHCID``.
-                                                  Can be overridden per subnet.
-        **Generated prefix**                      Default prefix for auto-generated hostnames when replacing client name
-                                                  (Kea default: ``myhost``). Can be overridden per subnet.
-        ========================================= ====================================================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
+
+            * - **Option**
+              - **Description**
+            * - **Qualifying suffix**
+              - Default FQDN suffix appended to bare hostnames (e.g. ``dyn.example.com.``).
+                Must end with a dot. Can be overridden per subnet.
+            * - **Send updates**
+              - Default for sending DDNS updates. Default: enabled. Can be overridden per subnet.
+            * - **Update on renew**
+              - Default for sending DNS updates on lease renewals. Default: enabled.
+                Can be overridden per subnet.
+            * - **Replace client name**
+              - Default for replacing client-sent hostnames. Options: ``Never`` (default),
+                ``Always``, ``When present``, ``When not present``.
+                Can be overridden per subnet.
+            * - **Conflict resolution**
+              - Default DHCID conflict resolution mode. Options: ``Check with DHCID`` (default),
+                ``No check, store DHCID``, ``Check exists with DHCID``, ``No check, no DHCID``.
+                Can be overridden per subnet.
+            * - **Generated prefix**
+              - Default prefix for auto-generated hostnames when replacing client name
+                (Kea default: ``myhost``). Can be overridden per subnet.
 
     .. tab:: TSIG Keys
 
         TSIG keys provide authentication for DNS UPDATE requests (RFC 2845). The key name, algorithm, and
         secret must match the configuration on your DNS server.
 
-        ========================================= ====================================================================================
-        **Option**                                **Description**
-        ========================================= ====================================================================================
-        **Name**                                  TSIG key name. Must match the key name on the DNS server exactly
-                                                  (e.g. ``ddns-key.dyn.example.com``). May include dots and an optional
-                                                  trailing dot.
-        **Algorithm**                             HMAC algorithm. Options: ``HMAC-MD5``, ``HMAC-SHA1``, ``HMAC-SHA224``,
-                                                  ``HMAC-SHA256`` (default), ``HMAC-SHA384``, ``HMAC-SHA512``.
-        **Secret**                                Base64-encoded shared secret. Click **Generate** to create a
-                                                  cryptographically random secret of the correct length for the
-                                                  selected algorithm. Alternatively, generate on the DNS server
-                                                  with ``tsig-keygen -a hmac-sha256 keyname``.
-        ========================================= ====================================================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
+
+            * - **Option**
+              - **Description**
+            * - **Name**
+              - TSIG key name. Must match the key name on the DNS server exactly
+                (e.g. ``ddns-key.dyn.example.com``). May include dots and an optional
+                trailing dot.
+            * - **Algorithm**
+              - HMAC algorithm. Options: ``HMAC-MD5``, ``HMAC-SHA1``, ``HMAC-SHA224``,
+                ``HMAC-SHA256`` (default), ``HMAC-SHA384``, ``HMAC-SHA512``.
+            * - **Secret**
+              - Base64-encoded shared secret. Click **Generate** to create a
+                cryptographically random secret of the correct length for the
+                selected algorithm. Alternatively, generate on the DNS server
+                with ``tsig-keygen -a hmac-sha256 keyname``.
 
         .. tip::
 
@@ -144,16 +161,22 @@ Subnet DDNS, and Subnet6 DDNS.
         Forward zones define where to send DNS UPDATE requests for forward (A/AAAA) records.
         Each zone maps a DNS domain to a server and optional TSIG key.
 
-        ========================================= ====================================================================================
-        **Option**                                **Description**
-        ========================================= ====================================================================================
-        **Zone name**                             The DNS zone for forward records (e.g. ``dyn.example.com``). The ``kea-dhcp-ddns`` daemon
-                                                  matches client FQDNs to zones by longest suffix match.
-        **DNS server**                            IP address of the authoritative DNS server for this zone.
-        **Port**                                  DNS server port (default: ``53``).
-        **TSIG key**                              TSIG key for authenticating updates. Select ``None (unsecured)`` to send
-                                                  unauthenticated updates.
-        ========================================= ====================================================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
+
+            * - **Option**
+              - **Description**
+            * - **Zone name**
+              - The DNS zone for forward records (e.g. ``dyn.example.com``). The ``kea-dhcp-ddns`` daemon
+                matches client FQDNs to zones by longest suffix match.
+            * - **DNS server**
+              - IP address of the authoritative DNS server for this zone.
+            * - **Port**
+              - DNS server port (default: ``53``).
+            * - **TSIG key**
+              - TSIG key for authenticating updates. Select ``None (unsecured)`` to send
+                unauthenticated updates.
 
         .. note::
 
@@ -166,18 +189,24 @@ Subnet DDNS, and Subnet6 DDNS.
 
         Reverse zones define where to send DNS UPDATE requests for reverse (PTR) records.
 
-        ========================================= ====================================================================================
-        **Option**                                **Description**
-        ========================================= ====================================================================================
-        **Zone name**                             The reverse DNS zone name. For IPv4, use ``in-addr.arpa`` format
-                                                  (e.g. ``168.192.in-addr.arpa``). For IPv6, use ``ip6.arpa`` nibble format
-                                                  (e.g. ``6.5.4.3.2.1.d.f.ip6.arpa`` for ``fd12:3456::/32``).
-                                                  Use the **Derive** button below the zone name field to auto-derive
-                                                  the zone name from a configured Kea subnet.
-        **DNS server**                            IP address of the authoritative DNS server for this zone.
-        **Port**                                  DNS server port (default: ``53``).
-        **TSIG key**                              TSIG key for authenticating updates.
-        ========================================= ====================================================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
+
+            * - **Option**
+              - **Description**
+            * - **Zone name**
+              - The reverse DNS zone name. For IPv4, use ``in-addr.arpa`` format
+                (e.g. ``168.192.in-addr.arpa``). For IPv6, use ``ip6.arpa`` nibble format
+                (e.g. ``6.5.4.3.2.1.d.f.ip6.arpa`` for ``fd12:3456::/32``).
+                Use the **Derive** button below the zone name field to auto-derive
+                the zone name from a configured Kea subnet.
+            * - **DNS server**
+              - IP address of the authoritative DNS server for this zone.
+            * - **Port**
+              - DNS server port (default: ``53``).
+            * - **TSIG key**
+              - TSIG key for authenticating updates.
 
         .. tip::
 
@@ -200,30 +229,38 @@ Subnet DDNS, and Subnet6 DDNS.
         inheriting the value from the Settings tab. Only explicitly set values are
         emitted in the per-subnet configuration.
 
-        ========================================= ====================================================================================
-        **Option**                                **Description**
-        ========================================= ====================================================================================
-        **Subnet**                                The Kea DHCPv4 subnet to enable DDNS for. Only subnets configured in
-                                                  :menuselection:`Services --> KEA DHCP --> KEA DHCPv4 --> Subnets` appear here.
-        **Qualifying suffix**                     FQDN suffix appended to bare hostnames. For example, if a client sends
-                                                  hostname ``laptop`` and the suffix is ``lan.dyn.example.com.``, the resulting
-                                                  FQDN is ``laptop.lan.dyn.example.com.``. Must end with a dot.
-        **Send updates**                          Enable sending DDNS updates for this subnet. Default: enabled.
-        **Update on renew**                       Send DNS updates when leases are renewed, not just on initial assignment.
-        **Replace client name**                   Controls whether Kea replaces the client-provided hostname.
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
 
-                                                  - ``Never`` (default): use the hostname the client sends.
-                                                  - ``Always``: replace with a generated name (prefix + IP). Rarely desired.
-                                                  - ``When present``: replace only if the client sends a hostname.
-                                                  - ``When not present``: generate a name only if the client doesn't send one.
-        **Conflict resolution**                   How to handle conflicting DNS records using DHCID (RFC 4703).
+            * - **Option**
+              - **Description**
+            * - **Subnet**
+              - The Kea DHCPv4 subnet to enable DDNS for. Only subnets configured in
+                :menuselection:`Services --> KEA DHCP --> KEA DHCPv4 --> Subnets` appear here.
+            * - **Qualifying suffix**
+              - FQDN suffix appended to bare hostnames. For example, if a client sends
+                hostname ``laptop`` and the suffix is ``lan.dyn.example.com.``, the resulting
+                FQDN is ``laptop.lan.dyn.example.com.``. Must end with a dot.
+            * - **Send updates**
+              - Enable sending DDNS updates for this subnet. Default: enabled.
+            * - **Update on renew**
+              - Send DNS updates when leases are renewed, not just on initial assignment.
+            * - **Replace client name**
+              - Controls whether Kea replaces the client-provided hostname.
 
-                                                  - ``Check with DHCID`` (default): strict RFC 4703 — only update if DHCID matches.
-                                                  - ``No check, store DHCID``: update regardless, but still store DHCID.
-                                                    Use this when hosts have pre-existing static DNS records without DHCID.
-                                                  - ``Check exists with DHCID``: update only if any DHCID record exists.
-                                                  - ``No check, no DHCID``: update without any DHCID handling.
-        ========================================= ====================================================================================
+                - ``Never`` (default): use the hostname the client sends.
+                - ``Always``: replace with a generated name (prefix + IP). Rarely desired.
+                - ``When present``: replace only if the client sends a hostname.
+                - ``When not present``: generate a name only if the client doesn't send one.
+            * - **Conflict resolution**
+              - How to handle conflicting DNS records using DHCID (RFC 4703).
+
+                - ``Check with DHCID`` (default): strict RFC 4703 — only update if DHCID matches.
+                - ``No check, store DHCID``: update regardless, but still store DHCID.
+                  Use this when hosts have pre-existing static DNS records without DHCID.
+                - ``Check exists with DHCID``: update only if any DHCID record exists.
+                - ``No check, no DHCID``: update without any DHCID handling.
 
     .. tab:: Subnet6 DDNS (DHCPv6)
 
@@ -231,19 +268,28 @@ Subnet DDNS, and Subnet6 DDNS.
         but reference Kea DHCPv6 subnets, with an additional Rapid Commit option. All fields
         default to "Use global default" unless explicitly overridden.
 
-        ========================================= ====================================================================================
-        **Option**                                **Description**
-        ========================================= ====================================================================================
-        **Subnet**                                The Kea DHCPv6 subnet to enable DDNS for.
-        **Qualifying suffix**                     FQDN suffix appended to bare hostnames. Must end with a dot.
-        **Send updates**                          Enable sending DDNS updates for this subnet.
-        **Update on renew**                       Send DNS updates on lease renewals.
-        **Replace client name**                   Controls hostname replacement (see DHCPv4 tab for details).
-        **Conflict resolution**                   DHCID conflict handling mode (see DHCPv4 tab for details).
-        **Rapid commit**                          Enable DHCPv6 Rapid Commit (RFC 8415). When enabled, the server
-                                                  can complete the DHCPv6 exchange in two messages instead of four.
-                                                  Required for macOS clients.
-        ========================================= ====================================================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
+
+            * - **Option**
+              - **Description**
+            * - **Subnet**
+              - The Kea DHCPv6 subnet to enable DDNS for.
+            * - **Qualifying suffix**
+              - FQDN suffix appended to bare hostnames. Must end with a dot.
+            * - **Send updates**
+              - Enable sending DDNS updates for this subnet.
+            * - **Update on renew**
+              - Send DNS updates on lease renewals.
+            * - **Replace client name**
+              - Controls hostname replacement (see DHCPv4 tab for details).
+            * - **Conflict resolution**
+              - DHCID conflict handling mode (see DHCPv4 tab for details).
+            * - **Rapid commit**
+              - Enable DHCPv6 Rapid Commit (RFC 8415). When enabled, the server
+                can complete the DHCPv6 exchange in two messages instead of four.
+                Required for macOS clients.
 
         .. note::
 
@@ -283,20 +329,32 @@ and DDNS-registered leases. It has two tabs:
 
         **Update Statistics** — global counters for DDNS operations:
 
-        ========================================= ====================================================================================
-        **Statistic**                             **Description**
-        ========================================= ====================================================================================
-        **NCR received**                          Name Change Requests received from DHCPv4/v6 daemons
-        **NCR invalid**                           Malformed NCRs rejected
-        **NCR error**                             NCRs that could not be processed
-        **Queue full**                            NCRs dropped because the internal queue was full
-        **Updates sent**                          DNS UPDATE requests sent to DNS servers
-        **Updates successful**                    DNS updates that completed successfully
-        **Updates error**                         DNS updates that failed (check the log for RCODEs)
-        **Updates timeout**                       DNS updates that timed out (DNS server did not respond)
-        **Updates signed**                        DNS updates authenticated with TSIG
-        **Updates unsigned**                      DNS updates sent without TSIG authentication
-        ========================================= ====================================================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
+
+            * - **Statistic**
+              - **Description**
+            * - **NCR received**
+              - Name Change Requests received from DHCPv4/v6 daemons
+            * - **NCR invalid**
+              - Malformed NCRs rejected
+            * - **NCR error**
+              - NCRs that could not be processed
+            * - **Queue full**
+              - NCRs dropped because the internal queue was full
+            * - **Updates sent**
+              - DNS UPDATE requests sent to DNS servers
+            * - **Updates successful**
+              - DNS updates that completed successfully
+            * - **Updates error**
+              - DNS updates that failed (check the log for RCODEs)
+            * - **Updates timeout**
+              - DNS updates that timed out (DNS server did not respond)
+            * - **Updates signed**
+              - DNS updates authenticated with TSIG
+            * - **Updates unsigned**
+              - DNS updates sent without TSIG authentication
 
         **Per-Key Statistics** — if TSIG keys are in use, shows sent/success/error/timeout
         counters broken down by TSIG key name.
@@ -314,16 +372,24 @@ and DDNS-registered leases. It has two tabs:
         registrations. A lease appears here if it has a forward DNS update,
         a reverse DNS update, or both.
 
-        ========================================= ====================================================================================
-        **Column**                                **Description**
-        ========================================= ====================================================================================
-        **Hostname**                              The FQDN registered in DNS for this lease
-        **Address**                               The IP address (v4 or v6) assigned to the client
-        **MAC**                                   The client's hardware (MAC) address
-        **Forward**                               Check mark if a forward (A/AAAA) DNS record was registered
-        **Reverse**                               Check mark if a reverse (PTR) DNS record was registered
-        **Expires**                               Lease expiration timestamp
-        ========================================= ====================================================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
+
+            * - **Column**
+              - **Description**
+            * - **Hostname**
+              - The FQDN registered in DNS for this lease
+            * - **Address**
+              - The IP address (v4 or v6) assigned to the client
+            * - **MAC**
+              - The client's hardware (MAC) address
+            * - **Forward**
+              - Check mark if a forward (A/AAAA) DNS record was registered
+            * - **Reverse**
+              - Check mark if a reverse (PTR) DNS record was registered
+            * - **Expires**
+              - Lease expiration timestamp
 
         The table is paginated and searchable. Click **Refresh** to reload the
         lease data.
@@ -395,61 +461,88 @@ and configure:
 
     .. tab:: Settings
 
-        ==================================  =======================================================================================================
-        Option                              Value
-        ==================================  =======================================================================================================
-        **Enabled**                         ``X``
-        **Qualifying suffix**               ``dyn.example.com.``
-        **Send updates**                    ``X``
-        **Conflict resolution**             ``Check with DHCID (RFC 4703)``
-        ==================================  =======================================================================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
+
+            * - Option
+              - Value
+            * - **Enabled**
+              - ``X``
+            * - **Qualifying suffix**
+              - ``dyn.example.com.``
+            * - **Send updates**
+              - ``X``
+            * - **Conflict resolution**
+              - ``Check with DHCID (RFC 4703)``
 
     .. tab:: TSIG Keys
 
-        ==================================  =======================================================================================================
-        Option                              Value
-        ==================================  =======================================================================================================
-        **Name**                            ``ddns-key.dyn.example.com``
-        **Algorithm**                       ``HMAC-SHA256``
-        **Secret**                          Click **Generate** to create a random secret, then copy it to your DNS server
-        ==================================  =======================================================================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
+
+            * - Option
+              - Value
+            * - **Name**
+              - ``ddns-key.dyn.example.com``
+            * - **Algorithm**
+              - ``HMAC-SHA256``
+            * - **Secret**
+              - Click **Generate** to create a random secret, then copy it to your DNS server
 
         Press **Save**.
 
     .. tab:: Forward Zones
 
-        ==================================  =======================================================================================================
-        Option                              Value
-        ==================================  =======================================================================================================
-        **Zone name**                       ``dyn.example.com``
-        **DNS server**                      ``192.168.1.53``
-        **Port**                            ``53``
-        **TSIG key**                        ``ddns-key.dyn.example.com``
-        ==================================  =======================================================================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
+
+            * - Option
+              - Value
+            * - **Zone name**
+              - ``dyn.example.com``
+            * - **DNS server**
+              - ``192.168.1.53``
+            * - **Port**
+              - ``53``
+            * - **TSIG key**
+              - ``ddns-key.dyn.example.com``
 
         Press **Save**.
 
     .. tab:: Reverse Zones
 
-        ==================================  =======================================================================================================
-        Option                              Value
-        ==================================  =======================================================================================================
-        **Zone name**                       ``1.168.192.in-addr.arpa``
-        **DNS server**                      ``192.168.1.53``
-        **Port**                            ``53``
-        **TSIG key**                        ``ddns-key.dyn.example.com``
-        ==================================  =======================================================================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
+
+            * - Option
+              - Value
+            * - **Zone name**
+              - ``1.168.192.in-addr.arpa``
+            * - **DNS server**
+              - ``192.168.1.53``
+            * - **Port**
+              - ``53``
+            * - **TSIG key**
+              - ``ddns-key.dyn.example.com``
 
         Press **Save**.
 
     .. tab:: Subnet DDNS
 
-        ==================================  =======================================================================================================
-        Option                              Value
-        ==================================  =======================================================================================================
-        **Subnet**                          ``192.168.1.0/24``
-        **Qualifying suffix**                ``lan.dyn.example.com.`` (overrides the global default)
-        ==================================  =======================================================================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
+
+            * - Option
+              - Value
+            * - **Subnet**
+              - ``192.168.1.0/24``
+            * - **Qualifying suffix**
+              - ``lan.dyn.example.com.`` (overrides the global default)
 
         The remaining fields (send updates, conflict resolution, etc.) inherit from the global
         DDNS defaults on the Settings tab. Press **Save**.
@@ -486,27 +579,39 @@ above.
 
         Add a new reverse zone:
 
-        ==================================  =======================================================================================================
-        Option                              Value
-        ==================================  =======================================================================================================
-        **Zone name**                       ``a.9.8.7.6.5.4.3.2.1.d.f.ip6.arpa``
-        **DNS server**                      ``192.168.1.53``
-        **Port**                            ``53``
-        **TSIG key**                        ``ddns-key.dyn.example.com``
-        ==================================  =======================================================================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
+
+            * - Option
+              - Value
+            * - **Zone name**
+              - ``a.9.8.7.6.5.4.3.2.1.d.f.ip6.arpa``
+            * - **DNS server**
+              - ``192.168.1.53``
+            * - **Port**
+              - ``53``
+            * - **TSIG key**
+              - ``ddns-key.dyn.example.com``
 
         Press **Save**.
 
     .. tab:: Subnet6 DDNS
 
-        ==================================  =======================================================================================================
-        Option                              Value
-        ==================================  =======================================================================================================
-        **Subnet**                          ``fd12:3456:789a:feed::/64``
-        **Qualifying suffix**                ``lan.dyn.example.com.``
-        **Send updates**                    ``X``
-        **Conflict resolution**             ``No check, store DHCID``
-        ==================================  =======================================================================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 30 70
+
+            * - Option
+              - Value
+            * - **Subnet**
+              - ``fd12:3456:789a:feed::/64``
+            * - **Qualifying suffix**
+              - ``lan.dyn.example.com.``
+            * - **Send updates**
+              - ``X``
+            * - **Conflict resolution**
+              - ``No check, store DHCID``
 
         Press **Save**.
 
@@ -698,66 +803,143 @@ All configuration is available via the REST API under
 
     .. tab:: General
 
-        ==================================================  ==========  ==================================================
-        **Endpoint**                                        **Method**  **Description**
-        ==================================================  ==========  ==================================================
-        ``/api/keaddns/general/get``                        GET         Get general settings (enabled, manual_config)
-        ``/api/keaddns/general/set``                        POST        Save general settings
-        ==================================================  ==========  ==================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 50 10 40
+
+            * - **Endpoint**
+              - **Method**
+              - **Description**
+            * - ``/api/keaddns/general/get``
+              - GET
+              - Get general settings (enabled, manual_config)
+            * - ``/api/keaddns/general/set``
+              - POST
+              - Save general settings
 
     .. tab:: TSIG Keys
 
-        ==================================================  ==========  ==================================================
-        **Endpoint**                                        **Method**  **Description**
-        ==================================================  ==========  ==================================================
-        ``/api/keaddns/general/searchTsigKey``              GET         List all TSIG keys
-        ``/api/keaddns/general/getTsigKey/{uuid}``          GET         Get a single TSIG key
-        ``/api/keaddns/general/addTsigKey``                 POST        Create a TSIG key
-        ``/api/keaddns/general/setTsigKey/{uuid}``          POST        Update a TSIG key
-        ``/api/keaddns/general/delTsigKey/{uuid}``          POST        Delete a TSIG key
-        ``/api/keaddns/general/generateTsigSecret``         POST        Generate a random TSIG secret (param: ``algorithm``)
-        ==================================================  ==========  ==================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 50 10 40
+
+            * - **Endpoint**
+              - **Method**
+              - **Description**
+            * - ``/api/keaddns/general/searchTsigKey``
+              - GET
+              - List all TSIG keys
+            * - ``/api/keaddns/general/getTsigKey/{uuid}``
+              - GET
+              - Get a single TSIG key
+            * - ``/api/keaddns/general/addTsigKey``
+              - POST
+              - Create a TSIG key
+            * - ``/api/keaddns/general/setTsigKey/{uuid}``
+              - POST
+              - Update a TSIG key
+            * - ``/api/keaddns/general/delTsigKey/{uuid}``
+              - POST
+              - Delete a TSIG key
+            * - ``/api/keaddns/general/generateTsigSecret``
+              - POST
+              - Generate a random TSIG secret (param: ``algorithm``)
 
     .. tab:: Zones
 
-        ==================================================  ==========  ==================================================
-        **Endpoint**                                        **Method**  **Description**
-        ==================================================  ==========  ==================================================
-        ``/api/keaddns/general/searchForwardZone``          GET         List forward zones
-        ``/api/keaddns/general/getForwardZone/{uuid}``      GET         Get a forward zone
-        ``/api/keaddns/general/addForwardZone``             POST        Create a forward zone
-        ``/api/keaddns/general/setForwardZone/{uuid}``      POST        Update a forward zone
-        ``/api/keaddns/general/delForwardZone/{uuid}``      POST        Delete a forward zone
-        ``/api/keaddns/general/searchReverseZone``          GET         List reverse zones
-        ``/api/keaddns/general/getReverseZone/{uuid}``      GET         Get a reverse zone
-        ``/api/keaddns/general/addReverseZone``             POST        Create a reverse zone
-        ``/api/keaddns/general/setReverseZone/{uuid}``      POST        Update a reverse zone
-        ``/api/keaddns/general/delReverseZone/{uuid}``      POST        Delete a reverse zone
-        ``/api/keaddns/general/suggestReverseZones``        POST        Suggest reverse zone names from Kea subnets
-        ==================================================  ==========  ==================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 50 10 40
+
+            * - **Endpoint**
+              - **Method**
+              - **Description**
+            * - ``/api/keaddns/general/searchForwardZone``
+              - GET
+              - List forward zones
+            * - ``/api/keaddns/general/getForwardZone/{uuid}``
+              - GET
+              - Get a forward zone
+            * - ``/api/keaddns/general/addForwardZone``
+              - POST
+              - Create a forward zone
+            * - ``/api/keaddns/general/setForwardZone/{uuid}``
+              - POST
+              - Update a forward zone
+            * - ``/api/keaddns/general/delForwardZone/{uuid}``
+              - POST
+              - Delete a forward zone
+            * - ``/api/keaddns/general/searchReverseZone``
+              - GET
+              - List reverse zones
+            * - ``/api/keaddns/general/getReverseZone/{uuid}``
+              - GET
+              - Get a reverse zone
+            * - ``/api/keaddns/general/addReverseZone``
+              - POST
+              - Create a reverse zone
+            * - ``/api/keaddns/general/setReverseZone/{uuid}``
+              - POST
+              - Update a reverse zone
+            * - ``/api/keaddns/general/delReverseZone/{uuid}``
+              - POST
+              - Delete a reverse zone
+            * - ``/api/keaddns/general/suggestReverseZones``
+              - POST
+              - Suggest reverse zone names from Kea subnets
 
     .. tab:: Status
 
-        ==================================================  ==========  ==================================================
-        **Endpoint**                                        **Method**  **Description**
-        ==================================================  ==========  ==================================================
-        ``/api/keaddns/general/ddnsStatus``                 POST        Get D2 daemon status and statistics
-        ``/api/keaddns/general/searchDdnsLeases``           POST        Search DDNS-registered leases (paginated)
-        ==================================================  ==========  ==================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 50 10 40
+
+            * - **Endpoint**
+              - **Method**
+              - **Description**
+            * - ``/api/keaddns/general/ddnsStatus``
+              - POST
+              - Get D2 daemon status and statistics
+            * - ``/api/keaddns/general/searchDdnsLeases``
+              - POST
+              - Search DDNS-registered leases (paginated)
 
     .. tab:: Subnet DDNS
 
-        ==================================================  ==========  ==================================================
-        **Endpoint**                                        **Method**  **Description**
-        ==================================================  ==========  ==================================================
-        ``/api/keaddns/general/searchSubnetDdns``           GET         List DHCPv4 subnet DDNS assignments
-        ``/api/keaddns/general/getSubnetDdns/{uuid}``       GET         Get a DHCPv4 DDNS assignment
-        ``/api/keaddns/general/addSubnetDdns``              POST        Create a DHCPv4 DDNS assignment
-        ``/api/keaddns/general/setSubnetDdns/{uuid}``       POST        Update a DHCPv4 DDNS assignment
-        ``/api/keaddns/general/delSubnetDdns/{uuid}``       POST        Delete a DHCPv4 DDNS assignment
-        ``/api/keaddns/general/searchSubnet6Ddns``          GET         List DHCPv6 subnet DDNS assignments
-        ``/api/keaddns/general/getSubnet6Ddns/{uuid}``      GET         Get a DHCPv6 DDNS assignment
-        ``/api/keaddns/general/addSubnet6Ddns``             POST        Create a DHCPv6 DDNS assignment
-        ``/api/keaddns/general/setSubnet6Ddns/{uuid}``      POST        Update a DHCPv6 DDNS assignment
-        ``/api/keaddns/general/delSubnet6Ddns/{uuid}``      POST        Delete a DHCPv6 DDNS assignment
-        ==================================================  ==========  ==================================================
+        .. list-table::
+            :header-rows: 1
+            :widths: 50 10 40
+
+            * - **Endpoint**
+              - **Method**
+              - **Description**
+            * - ``/api/keaddns/general/searchSubnetDdns``
+              - GET
+              - List DHCPv4 subnet DDNS assignments
+            * - ``/api/keaddns/general/getSubnetDdns/{uuid}``
+              - GET
+              - Get a DHCPv4 DDNS assignment
+            * - ``/api/keaddns/general/addSubnetDdns``
+              - POST
+              - Create a DHCPv4 DDNS assignment
+            * - ``/api/keaddns/general/setSubnetDdns/{uuid}``
+              - POST
+              - Update a DHCPv4 DDNS assignment
+            * - ``/api/keaddns/general/delSubnetDdns/{uuid}``
+              - POST
+              - Delete a DHCPv4 DDNS assignment
+            * - ``/api/keaddns/general/searchSubnet6Ddns``
+              - GET
+              - List DHCPv6 subnet DDNS assignments
+            * - ``/api/keaddns/general/getSubnet6Ddns/{uuid}``
+              - GET
+              - Get a DHCPv6 DDNS assignment
+            * - ``/api/keaddns/general/addSubnet6Ddns``
+              - POST
+              - Create a DHCPv6 DDNS assignment
+            * - ``/api/keaddns/general/setSubnet6Ddns/{uuid}``
+              - POST
+              - Update a DHCPv6 DDNS assignment
+            * - ``/api/keaddns/general/delSubnet6Ddns/{uuid}``
+              - POST
+              - Delete a DHCPv6 DDNS assignment
