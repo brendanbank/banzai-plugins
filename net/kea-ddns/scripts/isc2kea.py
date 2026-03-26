@@ -351,7 +351,7 @@ class KeaMigrator:
 
         # Step 6: Create subnet DDNS assignment
         if fwd_zone_uuid and subnet_uuid:
-            self._create_subnet_ddns(cfg, subnet_uuid, fwd_zone_uuid)
+            self._create_subnet_ddns(cfg, subnet_uuid)
 
         # Step 7: Create static reservations
         self._create_reservations(cfg, subnet_uuid)
@@ -570,25 +570,23 @@ class KeaMigrator:
         log.info('Created subnet uuid=%s', uuid)
         return uuid
 
-    def _create_subnet_ddns(self, cfg: DhcpInterfaceConfig, subnet_uuid: str,
-                            fwd_zone_uuid: str):
-        """Create subnet DDNS assignment linking subnet to forward zone."""
+    def _create_subnet_ddns(self, cfg: DhcpInterfaceConfig, subnet_uuid: str):
+        """Create subnet DDNS assignment for the given subnet."""
         qualifying_suffix = f'{cfg.ddns_domainname}.' if cfg.ddns_domainname else ''
 
         if self.dry_run:
-            log.info('[DRY RUN] Would create subnet DDNS assignment: subnet=%s zone=%s suffix=%s',
-                     cfg.subnet, cfg.ddns_forward_zone, qualifying_suffix)
+            log.info('[DRY RUN] Would create subnet DDNS assignment: subnet=%s suffix=%s',
+                     cfg.subnet, qualifying_suffix)
             return
 
         assignment_data = {
             'subnet': subnet_uuid,
-            'forward_zone': fwd_zone_uuid,
             'qualifying_suffix': qualifying_suffix,
             'send_updates': '1',
         }
 
-        log.info('Creating subnet DDNS assignment: subnet=%s zone=%s suffix=%s',
-                 cfg.subnet, cfg.ddns_forward_zone, qualifying_suffix)
+        log.info('Creating subnet DDNS assignment: subnet=%s suffix=%s',
+                 cfg.subnet, qualifying_suffix)
         resp = self.api.add_subnet_ddns(assignment_data)
         self._check_response(resp, 'add subnet DDNS assignment')
         log.info('Created subnet DDNS assignment uuid=%s', resp.get('uuid', ''))

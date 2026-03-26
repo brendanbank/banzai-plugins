@@ -357,8 +357,8 @@ For a <code class="docutils literal notranslate"><span class="pre">/48</span></c
 The auto-derive feature handles this conversion automatically.</p>
 </div>
 </div><div aria-labelledby="tab-0-0-4" class="sphinx-tabs-panel" hidden="true" id="panel-0-0-4" name="0-4" role="tabpanel" tabindex="0"><p>Per-subnet DDNS assignments control which DHCPv4 subnets get dynamic DNS updates and how
-hostnames are handled. All fields except Subnet and Forward zone default to “Use global
-default”, inheriting the value from the Settings tab. Only explicitly set values are
+hostnames are handled. All fields except Subnet default to “Use global default”,
+inheriting the value from the Settings tab. Only explicitly set values are
 emitted in the per-subnet configuration.</p>
 <table class="docutils align-default">
 <thead>
@@ -371,21 +371,18 @@ emitted in the per-subnet configuration.</p>
 <td><p>The Kea DHCPv4 subnet to enable DDNS for. Only subnets configured in
 <span class="menuselection">Services ‣ KEA DHCP ‣ KEA DHCPv4 ‣ Subnets</span> appear here.</p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>Forward zone</strong></p></td>
-<td><p>Optional association with a forward zone (informational).</p></td>
-</tr>
-<tr class="row-even"><td><p><strong>Qualifying suffix</strong></p></td>
+<tr class="row-odd"><td><p><strong>Qualifying suffix</strong></p></td>
 <td><p>FQDN suffix appended to bare hostnames. For example, if a client sends
 hostname <code class="docutils literal notranslate"><span class="pre">laptop</span></code> and the suffix is <code class="docutils literal notranslate"><span class="pre">lan.dyn.example.com.</span></code>, the resulting
 FQDN is <code class="docutils literal notranslate"><span class="pre">laptop.lan.dyn.example.com.</span></code>. Must end with a dot.</p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>Send updates</strong></p></td>
+<tr class="row-even"><td><p><strong>Send updates</strong></p></td>
 <td><p>Enable sending DDNS updates for this subnet. Default: enabled.</p></td>
 </tr>
-<tr class="row-even"><td><p><strong>Update on renew</strong></p></td>
+<tr class="row-odd"><td><p><strong>Update on renew</strong></p></td>
 <td><p>Send DNS updates when leases are renewed, not just on initial assignment.</p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>Replace client name</strong></p></td>
+<tr class="row-even"><td><p><strong>Replace client name</strong></p></td>
 <td><p>Controls whether Kea replaces the client-provided hostname.</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">Never</span></code> (default): use the hostname the client sends.</p></li>
@@ -395,7 +392,7 @@ FQDN is <code class="docutils literal notranslate"><span class="pre">laptop.lan.
 </ul>
 </td>
 </tr>
-<tr class="row-even"><td><p><strong>Conflict resolution</strong></p></td>
+<tr class="row-odd"><td><p><strong>Conflict resolution</strong></p></td>
 <td><p>How to handle conflicting DNS records using DHCID (RFC 4703).</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">Check</span> <span class="pre">with</span> <span class="pre">DHCID</span></code> (default): strict RFC 4703 — only update if DHCID matches.</p></li>
@@ -421,25 +418,22 @@ default to “Use global default” unless explicitly overridden.</p>
 <tr class="row-even"><td><p><strong>Subnet</strong></p></td>
 <td><p>The Kea DHCPv6 subnet to enable DDNS for.</p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>Forward zone</strong></p></td>
-<td><p>Optional association with a forward zone.</p></td>
-</tr>
-<tr class="row-even"><td><p><strong>Qualifying suffix</strong></p></td>
+<tr class="row-odd"><td><p><strong>Qualifying suffix</strong></p></td>
 <td><p>FQDN suffix appended to bare hostnames. Must end with a dot.</p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>Send updates</strong></p></td>
+<tr class="row-even"><td><p><strong>Send updates</strong></p></td>
 <td><p>Enable sending DDNS updates for this subnet.</p></td>
 </tr>
-<tr class="row-even"><td><p><strong>Update on renew</strong></p></td>
+<tr class="row-odd"><td><p><strong>Update on renew</strong></p></td>
 <td><p>Send DNS updates on lease renewals.</p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>Replace client name</strong></p></td>
+<tr class="row-even"><td><p><strong>Replace client name</strong></p></td>
 <td><p>Controls hostname replacement (see DHCPv4 tab for details).</p></td>
 </tr>
-<tr class="row-even"><td><p><strong>Conflict resolution</strong></p></td>
+<tr class="row-odd"><td><p><strong>Conflict resolution</strong></p></td>
 <td><p>DHCID conflict handling mode (see DHCPv4 tab for details).</p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>Rapid commit</strong></p></td>
+<tr class="row-even"><td><p><strong>Rapid commit</strong></p></td>
 <td><p>Enable DHCPv6 Rapid Commit (RFC 8415). When enabled, the server
 can complete the DHCPv6 exchange in two messages instead of four.
 Required for macOS clients.</p></td>
