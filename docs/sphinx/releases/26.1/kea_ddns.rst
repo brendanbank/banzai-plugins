@@ -15,7 +15,7 @@ Kea DDNS
 
 .. contents:: Index
     :local:
-    :depth: 2
+    :depth: 3
 
 The Kea DDNS plugin adds Dynamic DNS (DDNS) support for the Kea DHCP server in
 OPNsense. It manages the ``kea-dhcp-ddns`` daemon and injects per-subnet DDNS
