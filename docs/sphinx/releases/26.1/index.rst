@@ -5,7 +5,6 @@ OPNsense 26.1
 Supported release: OPNsense 26.1
 
 .. toctree::
-   :caption: Plugins
 
    hello_world
    kea_ddns
