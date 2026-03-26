@@ -9,6 +9,10 @@ Kea DDNS
    core files are modified — the plugin uses the standard ``plugins_configure()``
    hook mechanism and survives OPNsense firmware updates without reinstallation.
 
+   Starting with OPNsense 26.1.5, the core includes built-in DDNS support. This
+   plugin can be installed alongside core DDNS but only one should be active at
+   a time. See `Coexistence with core DDNS`_ for details.
+
 .. contents:: Index
     :local:
     :depth: 2
@@ -16,7 +20,11 @@ Kea DDNS
 The Kea DDNS plugin adds Dynamic DNS (DDNS) support for the Kea DHCP server in
 OPNsense. It manages the ``kea-dhcp-ddns`` daemon and injects per-subnet DDNS
 parameters into both ``kea-dhcp4.conf`` and ``kea-dhcp6.conf`` using the
-OPNsense ``plugins_configure()`` hook mechanism.
+OPNsense ``plugins_configure()`` hook mechanism. Since OPNsense 26.1.5, the
+core also includes DDNS support — the plugin can run side by side with it and
+offers additional features such as global DDNS defaults, shared TSIG keys, a
+status dashboard, and DHCPv6 Rapid Commit (see
+`Coexistence with core DDNS`_).
 
 When enabled, Kea automatically creates forward (A/AAAA) and reverse (PTR) DNS
 records as DHCP leases are assigned, and removes them when leases expire.
@@ -623,6 +631,50 @@ The ``kea-dhcp-ddns`` daemon listens on ``127.0.0.1:53001`` and receives Name
 Change Requests (NCRs) from the DHCPv4 and DHCPv6 daemons over a local
 connection. It then translates these into RFC 2136 DNS UPDATE requests sent to
 the configured DNS servers.
+
+
+Coexistence with core DDNS
+--------------------------
+
+Starting with OPNsense 26.1.5, the core includes built-in DDNS support for Kea
+(see `core PR #9923 <https://github.com/opnsense/core/pull/9923>`_). The plugin
+can be installed alongside core DDNS — use **one or the other**, not both at the
+same time.
+
+Both the core and the plugin register on the ``kea_sync`` hook. Alphabetical
+ordering (``kea.inc`` < ``kea_ddns.inc``) means the plugin always runs second,
+post-processing the core's generated configuration. If both are enabled
+simultaneously, the plugin takes precedence.
+
+**Recommended usage:**
+
+- **Plugin only** — keep core DDNS disabled (the default at
+  :menuselection:`Services --> KEA DHCP --> Settings`). The plugin handles
+  everything independently.
+- **Core only** — disable the plugin in
+  :menuselection:`Services --> Kea Dynamic DNS --> Settings`. A disabled plugin
+  is fully inert and does not interfere with core DDNS.
+- **Switching** — you can switch between the two at any time. Disable one before
+  enabling the other, then click **Apply**.
+
+The plugin offers additional features not available in the core implementation:
+
+- Global DDNS defaults (qualifying suffix, send updates, conflict resolution,
+  etc.) that all subnets inherit, with per-subnet overrides where needed
+- Shared TSIG keys across multiple subnets and zones (core requires a separate
+  TSIG key per subnet)
+- Reverse zone auto-derive from Kea subnets
+- DDNS status dashboard with daemon statistics and per-lease DDNS info
+- Log file viewer for the ``kea-dhcp-ddns`` daemon
+- DHCPv6 DDNS support with Rapid Commit
+
+.. note::
+
+    These interaction scenarios have been tested on OPNsense 26.7.a_328 using
+    the automated interaction test suite
+    (``scripts/ddns_interaction_test.sh``). The test covers five scenarios:
+    core-only, plugin-only, both enabled, plugin disabled with core active, and
+    cleanup after plugin removal. All 56 tests pass.
 
 
 Uninstall
