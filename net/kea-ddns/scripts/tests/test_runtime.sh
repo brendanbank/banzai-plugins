@@ -94,3 +94,46 @@ if [ "$KEA6_VALID" = "true" ]; then
         fail "Leases v6: no leases with fqdn-rev=true"
     fi
 fi
+
+# --- 9. DDNS leases status backend (regression: OPNsense 26.2.x fqdn field drop) ---
+#
+# OPNsense 26.2 rewrote get_kea_leases.py to use the Kea control socket API
+# and dropped fqdn-fwd/fqdn-rev from its output.  The plugin now has its own
+# ddns_leases.py that queries Kea directly.  These tests verify that the
+# configd action is registered and returns records with the expected fields
+# so the DDNS Leases status grid is never silently empty again.
+
+DDNS_LEASES_JSON=$(configctl kea_ddns ddns_leases 2>/dev/null)
+
+if echo "$DDNS_LEASES_JSON" | jq -e '.records' >/dev/null 2>&1; then
+    pass "Status API: kea_ddns ddns_leases action responds with records array"
+else
+    fail "Status API: kea_ddns ddns_leases action missing or returned no records key"
+fi
+
+DDNS_LEASE_COUNT=$(echo "$DDNS_LEASES_JSON" | jq '.records | length' 2>/dev/null)
+if [ "${DDNS_LEASE_COUNT:-0}" -gt 0 ] 2>/dev/null; then
+    pass "Status API: $DDNS_LEASE_COUNT FQDN lease(s) returned"
+else
+    fail "Status API: no FQDN leases returned (expected >0 since DDNS is active)"
+fi
+
+# Every returned record must have fqdn_fwd and fqdn_rev as string fields
+MISSING_FIELDS=$(echo "$DDNS_LEASES_JSON" | jq '
+    [.records[] |
+     select((.fqdn_fwd | type) != "string" or (.fqdn_rev | type) != "string")] |
+    length' 2>/dev/null)
+if [ "${MISSING_FIELDS:-1}" -eq 0 ] 2>/dev/null; then
+    pass "Status API: all records have fqdn_fwd and fqdn_rev string fields"
+else
+    fail "Status API: some records are missing fqdn_fwd or fqdn_rev fields"
+fi
+
+# At least one record must have fqdn_fwd or fqdn_rev set to "1"
+FQDN_SET=$(echo "$DDNS_LEASES_JSON" | jq '
+    [.records[] | select(.fqdn_fwd == "1" or .fqdn_rev == "1")] | length' 2>/dev/null)
+if [ "${FQDN_SET:-0}" -gt 0 ] 2>/dev/null; then
+    pass "Status API: $FQDN_SET record(s) with fqdn_fwd or fqdn_rev set to \"1\""
+else
+    fail "Status API: no records have fqdn_fwd or fqdn_rev set to \"1\""
+fi
