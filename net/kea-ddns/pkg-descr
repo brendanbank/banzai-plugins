@@ -20,6 +20,12 @@ Fixed:
   which preserves the FQDN update flags and pre-filters to DDNS-enabled
   leases only.
 
+Added:
+* Status page DDNS leases split into separate DHCPv4 and DHCPv6 tabs,
+  with leases grouped by subnet.
+* Force DDNS Update: select one or more leases and trigger an immediate
+  NCR via the Kea lease4-resend-ddns / lease6-resend-ddns API.
+
 2.3
 
 Added:
