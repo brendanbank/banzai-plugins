@@ -312,7 +312,7 @@ Status
 Navigate to :menuselection:`Services --> Kea Dynamic DNS --> Status`.
 
 The status page provides real-time visibility into the ``kea-dhcp-ddns`` daemon
-and DDNS-registered leases. It has two tabs:
+and DDNS-registered leases. It has three tabs:
 
 .. tabs::
 
@@ -366,11 +366,11 @@ and DDNS-registered leases. It has two tabs:
             If the daemon is not running, a warning is displayed. Start it by enabling
             DDNS in the Settings tab and clicking **Apply**.
 
-    .. tab:: DDNS Leases
+    .. tab:: DDNS DHCPv4
 
-        Shows all active DHCP leases (both DHCPv4 and DHCPv6) that have DDNS
-        registrations. A lease appears here if it has a forward DNS update,
-        a reverse DNS update, or both.
+        Shows active DHCPv4 leases that have DDNS registrations, grouped by
+        subnet. A lease appears here if it has a forward DNS update, a reverse
+        DNS update, or both.
 
         .. list-table::
             :header-rows: 1
@@ -381,18 +381,23 @@ and DDNS-registered leases. It has two tabs:
             * - **Hostname**
               - The FQDN registered in DNS for this lease
             * - **Address**
-              - The IP address (v4 or v6) assigned to the client
+              - The IPv4 address assigned to the client
             * - **MAC**
               - The client's hardware (MAC) address
             * - **Forward**
-              - Check mark if a forward (A/AAAA) DNS record was registered
+              - Check mark if a forward (A) DNS record was registered
             * - **Reverse**
               - Check mark if a reverse (PTR) DNS record was registered
             * - **Expires**
               - Lease expiration timestamp
 
-        The table is paginated and searchable. Click **Refresh** to reload the
-        lease data.
+        Select one or more rows and click **Force DDNS Update** to trigger an
+        immediate Name Change Request for those leases via the Kea
+        ``lease4-resend-ddns`` API. This is useful to re-register a lease
+        after a DNS zone change or TSIG key rotation without waiting for the
+        lease to renew.
+
+        Click **Refresh** to reload the lease data.
 
         .. tip::
 
@@ -401,6 +406,22 @@ and DDNS-registered leases. It has two tabs:
             check, verify that a matching reverse zone is configured. If a
             client is missing entirely, check the log file for
             ``DHCP_DDNS_NO_MATCH`` messages.
+
+    .. tab:: DDNS DHCPv6
+
+        Shows active DHCPv6 leases that have DDNS registrations, grouped by
+        subnet. Identical columns to the DHCPv4 tab, with **Address** showing
+        the IPv6 address and **Forward** indicating an AAAA record registration.
+
+        Select one or more rows and click **Force DDNS Update** to trigger an
+        immediate Name Change Request via the Kea ``lease6-resend-ddns`` API.
+
+        Click **Refresh** to reload the lease data.
+
+        .. note::
+
+            This tab is only populated when Kea DHCPv6 is enabled and at least
+            one DHCPv6 subnet has DDNS updates enabled.
 
 
 Log File
