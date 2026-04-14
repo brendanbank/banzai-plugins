@@ -262,22 +262,18 @@ class GeneralController extends ApiMutableModelControllerBase
         $backend = new Backend();
         $records = [];
 
-        foreach (['kea list leases4', 'kea list leases6'] as $cmd) {
-            $data = json_decode(trim($backend->configdpRun($cmd)), true);
-            if (!empty($data['records'])) {
-                foreach ($data['records'] as $rec) {
-                    if (($rec['fqdn_fwd'] ?? '0') === '1' || ($rec['fqdn_rev'] ?? '0') === '1') {
-                        $records[] = [
-                            'hostname' => $rec['hostname'] ?? '',
-                            'address' => $rec['address'] ?? '',
-                            'hwaddr' => $rec['hwaddr'] ?? '',
-                            'fqdn_fwd' => $rec['fqdn_fwd'] ?? '0',
-                            'fqdn_rev' => $rec['fqdn_rev'] ?? '0',
-                            'state' => $rec['state'] ?? '',
-                            'expire' => $rec['expire'] ?? '',
-                        ];
-                    }
-                }
+        $data = json_decode(trim($backend->configdRun('kea_ddns ddns_leases')), true);
+        if (!empty($data['records'])) {
+            foreach ($data['records'] as $rec) {
+                $records[] = [
+                    'hostname' => $rec['hostname'] ?? '',
+                    'address' => $rec['address'] ?? '',
+                    'hwaddr' => $rec['hwaddr'] ?? '',
+                    'fqdn_fwd' => $rec['fqdn_fwd'] ?? '0',
+                    'fqdn_rev' => $rec['fqdn_rev'] ?? '0',
+                    'state' => $rec['state'] ?? '',
+                    'expire' => $rec['expire'] ?? '',
+                ];
             }
         }
 
