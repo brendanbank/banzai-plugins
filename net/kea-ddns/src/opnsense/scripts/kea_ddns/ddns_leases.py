@@ -26,10 +26,10 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 """
 
+import argparse
 import json
 import os
 import socket
-import sys
 
 SOCKETS = {
     'dhcp4': '/var/run/kea/kea4-ctrl-socket',
@@ -60,29 +60,29 @@ def send_command(sock_path, command, arguments=None):
         s.close()
 
 
-def get_subnet_ids(sock_path, service):
-    """Return all subnet IDs from the Kea daemon config."""
+def get_subnets(sock_path, service):
+    """Return {subnet_id: cidr} from the Kea daemon config."""
     resp = send_command(sock_path, 'config-get')
     if not isinstance(resp, dict) or resp.get('result') != 0:
-        return []
+        return {}
     cfg_key = 'Dhcp4' if service == 'dhcp4' else 'Dhcp6'
     subnet_key = 'subnet4' if service == 'dhcp4' else 'subnet6'
-    return [
-        s['id']
+    return {
+        s['id']: s.get('subnet', '')
         for s in resp.get('arguments', {}).get(cfg_key, {}).get(subnet_key, [])
         if 'id' in s
-    ]
+    }
 
 
-def collect_fqdn_leases(service, lease_cmd, addr_key):
+def collect_fqdn_leases(service, lease_cmd):
     """Return leases with FQDN updates for one Kea service."""
     sock_path = SOCKETS[service]
     if not os.path.exists(sock_path):
         return []
 
     try:
-        subnet_ids = get_subnet_ids(sock_path, service)
-        resp = send_command(sock_path, lease_cmd, {'subnets': subnet_ids})
+        subnets = get_subnets(sock_path, service)
+        resp = send_command(sock_path, lease_cmd, {'subnets': list(subnets.keys())})
         if not isinstance(resp, dict) or resp.get('result') != 0:
             return []
         leases = resp.get('arguments', {}).get('leases', [])
@@ -95,22 +95,30 @@ def collect_fqdn_leases(service, lease_cmd, addr_key):
         fqdn_rev = lease.get('fqdn-rev', False)
         if not fqdn_fwd and not fqdn_rev:
             continue
+        subnet_id = lease.get('subnet-id')
         records.append({
             'hostname': lease.get('hostname', ''),
-            'address': lease.get(addr_key, ''),
+            'address': lease.get('ip-address', ''),
             'hwaddr': lease.get('hw-address', ''),
             'fqdn_fwd': '1' if fqdn_fwd else '0',
             'fqdn_rev': '1' if fqdn_rev else '0',
             'state': str(lease.get('state', 0)),
             'expire': str(lease.get('cltt', 0) + lease.get('valid-lft', 0)),
+            'subnet': subnets.get(subnet_id, ''),
         })
     return records
 
 
 def main():
-    records = []
-    records += collect_fqdn_leases('dhcp4', 'lease4-get-all', 'ip-address')
-    records += collect_fqdn_leases('dhcp6', 'lease6-get-all', 'ip-address')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--proto', choices=['inet', 'inet6'], default='inet')
+    args = parser.parse_args()
+
+    if args.proto == 'inet':
+        records = collect_fqdn_leases('dhcp4', 'lease4-get-all')
+    else:
+        records = collect_fqdn_leases('dhcp6', 'lease6-get-all')
+
     print(json.dumps({'records': records}))
 
 

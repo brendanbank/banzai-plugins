@@ -257,12 +257,22 @@ class GeneralController extends ApiMutableModelControllerBase
         return $response;
     }
 
-    public function searchDdnsLeasesAction()
+    public function searchDdnsLeases4Action()
+    {
+        return $this->searchDdnsLeasesProto('kea_ddns ddns_leases4');
+    }
+
+    public function searchDdnsLeases6Action()
+    {
+        return $this->searchDdnsLeasesProto('kea_ddns ddns_leases6');
+    }
+
+    private function searchDdnsLeasesProto($cmd)
     {
         $backend = new Backend();
         $records = [];
 
-        $data = json_decode(trim($backend->configdRun('kea_ddns ddns_leases')), true);
+        $data = json_decode(trim($backend->configdRun($cmd)), true);
         if (!empty($data['records'])) {
             foreach ($data['records'] as $rec) {
                 $records[] = [
@@ -273,6 +283,7 @@ class GeneralController extends ApiMutableModelControllerBase
                     'fqdn_rev' => $rec['fqdn_rev'] ?? '0',
                     'state' => $rec['state'] ?? '',
                     'expire' => $rec['expire'] ?? '',
+                    'subnet' => $rec['subnet'] ?? '',
                 ];
             }
         }
