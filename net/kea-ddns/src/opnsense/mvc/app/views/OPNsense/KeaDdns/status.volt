@@ -99,7 +99,41 @@
             });
         }
 
-        /* DDNS Leases tabs */
+        /* Force DDNS update for selected leases */
+        function resendSelected(gridId, btnId, proto) {
+            var bg = $('#' + gridId).data('UIBootgrid');
+            if (!bg) return;
+            var rows = bg.table.getSelectedData();
+            if (!rows.length) return;
+            var addresses = rows.map(function(r) { return r.address; });
+            var btn = $('#' + btnId);
+            btn.prop('disabled', true).find('i').addClass('fa-spin');
+            $.post('/api/keaddns/general/resendDdns',
+                { addresses: addresses, proto: proto },
+                function(data) {
+                    var errors = Object.values(data.results || {})
+                        .filter(function(r) { return r.result !== 0; });
+                    if (errors.length) {
+                        alert('{{ lang._("Some updates failed:") }}\n' +
+                            errors.map(function(r) { return r.text; }).join('\n'));
+                    } else {
+                        var count = Object.keys(data.results || {}).length;
+                        BootstrapDialog.show({
+                            type: BootstrapDialog.TYPE_SUCCESS,
+                            title: '{{ lang._("DDNS Update") }}',
+                            message: count + ' {{ lang._("NCR(s) generated successfully.") }}',
+                            buttons: [{ label: '{{ lang._("Close") }}',
+                                action: function(d) { d.close(); } }]
+                        });
+                    }
+                }
+            ).always(function() {
+                btn.prop('disabled', !$('#' + gridId).data('UIBootgrid')?.table.getSelectedData().length)
+                   .find('i').removeClass('fa-spin');
+            });
+        }
+
+        /* DDNS Leases tabs — shared grid options */
         var leasesGridOptions = {
             tabulatorOptions: {
                 groupBy: 'subnet',
@@ -110,8 +144,8 @@
                 },
             },
             options: {
-                selection: false,
-                multiSelect: false,
+                selection: true,
+                multiSelect: true,
                 formatters: {
                     fqdnCheck: function(column, row) {
                         return row[column.id] === '1' ?
@@ -140,6 +174,9 @@
             $('#gridDdnsLeases4').UIBootgrid($.extend(true, {}, leasesGridOptions, {
                 search: '/api/keaddns/general/searchDdnsLeases4'
             }));
+            $('#gridDdnsLeases4').data('UIBootgrid').table.on('rowSelectionChanged', function(data) {
+                $('#btnResendDdns4').prop('disabled', data.length === 0);
+            });
         }
 
         function initLeases6Grid() {
@@ -151,6 +188,9 @@
             $('#gridDdnsLeases6').UIBootgrid($.extend(true, {}, leasesGridOptions, {
                 search: '/api/keaddns/general/searchDdnsLeases6'
             }));
+            $('#gridDdnsLeases6').data('UIBootgrid').table.on('rowSelectionChanged', function(data) {
+                $('#btnResendDdns6').prop('disabled', data.length === 0);
+            });
         }
 
         /* Load daemon status on page load */
@@ -168,13 +208,20 @@
             initLeases6Grid();
         });
 
-        $('#btnRefreshLeases').on('click', function() {
-            var activeTab = $('.nav-tabs .active a').attr('href');
-            if (activeTab === '#ddns-leases4' && leases4GridInitialized) {
-                $('#gridDdnsLeases4').bootgrid('reload');
-            } else if (activeTab === '#ddns-leases6' && leases6GridInitialized) {
-                $('#gridDdnsLeases6').bootgrid('reload');
-            }
+        $('#btnRefreshLeases4').on('click', function() {
+            if (leases4GridInitialized) $('#gridDdnsLeases4').bootgrid('reload');
+        });
+
+        $('#btnRefreshLeases6').on('click', function() {
+            if (leases6GridInitialized) $('#gridDdnsLeases6').bootgrid('reload');
+        });
+
+        $('#btnResendDdns4').on('click', function() {
+            resendSelected('gridDdnsLeases4', 'btnResendDdns4', 'inet');
+        });
+
+        $('#btnResendDdns6').on('click', function() {
+            resendSelected('gridDdnsLeases6', 'btnResendDdns6', 'inet6');
         });
     });
 </script>
@@ -196,6 +243,14 @@
         </div>
     </div>
     <div id="ddns-leases4" class="tab-pane fade in">
+        <div class="btn-group pull-right" style="margin: 4px 4px 0 0;">
+            <button class="btn btn-default btn-sm" id="btnResendDdns4" disabled>
+                <i class="fa fa-refresh"></i> {{ lang._('Force DDNS Update') }}
+            </button>
+            <button class="btn btn-default btn-sm" id="btnRefreshLeases4">
+                <i class="fa fa-refresh"></i> {{ lang._('Refresh') }}
+            </button>
+        </div>
         <table id="gridDdnsLeases4" class="table table-condensed table-hover table-striped table-responsive" data-editDialog="">
             <thead>
                 <tr>
@@ -213,6 +268,14 @@
         </table>
     </div>
     <div id="ddns-leases6" class="tab-pane fade in">
+        <div class="btn-group pull-right" style="margin: 4px 4px 0 0;">
+            <button class="btn btn-default btn-sm" id="btnResendDdns6" disabled>
+                <i class="fa fa-refresh"></i> {{ lang._('Force DDNS Update') }}
+            </button>
+            <button class="btn btn-default btn-sm" id="btnRefreshLeases6">
+                <i class="fa fa-refresh"></i> {{ lang._('Refresh') }}
+            </button>
+        </div>
         <table id="gridDdnsLeases6" class="table table-condensed table-hover table-striped table-responsive" data-editDialog="">
             <thead>
                 <tr>

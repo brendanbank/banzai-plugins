@@ -246,6 +246,26 @@ class GeneralController extends ApiMutableModelControllerBase
         return $reversed . '.ip6.arpa';
     }
 
+    /* Force DDNS update for one or more leases */
+    public function resendDdnsAction()
+    {
+        if ($this->request->isPost()) {
+            $proto = $this->request->getPost('proto', 'striptags', 'inet');
+            $configd_cmd = $proto === 'inet6' ? 'kea_ddns resend_ddns6' : 'kea_ddns resend_ddns4';
+            $backend = new Backend();
+            $results = [];
+            foreach ((array)$this->request->getPost('addresses') as $raw) {
+                $addr = filter_var(trim($raw), FILTER_VALIDATE_IP);
+                if ($addr) {
+                    $resp = json_decode(trim($backend->configdRun("$configd_cmd $addr")), true);
+                    $results[$addr] = $resp ?? ['result' => 1, 'text' => 'no response'];
+                }
+            }
+            return ['results' => $results];
+        }
+        return ['status' => 'error'];
+    }
+
     /* DDNS status dashboard */
     public function ddnsStatusAction()
     {
