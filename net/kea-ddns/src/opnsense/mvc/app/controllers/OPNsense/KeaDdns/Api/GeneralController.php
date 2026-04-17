@@ -246,6 +246,26 @@ class GeneralController extends ApiMutableModelControllerBase
         return $reversed . '.ip6.arpa';
     }
 
+    /* Force DDNS update for one or more leases */
+    public function resendDdnsAction()
+    {
+        if ($this->request->isPost()) {
+            $proto = $this->request->getPost('proto', 'striptags', 'inet');
+            $configd_cmd = $proto === 'inet6' ? 'kea_ddns resend_ddns6' : 'kea_ddns resend_ddns4';
+            $backend = new Backend();
+            $results = [];
+            foreach ((array)$this->request->getPost('addresses') as $raw) {
+                $addr = filter_var(trim($raw), FILTER_VALIDATE_IP);
+                if ($addr) {
+                    $resp = json_decode(trim($backend->configdRun("$configd_cmd $addr")), true);
+                    $results[$addr] = $resp ?? ['result' => 1, 'text' => 'no response'];
+                }
+            }
+            return ['results' => $results];
+        }
+        return ['status' => 'error'];
+    }
+
     /* DDNS status dashboard */
     public function ddnsStatusAction()
     {
@@ -257,27 +277,34 @@ class GeneralController extends ApiMutableModelControllerBase
         return $response;
     }
 
-    public function searchDdnsLeasesAction()
+    public function searchDdnsLeases4Action()
+    {
+        return $this->searchDdnsLeasesProto('kea_ddns ddns_leases4');
+    }
+
+    public function searchDdnsLeases6Action()
+    {
+        return $this->searchDdnsLeasesProto('kea_ddns ddns_leases6');
+    }
+
+    private function searchDdnsLeasesProto($cmd)
     {
         $backend = new Backend();
         $records = [];
 
-        foreach (['kea list leases4', 'kea list leases6'] as $cmd) {
-            $data = json_decode(trim($backend->configdpRun($cmd)), true);
-            if (!empty($data['records'])) {
-                foreach ($data['records'] as $rec) {
-                    if (($rec['fqdn_fwd'] ?? '0') === '1' || ($rec['fqdn_rev'] ?? '0') === '1') {
-                        $records[] = [
-                            'hostname' => $rec['hostname'] ?? '',
-                            'address' => $rec['address'] ?? '',
-                            'hwaddr' => $rec['hwaddr'] ?? '',
-                            'fqdn_fwd' => $rec['fqdn_fwd'] ?? '0',
-                            'fqdn_rev' => $rec['fqdn_rev'] ?? '0',
-                            'state' => $rec['state'] ?? '',
-                            'expire' => $rec['expire'] ?? '',
-                        ];
-                    }
-                }
+        $data = json_decode(trim($backend->configdRun($cmd)), true);
+        if (!empty($data['records'])) {
+            foreach ($data['records'] as $rec) {
+                $records[] = [
+                    'hostname' => $rec['hostname'] ?? '',
+                    'address' => $rec['address'] ?? '',
+                    'hwaddr' => $rec['hwaddr'] ?? '',
+                    'fqdn_fwd' => $rec['fqdn_fwd'] ?? '0',
+                    'fqdn_rev' => $rec['fqdn_rev'] ?? '0',
+                    'state' => $rec['state'] ?? '',
+                    'expire' => $rec['expire'] ?? '',
+                    'subnet' => $rec['subnet'] ?? '',
+                ];
             }
         }
 

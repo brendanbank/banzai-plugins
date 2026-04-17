@@ -224,7 +224,15 @@ fi
 REMOTE_PIV_SOCK="/tmp/piv-sign-agent.sock"
 echo "    Signing repo (PIV key on this host via socket forwarding)..."
 
-# Remove stale remote socket before forwarding
+# Verify the local agent socket is live, not just a stale file.
+if ! echo "PUBKEY" | nc -U "${LOCAL_PIV_SOCK}" 2>/dev/null | grep -q "^OK"; then
+    die "PIV signing agent socket exists but is not responding. Restart with: python3 tools/piv-sign-agent.py"
+fi
+
+# Remove stale remote socket before forwarding.
+# StreamLocalBindUnlink is not set on OPNsense sshd by default, so a stale
+# socket file from a prior failed attempt blocks sshd from creating the
+# new forwarding socket.
 remote "rm -f ${REMOTE_PIV_SOCK}"
 
 ssh -R "${REMOTE_PIV_SOCK}:${LOCAL_PIV_SOCK}" "${FIREWALL}" \

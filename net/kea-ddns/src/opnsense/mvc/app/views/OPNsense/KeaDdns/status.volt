@@ -99,33 +99,97 @@
             });
         }
 
-        /* DDNS Leases tab */
-        var leasesGridInitialized = false;
-        function initLeasesGrid() {
-            if (leasesGridInitialized) {
-                $('#gridDdnsLeases').bootgrid('reload');
-                return;
-            }
-            leasesGridInitialized = true;
-            $('#gridDdnsLeases').UIBootgrid({
-                search: '/api/keaddns/general/searchDdnsLeases',
-                options: {
-                    selection: false,
-                    multiSelect: false,
-                    formatters: {
-                        fqdnCheck: function(column, row) {
-                            return row[column.id] === '1' ?
-                                '<i class="fa fa-check text-success"></i>' :
-                                '<i class="fa fa-times text-muted"></i>';
-                        },
-                        expireDate: function(column, row) {
-                            var ts = parseInt(row[column.id]);
-                            if (!ts) return '';
-                            var d = new Date(ts * 1000);
-                            return d.toLocaleString();
-                        }
+        /* Force DDNS update for selected leases */
+        function resendSelected(gridId, btnId, proto) {
+            var bg = $('#' + gridId).data('UIBootgrid');
+            if (!bg) return;
+            var rows = bg.table.getSelectedData();
+            if (!rows.length) return;
+            var addresses = rows.map(function(r) { return r.address; });
+            var btn = $('#' + btnId);
+            btn.prop('disabled', true).find('i').addClass('fa-spin');
+            $.post('/api/keaddns/general/resendDdns',
+                { addresses: addresses, proto: proto },
+                function(data) {
+                    var errors = Object.values(data.results || {})
+                        .filter(function(r) { return r.result !== 0; });
+                    if (errors.length) {
+                        alert('{{ lang._("Some updates failed:") }}\n' +
+                            errors.map(function(r) { return r.text; }).join('\n'));
+                    } else {
+                        var count = Object.keys(data.results || {}).length;
+                        BootstrapDialog.show({
+                            type: BootstrapDialog.TYPE_SUCCESS,
+                            title: '{{ lang._("DDNS Update") }}',
+                            message: count + ' {{ lang._("NCR(s) generated successfully.") }}',
+                            buttons: [{ label: '{{ lang._("Close") }}',
+                                action: function(d) { d.close(); } }]
+                        });
                     }
                 }
+            ).always(function() {
+                btn.prop('disabled', !$('#' + gridId).data('UIBootgrid')?.table.getSelectedData().length)
+                   .find('i').removeClass('fa-spin');
+            });
+        }
+
+        /* DDNS Leases tabs — shared grid options */
+        var leasesGridOptions = {
+            tabulatorOptions: {
+                groupBy: 'subnet',
+                groupHeader: function(value, count) {
+                    var label = value ? value : '{{ lang._("Unknown") }}';
+                    var badge = '<span class="badge chip">' + count + '</span>';
+                    return '<i class="fa fa-fw fa-sitemap fa-sm text-info"></i> ' + label + ' ' + badge;
+                },
+            },
+            options: {
+                selection: true,
+                multiSelect: true,
+                formatters: {
+                    fqdnCheck: function(column, row) {
+                        return row[column.id] === '1' ?
+                            '<i class="fa fa-check text-success"></i>' :
+                            '<i class="fa fa-times text-muted"></i>';
+                    },
+                    expireDate: function(column, row) {
+                        var ts = parseInt(row[column.id]);
+                        if (!ts) return '';
+                        var d = new Date(ts * 1000);
+                        return d.toLocaleString();
+                    }
+                }
+            }
+        };
+
+        var leases4GridInitialized = false;
+        var leases6GridInitialized = false;
+
+        function initLeases4Grid() {
+            if (leases4GridInitialized) {
+                $('#gridDdnsLeases4').bootgrid('reload');
+                return;
+            }
+            leases4GridInitialized = true;
+            $('#gridDdnsLeases4').UIBootgrid($.extend(true, {}, leasesGridOptions, {
+                search: '/api/keaddns/general/searchDdnsLeases4'
+            }));
+            $('#gridDdnsLeases4').data('UIBootgrid').table.on('rowSelectionChanged', function(data) {
+                $('#btnResendDdns4').prop('disabled', data.length === 0);
+            });
+        }
+
+        function initLeases6Grid() {
+            if (leases6GridInitialized) {
+                $('#gridDdnsLeases6').bootgrid('reload');
+                return;
+            }
+            leases6GridInitialized = true;
+            $('#gridDdnsLeases6').UIBootgrid($.extend(true, {}, leasesGridOptions, {
+                search: '/api/keaddns/general/searchDdnsLeases6'
+            }));
+            $('#gridDdnsLeases6').data('UIBootgrid').table.on('rowSelectionChanged', function(data) {
+                $('#btnResendDdns6').prop('disabled', data.length === 0);
             });
         }
 
@@ -136,21 +200,36 @@
             loadDaemonStatus();
         });
 
-        $('a[href="#ddns-leases"]').on('shown.bs.tab', function() {
-            initLeasesGrid();
+        $('a[href="#ddns-leases4"]').on('shown.bs.tab', function() {
+            initLeases4Grid();
         });
 
-        $('#btnRefreshLeases').on('click', function() {
-            if (leasesGridInitialized) {
-                $('#gridDdnsLeases').bootgrid('reload');
-            }
+        $('a[href="#ddns-leases6"]').on('shown.bs.tab', function() {
+            initLeases6Grid();
+        });
+
+        $('#btnRefreshLeases4').on('click', function() {
+            if (leases4GridInitialized) $('#gridDdnsLeases4').bootgrid('reload');
+        });
+
+        $('#btnRefreshLeases6').on('click', function() {
+            if (leases6GridInitialized) $('#gridDdnsLeases6').bootgrid('reload');
+        });
+
+        $('#btnResendDdns4').on('click', function() {
+            resendSelected('gridDdnsLeases4', 'btnResendDdns4', 'inet');
+        });
+
+        $('#btnResendDdns6').on('click', function() {
+            resendSelected('gridDdnsLeases6', 'btnResendDdns6', 'inet6');
         });
     });
 </script>
 
 <ul class="nav nav-tabs" data-tabs="tabs" id="maintabs">
     <li class="active"><a data-toggle="tab" href="#daemon-status" id="tab_daemon">{{ lang._('Daemon Status') }}</a></li>
-    <li><a data-toggle="tab" href="#ddns-leases" id="tab_leases">{{ lang._('DDNS Leases') }}</a></li>
+    <li><a data-toggle="tab" href="#ddns-leases4" id="tab_leases4">{{ lang._('DDNS DHCPv4') }}</a></li>
+    <li><a data-toggle="tab" href="#ddns-leases6" id="tab_leases6">{{ lang._('DDNS DHCPv6') }}</a></li>
 </ul>
 <div class="tab-content content-box">
     <div id="daemon-status" class="tab-pane fade in active">
@@ -163,10 +242,44 @@
             </div>
         </div>
     </div>
-    <div id="ddns-leases" class="tab-pane fade in">
-        <table id="gridDdnsLeases" class="table table-condensed table-hover table-striped table-responsive" data-editDialog="">
+    <div id="ddns-leases4" class="tab-pane fade in">
+        <div class="btn-group pull-right" style="margin: 4px 4px 0 0;">
+            <button class="btn btn-default btn-sm" id="btnResendDdns4" disabled>
+                <i class="fa fa-refresh"></i> {{ lang._('Force DDNS Update') }}
+            </button>
+            <button class="btn btn-default btn-sm" id="btnRefreshLeases4">
+                <i class="fa fa-refresh"></i> {{ lang._('Refresh') }}
+            </button>
+        </div>
+        <table id="gridDdnsLeases4" class="table table-condensed table-hover table-striped table-responsive" data-editDialog="">
             <thead>
                 <tr>
+                    <th data-column-id="subnet" data-type="string" data-visible="false">{{ lang._('Subnet') }}</th>
+                    <th data-column-id="hostname" data-type="string" data-identifier="true">{{ lang._('Hostname') }}</th>
+                    <th data-column-id="address" data-type="string">{{ lang._('Address') }}</th>
+                    <th data-column-id="hwaddr" data-type="string">{{ lang._('MAC') }}</th>
+                    <th data-column-id="fqdn_fwd" data-type="string" data-formatter="fqdnCheck" data-width="80px" data-css-class="text-center" data-header-css-class="text-center">{{ lang._('Forward') }}</th>
+                    <th data-column-id="fqdn_rev" data-type="string" data-formatter="fqdnCheck" data-width="80px" data-css-class="text-center" data-header-css-class="text-center">{{ lang._('Reverse') }}</th>
+                    <th data-column-id="expire" data-type="string" data-formatter="expireDate">{{ lang._('Expires') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+    <div id="ddns-leases6" class="tab-pane fade in">
+        <div class="btn-group pull-right" style="margin: 4px 4px 0 0;">
+            <button class="btn btn-default btn-sm" id="btnResendDdns6" disabled>
+                <i class="fa fa-refresh"></i> {{ lang._('Force DDNS Update') }}
+            </button>
+            <button class="btn btn-default btn-sm" id="btnRefreshLeases6">
+                <i class="fa fa-refresh"></i> {{ lang._('Refresh') }}
+            </button>
+        </div>
+        <table id="gridDdnsLeases6" class="table table-condensed table-hover table-striped table-responsive" data-editDialog="">
+            <thead>
+                <tr>
+                    <th data-column-id="subnet" data-type="string" data-visible="false">{{ lang._('Subnet') }}</th>
                     <th data-column-id="hostname" data-type="string" data-identifier="true">{{ lang._('Hostname') }}</th>
                     <th data-column-id="address" data-type="string">{{ lang._('Address') }}</th>
                     <th data-column-id="hwaddr" data-type="string">{{ lang._('MAC') }}</th>

@@ -94,3 +94,76 @@ if [ "$KEA6_VALID" = "true" ]; then
         fail "Leases v6: no leases with fqdn-rev=true"
     fi
 fi
+
+# --- 9. DDNS leases status backend (regression: OPNsense 26.2.x fqdn field drop) ---
+#
+# OPNsense 26.2 rewrote get_kea_leases.py to use the Kea control socket API
+# and dropped fqdn-fwd/fqdn-rev from its output.  The plugin now has its own
+# ddns_leases.py that queries Kea directly via kea_ddns ddns_leases4/6 configd
+# actions.  These tests verify the actions are registered, return records with
+# the expected fields, and include per-subnet grouping data.
+
+# --- 9a. DHCPv4 FQDN leases ---
+DDNS_LEASES4_JSON=$(configctl kea_ddns ddns_leases4 2>/dev/null)
+
+if echo "$DDNS_LEASES4_JSON" | jq -e '.records' >/dev/null 2>&1; then
+    pass "Status API: kea_ddns ddns_leases4 action responds with records array"
+else
+    fail "Status API: kea_ddns ddns_leases4 action missing or returned no records key"
+fi
+
+DDNS_LEASE4_COUNT=$(echo "$DDNS_LEASES4_JSON" | jq '.records | length' 2>/dev/null)
+if [ "${DDNS_LEASE4_COUNT:-0}" -gt 0 ] 2>/dev/null; then
+    pass "Status API: $DDNS_LEASE4_COUNT DHCPv4 FQDN lease(s) returned"
+else
+    fail "Status API: no DHCPv4 FQDN leases returned (expected >0 since DDNS is active)"
+fi
+
+# Every returned record must have fqdn_fwd and fqdn_rev as string fields
+MISSING_FIELDS=$(echo "$DDNS_LEASES4_JSON" | jq '
+    [.records[] |
+     select((.fqdn_fwd | type) != "string" or (.fqdn_rev | type) != "string")] |
+    length' 2>/dev/null)
+if [ "${MISSING_FIELDS:-1}" -eq 0 ] 2>/dev/null; then
+    pass "Status API: all DHCPv4 records have fqdn_fwd and fqdn_rev string fields"
+else
+    fail "Status API: some DHCPv4 records are missing fqdn_fwd or fqdn_rev fields"
+fi
+
+# At least one record must have fqdn_fwd or fqdn_rev set to "1"
+FQDN_SET=$(echo "$DDNS_LEASES4_JSON" | jq '
+    [.records[] | select(.fqdn_fwd == "1" or .fqdn_rev == "1")] | length' 2>/dev/null)
+if [ "${FQDN_SET:-0}" -gt 0 ] 2>/dev/null; then
+    pass "Status API: $FQDN_SET DHCPv4 record(s) with fqdn_fwd or fqdn_rev set to \"1\""
+else
+    fail "Status API: no DHCPv4 records have fqdn_fwd or fqdn_rev set to \"1\""
+fi
+
+# Every returned record must carry a non-empty subnet field (used for grouping)
+MISSING_SUBNET=$(echo "$DDNS_LEASES4_JSON" | jq '
+    [.records[] | select((.subnet | type) != "string" or .subnet == "")] | length' 2>/dev/null)
+if [ "${MISSING_SUBNET:-1}" -eq 0 ] 2>/dev/null; then
+    pass "Status API: all DHCPv4 records have a non-empty subnet field"
+else
+    fail "Status API: some DHCPv4 records are missing the subnet field"
+fi
+
+# --- 9b. DHCPv6 FQDN leases ---
+# The action must be registered and return a valid JSON envelope.
+# An empty records array is acceptable when DHCPv6 is not in use.
+DDNS_LEASES6_JSON=$(configctl kea_ddns ddns_leases6 2>/dev/null)
+
+if echo "$DDNS_LEASES6_JSON" | jq -e '.records' >/dev/null 2>&1; then
+    pass "Status API: kea_ddns ddns_leases6 action responds with records array"
+else
+    fail "Status API: kea_ddns ddns_leases6 action missing or returned no records key"
+fi
+
+if [ "$KEA6_VALID" = "true" ]; then
+    DDNS_LEASE6_COUNT=$(echo "$DDNS_LEASES6_JSON" | jq '.records | length' 2>/dev/null)
+    if [ "${DDNS_LEASE6_COUNT:-0}" -gt 0 ] 2>/dev/null; then
+        pass "Status API: $DDNS_LEASE6_COUNT DHCPv6 FQDN lease(s) returned"
+    else
+        fail "Status API: no DHCPv6 FQDN leases returned (expected >0 since DHCPv6 is active)"
+    fi
+fi

@@ -10,6 +10,22 @@ hook to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
 Plugin Changelog
 ================
 
+2.4
+
+Fixed:
+* DDNS Leases status list empty on OPNsense 26.2.x: the core kea_leases
+  script was rewritten to use the Kea control socket API and no longer
+  exposes fqdn-fwd/fqdn-rev fields. The plugin now queries the Kea DHCP4
+  and DHCP6 control sockets directly via its own ddns_leases backend script,
+  which preserves the FQDN update flags and pre-filters to DDNS-enabled
+  leases only.
+
+Added:
+* Status page DDNS leases split into separate DHCPv4 and DHCPv6 tabs,
+  with leases grouped by subnet.
+* Force DDNS Update: select one or more leases and trigger an immediate
+  NCR via the Kea lease4-resend-ddns / lease6-resend-ddns API.
+
 2.3
 
 Added:
