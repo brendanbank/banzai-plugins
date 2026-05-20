@@ -36,6 +36,24 @@
         </grid_view>
     </field>
     <field>
+        <id>assignment.override_no_update</id>
+        <label>Override no-update flag</label>
+        <type>dropdown</type>
+        <help>Perform DDNS updates even if the client's FQDN option asked the server not to. Required for Windows clients. Leave blank to use global default.</help>
+        <grid_view>
+            <visible>false</visible>
+        </grid_view>
+    </field>
+    <field>
+        <id>assignment.override_client_update</id>
+        <label>Override client update flag</label>
+        <type>dropdown</type>
+        <help>Perform the forward DNS update server-side even when the client said it would do it itself. Leave blank to use global default.</help>
+        <grid_view>
+            <visible>false</visible>
+        </grid_view>
+    </field>
+    <field>
         <id>assignment.replace_client_name</id>
         <label>Replace client name</label>
         <type>dropdown</type>

@@ -1,6 +1,6 @@
 <model>
     <mount>//OPNsense/KeaDdns</mount>
-    <version>1.4.0</version>
+    <version>1.5.0</version>
     <description>Kea DHCP-DDNS Configuration</description>
     <items>
         <general>
@@ -20,6 +20,14 @@
             <update_on_renew type="BooleanField">
                 <Default>1</Default>
             </update_on_renew>
+            <override_no_update type="BooleanField">
+                <Default>0</Default>
+                <Required>Y</Required>
+            </override_no_update>
+            <override_client_update type="BooleanField">
+                <Default>0</Default>
+                <Required>Y</Required>
+            </override_client_update>
             <replace_client_name type="OptionField">
                 <Default>never</Default>
                 <Required>Y</Required>
@@ -182,6 +190,20 @@
                         <option_0 value="0">No</option_0>
                     </OptionValues>
                 </update_on_renew>
+                <override_no_update type="OptionField">
+                    <BlankDesc>Use global default</BlankDesc>
+                    <OptionValues>
+                        <option_1 value="1">Yes</option_1>
+                        <option_0 value="0">No</option_0>
+                    </OptionValues>
+                </override_no_update>
+                <override_client_update type="OptionField">
+                    <BlankDesc>Use global default</BlankDesc>
+                    <OptionValues>
+                        <option_1 value="1">Yes</option_1>
+                        <option_0 value="0">No</option_0>
+                    </OptionValues>
+                </override_client_update>
                 <replace_client_name type="OptionField">
                     <BlankDesc>Use global default</BlankDesc>
                     <OptionValues>
@@ -243,6 +265,20 @@
                         <option_0 value="0">No</option_0>
                     </OptionValues>
                 </update_on_renew>
+                <override_no_update type="OptionField">
+                    <BlankDesc>Use global default</BlankDesc>
+                    <OptionValues>
+                        <option_1 value="1">Yes</option_1>
+                        <option_0 value="0">No</option_0>
+                    </OptionValues>
+                </override_no_update>
+                <override_client_update type="OptionField">
+                    <BlankDesc>Use global default</BlankDesc>
+                    <OptionValues>
+                        <option_1 value="1">Yes</option_1>
+                        <option_0 value="0">No</option_0>
+                    </OptionValues>
+                </override_client_update>
                 <replace_client_name type="OptionField">
                     <BlankDesc>Use global default</BlankDesc>
                     <OptionValues>

@@ -10,6 +10,15 @@ hook to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
 Plugin Changelog
 ================
 
+2.5
+
+Added:
+* Override no-update flag (ddns-override-no-update) and override client
+  update flag (ddns-override-client-update) as global DDNS defaults with
+  per-subnet override (DHCPv4 and DHCPv6). Required to make DDNS work for
+  Windows clients, which set the FQDN "N" flag asking the server not to
+  perform the forward update but never perform the update themselves.
+
 2.4
 
 Fixed:
