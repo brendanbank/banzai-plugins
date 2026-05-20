@@ -39,6 +39,18 @@
         <help>Default for sending DNS updates on lease renewals. Can be overridden per subnet.</help>
     </field>
     <field>
+        <id>keaddns.general.override_no_update</id>
+        <label>Override no-update flag</label>
+        <type>checkbox</type>
+        <help>When enabled, Kea performs DDNS updates even if the client's DHCP FQDN option (Option 81 / Option 39) asked the server not to. Required for Windows clients, which commonly set the "N" flag but never perform the forward update themselves. Can be overridden per subnet.</help>
+    </field>
+    <field>
+        <id>keaddns.general.override_client_update</id>
+        <label>Override client update flag</label>
+        <type>checkbox</type>
+        <help>When enabled, Kea performs the forward DNS update itself even when the client signaled it would do so (FQDN flag "S=0"). Useful for Windows clients that promise to update DNS but cannot reach the configured DNS server. Can be overridden per subnet.</help>
+    </field>
+    <field>
         <id>keaddns.general.replace_client_name</id>
         <label>Replace client name</label>
         <type>dropdown</type>

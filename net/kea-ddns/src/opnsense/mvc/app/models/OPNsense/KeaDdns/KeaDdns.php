@@ -131,6 +131,8 @@ class KeaDdns extends BaseModel
             'hostname-char-replacement' => '-',
             'ddns-send-updates' => (string)$this->general->send_updates === '1',
             'ddns-update-on-renew' => (string)$this->general->update_on_renew === '1',
+            'ddns-override-no-update' => (string)$this->general->override_no_update === '1',
+            'ddns-override-client-update' => (string)$this->general->override_client_update === '1',
             'ddns-replace-client-name' => (string)$this->general->replace_client_name,
             'ddns-conflict-resolution-mode' => (string)$this->general->conflict_resolution,
         ];
@@ -167,6 +169,16 @@ class KeaDdns extends BaseModel
         $val = (string)$assignment->update_on_renew;
         if ($val !== '') {
             $entry['ddns-update-on-renew'] = ($val === '1');
+        }
+
+        $val = (string)$assignment->override_no_update;
+        if ($val !== '') {
+            $entry['ddns-override-no-update'] = ($val === '1');
+        }
+
+        $val = (string)$assignment->override_client_update;
+        if ($val !== '') {
+            $entry['ddns-override-client-update'] = ($val === '1');
         }
 
         $val = (string)$assignment->replace_client_name;

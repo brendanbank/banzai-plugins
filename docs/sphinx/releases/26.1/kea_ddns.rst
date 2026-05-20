@@ -113,6 +113,18 @@ Subnet DDNS, and Subnet6 DDNS.
             * - **Update on renew**
               - Default for sending DNS updates on lease renewals. Default: enabled.
                 Can be overridden per subnet.
+            * - **Override no-update flag**
+              - When enabled, Kea performs DDNS updates even if the client's DHCP
+                FQDN option (Option 81 for v4, Option 39 for v6) asked the server
+                not to. Required for Windows clients, which commonly set the "N"
+                flag but never perform the forward update themselves. Default:
+                disabled. Can be overridden per subnet.
+            * - **Override client update flag**
+              - When enabled, Kea performs the forward DNS update itself even when
+                the client signaled it would do so (FQDN flag ``S=0``). Useful for
+                Windows clients that promise to update DNS but cannot reach the
+                configured DNS server. Default: disabled. Can be overridden per
+                subnet.
             * - **Replace client name**
               - Default for replacing client-sent hostnames. Options: ``Never`` (default),
                 ``Always``, ``When present``, ``When not present``.
@@ -246,6 +258,12 @@ Subnet DDNS, and Subnet6 DDNS.
               - Enable sending DDNS updates for this subnet. Default: enabled.
             * - **Update on renew**
               - Send DNS updates when leases are renewed, not just on initial assignment.
+            * - **Override no-update flag**
+              - Perform DDNS updates even if the client's FQDN option asked the
+                server not to. Required for Windows clients.
+            * - **Override client update flag**
+              - Perform the forward DNS update server-side even when the client said
+                it would do it itself.
             * - **Replace client name**
               - Controls whether Kea replaces the client-provided hostname.
 
@@ -282,6 +300,12 @@ Subnet DDNS, and Subnet6 DDNS.
               - Enable sending DDNS updates for this subnet.
             * - **Update on renew**
               - Send DNS updates on lease renewals.
+            * - **Override no-update flag**
+              - Perform DDNS updates even if the client's FQDN option (Option 39 N-bit)
+                asked the server not to.
+            * - **Override client update flag**
+              - Perform the forward DNS update server-side even when the client said
+                it would do it itself.
             * - **Replace client name**
               - Controls hostname replacement (see DHCPv4 tab for details).
             * - **Conflict resolution**
@@ -703,6 +727,25 @@ reverse update. Check the ``kea-dhcp-ddns`` log for the RCODE:
 
 - **RCODE 5 (REFUSED)**: The DNS server refused the update. Check that
   ``allow-update`` is configured for the zone on the DNS server.
+
+
+Windows clients: forward update missing, reverse OK
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Symptom: the ``kea-dhcp-ddns`` log shows ``Forward Change: no | Reverse
+Change: yes`` for leases assigned to Windows clients.
+
+By default, Windows DHCP clients set the FQDN option (Option 81 for IPv4,
+Option 39 for IPv6) with the ``N`` flag asking the server *not* to perform
+the forward update — the client claims it will register its own A record
+via secure dynamic update against an Active Directory DNS server. When the
+client cannot reach an AD-integrated DNS server, the forward update simply
+never happens.
+
+Enable both **Override no-update flag** and **Override client update flag**
+on the Settings tab (or per-subnet) to make Kea perform the forward update
+itself regardless of what the client signals. These map to the Kea
+``ddns-override-no-update`` and ``ddns-override-client-update`` parameters.
 
 
 DHCPv6 clients send full FQDNs
