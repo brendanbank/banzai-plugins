@@ -36,6 +36,37 @@ banzai-plugins-dev: {
 REPOEOF
 fi
 
+# Boot-time self-heal: keep the repo series in sync with the running OPNsense
+# series after a major upgrade. pkg resolves ${ABI} at runtime but has no
+# variable for the OPNsense series, so the series is baked into the URL at
+# install time and would otherwise point at a non-existent path after an
+# upgrade (e.g. FreeBSD:15:amd64/26.1). Written at runtime like the repo conf
+# above, so any banzai plugin can drop it without pkg file-ownership conflicts.
+SYSHOOK_DIR="/usr/local/etc/rc.syshook.d/start"
+RECONCILE="${SYSHOOK_DIR}/20-banzai-plugins-repo"
+mkdir -p "$SYSHOOK_DIR"
+cat > "$RECONCILE" <<'RECEOF'
+#!/bin/sh
+# Reconcile the banzai-plugins pkg repo series with the running OPNsense
+# series. The repo URL embeds the series (pkg cannot resolve it), so after a
+# major OPNsense upgrade the conf keeps the old series. Runs at every boot.
+SERIES=$(opnsense-version -a 2>/dev/null)
+[ -n "$SERIES" ] || exit 0
+for f in /usr/local/etc/pkg/repos/banzai-plugins.conf \
+         /usr/local/etc/pkg/repos/banzai-plugins-dev.conf; do
+    [ -f "$f" ] || continue
+    cur=$(sed -n 's#.*banzai-plugins/[^/]*/\([0-9][0-9]*\.[0-9][0-9]*\)/.*#\1#p' "$f" | head -1)
+    if [ -n "$cur" ] && [ "$cur" != "$SERIES" ]; then
+        sed -i '' "s#/${cur}/#/${SERIES}/#g" "$f"
+        logger -t banzai-plugins "repo series reconciled ${cur} -> ${SERIES} in $(basename "$f")"
+    fi
+done
+exit 0
+RECEOF
+chmod +x "$RECONCILE"
+# Run once now so an install right after a major upgrade fixes a stale series.
+"$RECONCILE" 2>/dev/null || :
+
 # One-time cleanup: note if old core patch is still present (harmless)
 KEA_INC="/usr/local/etc/inc/plugins.inc.d/kea.inc"
 if grep -q 'kea_ddns_generate' "$KEA_INC" 2>/dev/null; then

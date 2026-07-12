@@ -18,6 +18,14 @@ Fixed:
   where Kea D2 ignored it. Previously updates to a zone protected by a
   TSIG update-policy were sent unsigned and rejected by the name server.
 
+Added:
+* Repo series self-heal: a boot-time rc.syshook hook keeps the
+  banzai-plugins pkg repo URL's OPNsense series in sync after a major
+  upgrade (e.g. 26.1 -> 26.7). pkg resolves ${ABI} but has no variable for
+  the OPNsense series, so it was baked into the URL at install time; the
+  hook rewrites it on boot so the plugin stays upgradeable without editing
+  the repo config by hand.
+
 2.5
 
 Added:
