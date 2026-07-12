@@ -10,6 +10,14 @@ hook to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
 Plugin Changelog
 ================
 
+2.6
+
+Fixed:
+* TSIG-signed DNS updates: the selected TSIG key is now emitted on the
+  forward/reverse DDNS domain (key-name) instead of the DNS server entry,
+  where Kea D2 ignored it. Previously updates to a zone protected by a
+  TSIG update-policy were sent unsigned and rejected by the name server.
+
 2.5
 
 Added:
@@ -176,4 +184,4 @@ Added:
 * kea-dhcp-ddns daemon configuration generation
 * Log file viewer for kea-dhcp-ddns
 
-WWW: https://brendanbank.github.io/banzai-plugins/releases/26.1/kea_ddns.html
+WWW: https://brendanbank.github.io/banzai-plugins/releases/26.7/kea_ddns.html
