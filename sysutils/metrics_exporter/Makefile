@@ -4,6 +4,6 @@ PLUGIN_REVISION=	1
 PLUGIN_COMMENT=		Prometheus exporter for OPNsense metrics
 PLUGIN_DEPENDS=		os-node_exporter
 PLUGIN_MAINTAINER=	brendan.bank@gmail.com
-PLUGIN_WWW=		https://brendanbank.github.io/banzai-plugins/releases/26.1/metrics_exporter.html
+PLUGIN_WWW=		https://brendanbank.github.io/banzai-plugins/releases/26.7/metrics_exporter.html
 
 .include "../../Mk/plugins.mk"
