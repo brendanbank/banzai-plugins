@@ -36,10 +36,16 @@ jobs:
         run: |
           mkdir -p _site
           cp -r main/docs/* _site/
-          if [ -d devel/docs/FreeBSD:14:amd64/26.1/dev ]; then
-            mkdir -p _site/FreeBSD:14:amd64/26.1/dev
-            cp -rf devel/docs/FreeBSD:14:amd64/26.1/dev/* \
-                   _site/FreeBSD:14:amd64/26.1/dev/
+          # Overlay every dev repo from the devel branch, for any ABI/series
+          # (docs/<ABI>/<series>/dev), instead of a single hardcoded path.
+          if [ -d devel/docs ]; then
+            for devdir in devel/docs/*/*/dev; do
+              [ -d "$devdir" ] || continue
+              rel=${devdir#devel/docs/}
+              mkdir -p "_site/${rel}"
+              cp -rf "$devdir"/* "_site/${rel}/"
+              echo "overlaid dev repo: ${rel}"
+            done
           fi
 
       - name: Upload Pages artifact
