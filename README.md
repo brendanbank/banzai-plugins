@@ -18,11 +18,14 @@ Full documentation: [brendanbank.github.io/banzai-plugins](https://brendanbank.g
 
 ## Plugins
 
-| Plugin | Package | Description |
-|--------|---------|-------------|
-| `misc/hello_world` | `os-hello_world` | Hello World example plugin |
-| `net/kea-ddns` | `os-kea-ddns` | Kea DHCP Dynamic DNS support |
-| `sysutils/metrics_exporter` | `os-metrics_exporter` | Prometheus exporter for OPNsense metrics |
+| Plugin | Package | Version | Description |
+|--------|---------|---------|-------------|
+| `misc/hello_world` | `os-hello_world` | 1.1 | Hello World example plugin |
+| `net/kea-ddns` | `os-kea-ddns` | 2.6 | Kea DHCP Dynamic DNS support |
+| `sysutils/metrics_exporter` | `os-metrics_exporter` | 1.5 | Prometheus exporter for OPNsense metrics |
+
+Signed packages are published for the OPNsense **26.1** (`FreeBSD:14:amd64`) and
+**26.7** (`FreeBSD:15:amd64`) series. `os-kea-ddns` 2.6 supports OPNsense 26.7.
 
 ## Installation
 
@@ -84,11 +87,14 @@ banzai-plugins/
 ├── Scripts -> ...              #
 ├── Keys/                       # Signing public key + fingerprint
 ├── docs/                       # GitHub Pages (per-release pkg repos)
-│   └── FreeBSD:14:amd64/
-│       └── 26.1/
-│           ├── repo/           # Signed stable pkg repo
-│           └── dev/
-│               └── repo/       # Signed dev pkg repo (--dev builds)
+│   ├── FreeBSD:14:amd64/
+│   │   └── 26.1/
+│   │       ├── repo/           # Signed stable pkg repo
+│   │       └── dev/
+│   │           └── repo/       # Signed dev pkg repo (--dev builds)
+│   └── FreeBSD:15:amd64/
+│       └── 26.7/
+│           └── repo/           # Signed stable pkg repo (26.7)
 ├── dist/                       # Local build artifacts (gitignored)
 └── <category>/<plugin>/        # Plugin directories
 ```
