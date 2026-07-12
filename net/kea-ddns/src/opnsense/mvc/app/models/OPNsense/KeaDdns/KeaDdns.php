@@ -62,14 +62,16 @@ class KeaDdns extends BaseModel
                 'ip-address' => $zone->server->getValue(),
                 'port' => $zone->port->asInt(),
             ];
-            $keyUuid = (string)$zone->tsig_key;
-            if (!empty($keyUuid) && isset($tsigNameMap[$keyUuid])) {
-                $server['key-name'] = $tsigNameMap[$keyUuid];
-            }
-            $forwardDomains[] = [
+            $domain = [
                 'name' => $name,
                 'dns-servers' => [$server],
             ];
+            /* key-name is a property of the DDNS domain, not the DNS server */
+            $keyUuid = (string)$zone->tsig_key;
+            if (!empty($keyUuid) && isset($tsigNameMap[$keyUuid])) {
+                $domain['key-name'] = $tsigNameMap[$keyUuid];
+            }
+            $forwardDomains[] = $domain;
         }
 
         /* build reverse domains */
@@ -83,14 +85,16 @@ class KeaDdns extends BaseModel
                 'ip-address' => $zone->server->getValue(),
                 'port' => $zone->port->asInt(),
             ];
-            $keyUuid = (string)$zone->tsig_key;
-            if (!empty($keyUuid) && isset($tsigNameMap[$keyUuid])) {
-                $server['key-name'] = $tsigNameMap[$keyUuid];
-            }
-            $reverseDomains[] = [
+            $domain = [
                 'name' => $name,
                 'dns-servers' => [$server],
             ];
+            /* key-name is a property of the DDNS domain, not the DNS server */
+            $keyUuid = (string)$zone->tsig_key;
+            if (!empty($keyUuid) && isset($tsigNameMap[$keyUuid])) {
+                $domain['key-name'] = $tsigNameMap[$keyUuid];
+            }
+            $reverseDomains[] = $domain;
         }
 
         $cnf = [

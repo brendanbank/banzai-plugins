@@ -77,6 +77,7 @@ Links
    :caption: Plugin Releases
    :maxdepth: 2
 
+   releases/26.7/index
    releases/26.1/index
 
 .. toctree::

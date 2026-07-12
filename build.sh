@@ -153,6 +153,7 @@ for plugin_dir in ${PLUGIN_DIRS}; do
     LOCAL_PLUGIN_DIR="${REPO_ROOT}/${plugin_dir}"
 
     echo "    Syncing ${plugin_dir}/"
+    remote "mkdir -p ${REMOTE_PLUGIN_DIR}"
     rsync -aq --delete --exclude work/ -e ssh "${LOCAL_PLUGIN_DIR}/" "${FIREWALL}:${REMOTE_PLUGIN_DIR}/"
 done
 
