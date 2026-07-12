@@ -36,20 +36,22 @@ banzai-plugins-dev: {
 REPOEOF
 fi
 
-# Boot-time self-heal: keep the repo series in sync with the running OPNsense
-# series after a major upgrade. pkg resolves ${ABI} at runtime but has no
-# variable for the OPNsense series, so the series is baked into the URL at
-# install time and would otherwise point at a non-existent path after an
-# upgrade (e.g. FreeBSD:15:amd64/26.1). Written at runtime like the repo conf
-# above, so any banzai plugin can drop it without pkg file-ownership conflicts.
-SYSHOOK_DIR="/usr/local/etc/rc.syshook.d/start"
-RECONCILE="${SYSHOOK_DIR}/20-banzai-plugins-repo"
-mkdir -p "$SYSHOOK_DIR"
-cat > "$RECONCILE" <<'RECEOF'
+# Self-heal: keep the repo series in sync with the running OPNsense series
+# after a major upgrade. pkg resolves ${ABI} at runtime but has no variable
+# for the OPNsense series, so the series is baked into the URL at install time
+# and would otherwise point at a non-existent path after an upgrade (e.g.
+# FreeBSD:15:amd64/26.1). The reconcile hook is installed into the boot (start)
+# and firmware (update, upgrade) syshook levels so it runs at every boot and
+# during firmware operations. It MUST exit 0 — a failing upgrade hook aborts
+# the OPNsense upgrade. Written at runtime like the repo conf above, so any
+# banzai plugin can drop it without pkg file-ownership conflicts.
+RECONCILE_SRC=$(mktemp)
+cat > "$RECONCILE_SRC" <<'RECEOF'
 #!/bin/sh
 # Reconcile the banzai-plugins pkg repo series with the running OPNsense
 # series. The repo URL embeds the series (pkg cannot resolve it), so after a
-# major OPNsense upgrade the conf keeps the old series. Runs at every boot.
+# major OPNsense upgrade the conf keeps the old series. Always exits 0 so it
+# is safe as a firmware upgrade hook.
 SERIES=$(opnsense-version -a 2>/dev/null)
 [ -n "$SERIES" ] || exit 0
 for f in /usr/local/etc/pkg/repos/banzai-plugins.conf \
@@ -63,9 +65,14 @@ for f in /usr/local/etc/pkg/repos/banzai-plugins.conf \
 done
 exit 0
 RECEOF
-chmod +x "$RECONCILE"
+for _hl in start update upgrade; do
+    _hd="/usr/local/etc/rc.syshook.d/${_hl}"
+    mkdir -p "$_hd"
+    install -m 0755 "$RECONCILE_SRC" "${_hd}/50-banzai-plugins-repo"
+done
+rm -f "$RECONCILE_SRC"
 # Run once now so an install right after a major upgrade fixes a stale series.
-"$RECONCILE" 2>/dev/null || :
+/usr/local/etc/rc.syshook.d/start/50-banzai-plugins-repo 2>/dev/null || :
 
 # One-time cleanup: note if old core patch is still present (harmless)
 KEA_INC="/usr/local/etc/inc/plugins.inc.d/kea.inc"
