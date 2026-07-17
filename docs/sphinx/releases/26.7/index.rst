@@ -6,7 +6,7 @@ Supported release: OPNsense 26.7 (``FreeBSD:15:amd64``)
 
 This release ships:
 
-- ``os-kea-ddns`` 2.6 — Kea DHCP Dynamic DNS support
+- ``os-kea-ddns`` 2.7 — Kea DHCP Dynamic DNS support
 - ``os-hello_world`` 1.1
 - ``os-metrics_exporter`` 1.5
 
