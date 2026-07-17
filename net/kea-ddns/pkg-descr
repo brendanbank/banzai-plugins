@@ -10,6 +10,19 @@ hook to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
 Plugin Changelog
 ================
 
+2.7
+
+Fixed:
+* Repo self-heal no longer stalls OPNsense firmware operations. OPNsense
+  aborts "pkg update" (and thus a firmware check/upgrade) if any configured
+  repo errors. If a banzai repo's URL is unreachable for the current
+  ABI/series (e.g. a dev repo for a series not built yet, right after a major
+  upgrade), the reconcile hook now disables that repo instead of letting it
+  break the upgrade, and re-enables it automatically once it is available
+  again. Disabling only happens when the site is reachable but the specific
+  repo is not, so a network outage (e.g. early boot before WAN) never
+  false-disables a working repo.
+
 2.6
 
 Fixed:

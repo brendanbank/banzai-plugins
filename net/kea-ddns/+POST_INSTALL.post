@@ -37,30 +37,72 @@ REPOEOF
 fi
 
 # Self-heal: keep the repo series in sync with the running OPNsense series
-# after a major upgrade. pkg resolves ${ABI} at runtime but has no variable
-# for the OPNsense series, so the series is baked into the URL at install time
-# and would otherwise point at a non-existent path after an upgrade (e.g.
-# FreeBSD:15:amd64/26.1). The reconcile hook is installed into the boot (start)
-# and firmware (update, upgrade) syshook levels so it runs at every boot and
-# during firmware operations. It MUST exit 0 — a failing upgrade hook aborts
-# the OPNsense upgrade. Written at runtime like the repo conf above, so any
-# banzai plugin can drop it without pkg file-ownership conflicts.
+# after a major upgrade, and disable any repo whose URL is unreachable so it
+# cannot stall OPNsense's firmware operations (pkg update aborts the whole
+# upgrade if any repo errors). pkg resolves ${ABI} at runtime but has no
+# variable for the OPNsense series, so the series is baked into the URL at
+# install time and would otherwise point at a non-existent path after an
+# upgrade (e.g. FreeBSD:15:amd64/26.1). The reconcile hook is installed into
+# the boot (start) and firmware (update, upgrade) syshook levels so it runs at
+# every boot and during firmware operations. It MUST exit 0 — a failing
+# upgrade hook aborts the OPNsense upgrade. Written at runtime like the repo
+# conf above, so any banzai plugin can drop it without pkg file conflicts.
 RECONCILE_SRC=$(mktemp)
 cat > "$RECONCILE_SRC" <<'RECEOF'
 #!/bin/sh
 # Reconcile the banzai-plugins pkg repo series with the running OPNsense
-# series. The repo URL embeds the series (pkg cannot resolve it), so after a
-# major OPNsense upgrade the conf keeps the old series. Always exits 0 so it
-# is safe as a firmware upgrade hook.
+# series, and fail-safe against a missing repo. The repo URL embeds the series
+# (pkg cannot resolve it), so after a major upgrade the conf keeps the old
+# series, and a repo for a brand-new series may not exist yet. An ENABLED repo
+# whose URL is unreachable makes OPNsense abort "pkg update" and stall every
+# firmware operation, so: if the site is reachable but a repo's meta.conf is
+# not, disable that repo and record it; re-enable it automatically once it is
+# available again. Always exits 0 — a failing upgrade hook aborts the upgrade.
+SENTINEL_DIR=/var/db/banzai-plugins/autodisabled
+CANARY=https://brendanbank.github.io/banzai-plugins/
+
 SERIES=$(opnsense-version -a 2>/dev/null)
 [ -n "$SERIES" ] || exit 0
+ABI=$(pkg config abi 2>/dev/null)
+
+# reachable? exit 0 = HTTP success, non-0 = 404 / timeout / network error
+reach() { fetch -qo /dev/null -T 5 "$1" 2>/dev/null; }
+
 for f in /usr/local/etc/pkg/repos/banzai-plugins.conf \
          /usr/local/etc/pkg/repos/banzai-plugins-dev.conf; do
     [ -f "$f" ] || continue
+    base=$(basename "$f")
+    sentinel="${SENTINEL_DIR}/${base}"
+
+    # 1. reconcile the series segment to the running OPNsense series
     cur=$(sed -n 's#.*banzai-plugins/[^/]*/\([0-9][0-9]*\.[0-9][0-9]*\)/.*#\1#p' "$f" | head -1)
     if [ -n "$cur" ] && [ "$cur" != "$SERIES" ]; then
         sed -i '' "s#/${cur}/#/${SERIES}/#g" "$f"
-        logger -t banzai-plugins "repo series reconciled ${cur} -> ${SERIES} in $(basename "$f")"
+        logger -t banzai-plugins "repo series reconciled ${cur} -> ${SERIES} in ${base}"
+    fi
+
+    # 2. fail-safe enable/disable based on reachability
+    [ -n "$ABI" ] || continue
+    url=$(sed -n 's#.*url: *"\([^"]*\)".*#\1#p' "$f" | sed "s#\${ABI}#${ABI}#g")
+    [ -n "$url" ] || continue
+    case "$url" in *'${ABI}'*) continue ;; esac
+
+    # only change enable state if the site itself is reachable, so a network
+    # outage (e.g. early boot before WAN) never false-disables a good repo
+    reach "$CANARY" || continue
+
+    if grep -q 'enabled: *yes' "$f"; then
+        if ! reach "${url}/meta.conf"; then
+            sed -i '' 's/enabled: *yes/enabled: no/' "$f"
+            mkdir -p "$SENTINEL_DIR" && : > "$sentinel"
+            logger -t banzai-plugins "disabled ${base}: ${url}/meta.conf unreachable; will re-enable when available"
+        fi
+    elif [ -f "$sentinel" ]; then
+        if reach "${url}/meta.conf"; then
+            sed -i '' 's/enabled: *no/enabled: yes/' "$f"
+            rm -f "$sentinel"
+            logger -t banzai-plugins "re-enabled ${base}: ${url}/meta.conf available again"
+        fi
     fi
 done
 exit 0

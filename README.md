@@ -21,11 +21,11 @@ Full documentation: [brendanbank.github.io/banzai-plugins](https://brendanbank.g
 | Plugin | Package | Version | Description |
 |--------|---------|---------|-------------|
 | `misc/hello_world` | `os-hello_world` | 1.1 | Hello World example plugin |
-| `net/kea-ddns` | `os-kea-ddns` | 2.6 | Kea DHCP Dynamic DNS support |
+| `net/kea-ddns` | `os-kea-ddns` | 2.7 | Kea DHCP Dynamic DNS support |
 | `sysutils/metrics_exporter` | `os-metrics_exporter` | 1.5 | Prometheus exporter for OPNsense metrics |
 
 Signed packages are published for the OPNsense **26.1** (`FreeBSD:14:amd64`) and
-**26.7** (`FreeBSD:15:amd64`) series. `os-kea-ddns` 2.6 supports OPNsense 26.7.
+**26.7** (`FreeBSD:15:amd64`) series. `os-kea-ddns` 2.7 supports OPNsense 26.7.
 
 ## Installation
 
