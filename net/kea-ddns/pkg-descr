@@ -10,6 +10,20 @@ hook to inject DDNS parameters into kea-dhcp4.conf and kea-dhcp6.conf.
 Plugin Changelog
 ================
 
+2.8
+
+Fixed:
+* DHCPv6 DDNS lost after an IPv6 prefix change (OPNsense 26.7+). Core's
+  prefix renew handler regenerates kea-dhcp6.conf via the new
+  kea_generate_dhcpv6 configure event and config-reloads DHCPv6, which
+  bypassed the kea_sync hook and silently dropped all ddns-* parameters
+  until the next full Kea sync. The plugin now hooks that event too and
+  re-applies the DHCPv6 DDNS overlay.
+* Subnet DDNS parameters are now matched by the subnet UUID core writes
+  into user-context (26.7+), falling back to CIDR on older cores. This
+  also covers 26.7 dynamic prefix subnets, whose generated CIDR differs
+  from the configured one.
+
 2.7
 
 Fixed:
