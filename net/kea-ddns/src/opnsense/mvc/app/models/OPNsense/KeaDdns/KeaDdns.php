@@ -212,13 +212,16 @@ class KeaDdns extends BaseModel
 
     /**
      * Return the DDNS overlay for kea-dhcp6.conf. Contains global DDNS settings
-     * and per-subnet parameters keyed by CIDR string.
+     * and per-subnet parameters, keyed both by subnet UUID (matched against the
+     * subnet UUID core writes into user-context since 26.7) and by CIDR string (fallback for
+     * older cores that don't emit user-context).
      */
     public function getDhcpv6Overlay()
     {
         $result = [
             'global' => $this->buildGlobalDdnsDefaults(),
             'subnets' => [],
+            'subnets_by_uuid' => [],
         ];
 
         /* resolve subnet UUIDs to CIDR strings */
@@ -238,7 +241,11 @@ class KeaDdns extends BaseModel
             $entry = $this->buildSubnetDdnsEntry($assignment);
             $entry['rapid-commit'] = $assignment->rapid_commit->isEqual('1');
 
-            $result['subnets'][$cidr] = $entry;
+            $result['subnets_by_uuid'][$subnetUuid] = $entry;
+            /* dynamic prefix subnets have no static CIDR, only the UUID can match */
+            if ($cidr !== '') {
+                $result['subnets'][$cidr] = $entry;
+            }
         }
 
         return $result;
@@ -246,13 +253,16 @@ class KeaDdns extends BaseModel
 
     /**
      * Return the DDNS overlay for kea-dhcp4.conf. Contains global DDNS settings
-     * and per-subnet parameters keyed by CIDR string.
+     * and per-subnet parameters, keyed both by subnet UUID (matched against the
+     * subnet UUID core writes into user-context since 26.7) and by CIDR string (fallback for
+     * older cores that don't emit user-context).
      */
     public function getDhcpv4Overlay()
     {
         $result = [
             'global' => $this->buildGlobalDdnsDefaults(),
             'subnets' => [],
+            'subnets_by_uuid' => [],
         ];
 
         /* resolve subnet UUIDs to CIDR strings */
@@ -269,7 +279,9 @@ class KeaDdns extends BaseModel
             }
             $cidr = $subnetCidrMap[$subnetUuid];
 
-            $result['subnets'][$cidr] = $this->buildSubnetDdnsEntry($assignment);
+            $entry = $this->buildSubnetDdnsEntry($assignment);
+            $result['subnets_by_uuid'][$subnetUuid] = $entry;
+            $result['subnets'][$cidr] = $entry;
         }
 
         return $result;

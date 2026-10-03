@@ -30,13 +30,18 @@
 use OPNsense\Core\File;
 
 /**
- * Register for the kea_sync configure event. Alphabetical ordering
- * (kea.inc < kea_ddns.inc) guarantees core generates configs first,
- * then this plugin post-processes them.
+ * Register for the kea_sync and kea_generate_dhcpv6 configure events.
+ * Alphabetical ordering (kea.inc < kea_ddns.inc) guarantees core generates
+ * configs first, then this plugin post-processes them.
+ *
+ * kea_generate_dhcpv6 (26.7+) is fired by core's kea_prefix_renew.py when the
+ * delegated IPv6 prefix changes; it rewrites only kea-dhcp6.conf and then
+ * config-reloads DHCPv6, so the DDNS overlay must be re-applied there too.
  */
 function kea_ddns_configure()
 {
     return [
+        'kea_generate_dhcpv6' => ['kea_ddns_generate_dhcpv6_do'],
         'kea_sync' => ['kea_ddns_configure_do'],
     ];
 }
@@ -71,6 +76,24 @@ function kea_ddns_configure_do($verbose = false)
 }
 
 /**
+ * Re-apply the DHCPv6 DDNS overlay after core regenerated kea-dhcp6.conf
+ * on a prefix change. D2 and DHCPv4 configs are untouched by that path.
+ */
+function kea_ddns_generate_dhcpv6_do($verbose = false)
+{
+    try {
+        $mdl = new \OPNsense\KeaDdns\KeaDdns();
+        if (!$mdl->general->enabled->isEqual('1')) {
+            return;
+        }
+
+        kea_ddns_merge_config($mdl, '/usr/local/etc/kea/kea-dhcp6.conf', 'Dhcp6', 'subnet6', 'getDhcpv6Overlay');
+    } catch (\Throwable $e) {
+        @syslog(LOG_ERR, 'kea-ddns: dhcpv6 configure failed: ' . $e->getMessage());
+    }
+}
+
+/**
  * Read a Kea JSON config, merge DDNS overlay, write it back.
  */
 function kea_ddns_merge_config($mdl, $target, $rootKey, $subnetKey, $overlayMethod)
@@ -90,9 +113,16 @@ function kea_ddns_merge_config($mdl, $target, $rootKey, $subnetKey, $overlayMeth
         $cnf[$rootKey] = array_merge($cnf[$rootKey], $overlay['global']);
     }
 
-    if (isset($overlay['subnets']) && isset($cnf[$rootKey][$subnetKey])) {
+    if (isset($cnf[$rootKey][$subnetKey])) {
         foreach ($cnf[$rootKey][$subnetKey] as &$subnet) {
-            if (isset($overlay['subnets'][$subnet['subnet']])) {
+            /*
+             * prefer the subnet UUID core stores in user-context, fall back to CIDR.
+             * 26.7.5+ nests it under "opnsense", 26.7 GA used the top level.
+             */
+            $uuid = $subnet['user-context']['opnsense']['uuid'] ?? $subnet['user-context']['uuid'] ?? null;
+            if ($uuid !== null && isset($overlay['subnets_by_uuid'][$uuid])) {
+                $subnet = array_merge($subnet, $overlay['subnets_by_uuid'][$uuid]);
+            } elseif (isset($subnet['subnet']) && isset($overlay['subnets'][$subnet['subnet']])) {
                 $subnet = array_merge($subnet, $overlay['subnets'][$subnet['subnet']]);
             }
         }
