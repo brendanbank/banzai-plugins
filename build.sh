@@ -241,13 +241,17 @@ ssh -R "${REMOTE_PIV_SOCK}:${LOCAL_PIV_SOCK}" "${FIREWALL}" \
 
 # pkg repo exits 0 even when signing fails (e.g. the YubiKey drops out mid-build
 # and sign-repo.py emits an empty signature) — verify the embedded repo
-# signature is actually present and non-empty before publishing.
+# signatures are actually present and non-empty before publishing. pkg repo
+# signs each archive with a separate request, so one can fail (e.g. a mistyped
+# PIN) while the others succeed — check every repo archive, not just data.
 remote "test -f ${REMOTE_REPO_DIR}/meta.conf" || die "Repo signing failed (no meta.conf)"
-SIG_SIZE=$(remote "tar -xOf ${REMOTE_REPO_DIR}/data.pkg data.sig 2>/dev/null | wc -c" | tr -d ' ')
-if ! echo "${SIG_SIZE}" | grep -qE '^[1-9][0-9]*$'; then
-    die "Repo signing produced an EMPTY signature (data.sig=${SIG_SIZE:-0} bytes). Is the YubiKey inserted and can the PIV agent sign? Aborting before publishing an unverifiable repo."
-fi
-echo "    Signature verified (data.sig ${SIG_SIZE} bytes)"
+for archive in data packagesite; do
+    SIG_SIZE=$(remote "tar -xOf ${REMOTE_REPO_DIR}/${archive}.pkg '*.sig' 2>/dev/null | wc -c" | tr -d ' ')
+    if ! echo "${SIG_SIZE}" | grep -qE '^[1-9][0-9]*$'; then
+        die "Repo signing produced an EMPTY signature (${archive}.pkg sig=${SIG_SIZE:-0} bytes). Is the YubiKey inserted and can the PIV agent sign? Aborting before publishing an unverifiable repo."
+    fi
+    echo "    Signature verified (${archive}.pkg ${SIG_SIZE} bytes)"
+done
 
 remote "rm -f ${REMOTE_REPO_DIR}/sign-repo.py ${REMOTE_REPO_DIR}/repo.pub"
 rsync -aq --delete -e ssh "${FIREWALL}:${REMOTE_REPO_DIR}/" "${PAGES_REPO}/"
